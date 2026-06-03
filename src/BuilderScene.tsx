@@ -3,7 +3,7 @@ import { ContactShadows, OrbitControls } from "@react-three/drei";
 import { Suspense, useEffect, useMemo } from "react";
 import * as THREE from "three";
 import type { CabinetConfig, Selection } from "./model";
-import { getDimensions } from "./model";
+import { getDimensions, getEffectiveCellColor } from "./model";
 
 interface SceneApi {
   capturePng: () => string;
@@ -152,8 +152,9 @@ function CabinetModel({
         <CellContent
           key={`cell-${cell.row}-${cell.column}`}
           cell={cell}
-          kind={config.cells[cell.row][cell.column].kind}
-          color={config.panelColor}
+          kind={config.structureMode === "noPanels" || config.structureMode === "frameOnly" ? "open" : config.cells[cell.row][cell.column].kind}
+          color={getEffectiveCellColor(config, cell.row, cell.column)}
+          structureMode={config.structureMode}
           selected={selection.row === cell.row && selection.column === cell.column}
           onSelect={() => onSelect({ row: cell.row, column: cell.column })}
         />
@@ -169,12 +170,14 @@ function CellContent({
   cell,
   kind,
   color,
+  structureMode,
   selected,
   onSelect
 }: {
   cell: LayoutCell;
   kind: string;
   color: string;
+  structureMode: CabinetConfig["structureMode"];
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -187,33 +190,33 @@ function CellContent({
 
   return (
     <group onClick={(event) => { event.stopPropagation(); onSelect(); }}>
-      {kind !== "open" && kind !== "glass" ? (
+      {structureMode !== "frameOnly" && structureMode !== "noPanels" && kind !== "open" && kind !== "glass" ? (
         <PanelBox position={[cell.x, cell.y, backZ]} args={[cell.width - 0.08, cell.height - 0.08, PANEL_THICKNESS]}>
           {panelMaterial}
         </PanelBox>
       ) : null}
 
-      {kind === "open" ? (
+      {structureMode !== "frameOnly" && kind === "open" ? (
         <PanelBox position={[cell.x, cell.y - cell.height / 2 + PANEL_THICKNESS / 2, cell.z]} args={[cell.width - 0.12, PANEL_THICKNESS, innerDepth]}>
           <meshStandardMaterial color="#f7f7f2" roughness={0.6} metalness={0.02} opacity={0.68} transparent />
         </PanelBox>
       ) : null}
 
-      {kind === "back" ? (
+      {structureMode !== "frameOnly" && kind === "back" ? (
         <PanelBox position={[cell.x, cell.y - cell.height / 2 + PANEL_THICKNESS / 2, cell.z]} args={[cell.width - 0.12, PANEL_THICKNESS, innerDepth]}>
           {panelMaterial}
         </PanelBox>
       ) : null}
 
-      {kind === "drop" ? (
+      {structureMode !== "frameOnly" && structureMode !== "noFront" && kind === "drop" ? (
         <Door position={[cell.x, cell.y, frontZ]} width={cell.width - 0.09} height={cell.height - 0.09} color={color} />
       ) : null}
 
-      {kind === "drawer" ? (
+      {structureMode !== "frameOnly" && structureMode !== "noFront" && kind === "drawer" ? (
         <Drawers position={[cell.x, cell.y, frontZ]} width={cell.width - 0.09} height={cell.height - 0.09} color={color} />
       ) : null}
 
-      {kind === "glass" ? (
+      {structureMode !== "frameOnly" && structureMode !== "noFront" && kind === "glass" ? (
         <>
           <PanelBox position={[cell.x, cell.y, frontZ]} args={[cell.width - 0.09, cell.height - 0.09, PANEL_THICKNESS]}>
             <meshPhysicalMaterial color="#d9eef6" metalness={0.02} roughness={0.04} transmission={0.55} opacity={0.34} transparent />
@@ -224,7 +227,7 @@ function CellContent({
         </>
       ) : null}
 
-      {kind === "tray" ? (
+      {structureMode !== "frameOnly" && kind === "tray" ? (
         <>
           <PanelBox position={[cell.x, cell.y - cell.height * 0.15, cell.z]} args={[cell.width - 0.13, PANEL_THICKNESS, innerDepth]}>
             {panelMaterial}
@@ -239,7 +242,12 @@ function CellContent({
         <boxGeometry args={[cell.width, cell.height, cell.depth]} />
         <meshBasicMaterial transparent opacity={0.01} color="#ffe500" depthWrite={false} />
       </mesh>
-      {selected ? <SelectionFrame cell={cell} /> : null}
+      {selected ? (
+        <>
+          <SelectionFrame cell={cell} />
+          <ExpandHints cell={cell} />
+        </>
+      ) : null}
     </group>
   );
 }
@@ -300,20 +308,60 @@ function SelectionFrame({ cell }: { cell: LayoutCell }) {
   );
 }
 
-function Feet({ layout, feet }: { layout: ReturnType<typeof createLayout>; feet: string }) {
+function ExpandHints({ cell }: { cell: LayoutCell }) {
+  const z = cell.z + cell.depth / 2 + 0.12;
+  const positions: Array<[number, number, number]> = [
+    [cell.x - cell.width / 2 - 0.16, cell.y, z],
+    [cell.x + cell.width / 2 + 0.16, cell.y, z],
+    [cell.x, cell.y + cell.height / 2 + 0.16, z],
+    [cell.x, cell.y, cell.z + cell.depth / 2 + 0.32]
+  ];
+
+  return (
+    <group>
+      {positions.map((position, index) => (
+        <group key={index} position={position}>
+          <mesh>
+            <circleGeometry args={[0.09, 28]} />
+            <meshBasicMaterial color="#111111" transparent opacity={0.82} depthTest={false} />
+          </mesh>
+          <PlusMark />
+        </group>
+      ))}
+    </group>
+  );
+}
+
+function PlusMark() {
+  return (
+    <group position={[0, 0, 0.012]}>
+      <PanelBox position={[0, 0, 0]} args={[0.1, 0.014, 0.01]}>
+        <meshBasicMaterial color="#ffffff" depthTest={false} />
+      </PanelBox>
+      <PanelBox position={[0, 0, 0]} args={[0.014, 0.1, 0.01]}>
+        <meshBasicMaterial color="#ffffff" depthTest={false} />
+      </PanelBox>
+    </group>
+  );
+}
+
+function Feet({ layout, feet }: { layout: ReturnType<typeof createLayout>; feet: CabinetConfig["feet"] }) {
   const bottomY = layout.yBounds[0] - 0.075;
+  const isCaster = feet !== "glides";
+  const wheelRadius = feet === "caster-high" ? 0.095 : 0.075;
+  const bracketHeight = feet === "caster-high" ? 0.08 : 0.055;
   return (
     <group>
       {layout.xBounds.map((x, xIndex) =>
         layout.zBounds.map((z, zIndex) => (
           <group key={`foot-${xIndex}-${zIndex}`} position={[x, bottomY, z]}>
-            {feet === "casters" ? (
+            {isCaster ? (
               <>
                 <mesh rotation={[Math.PI / 2, 0, 0]} castShadow>
-                  <cylinderGeometry args={[0.075, 0.075, 0.035, 24]} />
+                  <cylinderGeometry args={[wheelRadius, wheelRadius, 0.035, 24]} />
                   <meshStandardMaterial color="#1f2224" roughness={0.38} metalness={0.2} />
                 </mesh>
-                <PanelBox position={[0, 0.045, 0]} args={[0.11, 0.055, 0.035]}>
+                <PanelBox position={[0, 0.045, 0]} args={[0.11, bracketHeight, 0.035]}>
                   <meshStandardMaterial color="#303438" roughness={0.36} metalness={0.5} />
                 </PanelBox>
               </>

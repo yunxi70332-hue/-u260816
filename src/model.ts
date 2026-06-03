@@ -1,14 +1,19 @@
-export const DEPTH_OPTIONS = [250, 350, 500] as const;
+export const DEPTH_OPTIONS = [250, 350, 395, 500] as const;
 export const HEIGHT_OPTIONS = [100, 175, 250, 350, 395, 500] as const;
 export const WIDTH_OPTIONS = [250, 350, 395, 500, 750] as const;
+export const MIN_CUSTOM_SIZE = 80;
+export const MAX_CUSTOM_SIZE = 1200;
 
 export type TabKey = "structure" | "fittings" | "colors" | "bom";
 export type CellKind = "open" | "back" | "drop" | "drawer" | "glass" | "tray";
-export type FeetKind = "glides" | "casters";
+export type FeetKind = "glides" | "caster-low" | "caster-high";
 export type FrameFinish = "chrome" | "graphite";
+export type StructureMode = "complete" | "noFront" | "noPanels" | "frameOnly";
+export type ColorScope = "all" | "single";
 
 export interface CellConfig {
   kind: CellKind;
+  color?: string;
 }
 
 export interface CabinetConfig {
@@ -16,8 +21,10 @@ export interface CabinetConfig {
   columnWidths: number[];
   rowHeights: number[];
   panelColor: string;
+  colorScope: ColorScope;
   frameFinish: FrameFinish;
   feet: FeetKind;
+  structureMode: StructureMode;
   showDimensions: boolean;
   cells: CellConfig[][];
 }
@@ -42,15 +49,30 @@ export interface BomItem {
   unitPrice: number;
 }
 
+export interface FeetOption {
+  id: FeetKind;
+  label: string;
+  heightOffset: number;
+  unitPrice: number;
+}
+
 export const COLOR_OPTIONS: ColorOption[] = [
-  { id: "pure-white", label: "纯白", value: "#f4f2eb", text: "#111111" },
-  { id: "light-grey", label: "浅灰", value: "#d9dde0", text: "#111111" },
-  { id: "graphite", label: "石墨黑", value: "#202326", text: "#ffffff" },
+  { id: "black", label: "黑色", value: "#121314", text: "#ffffff" },
+  { id: "pure-white", label: "白色", value: "#f4f2eb", text: "#111111" },
+  { id: "coffee", label: "奶咖", value: "#b9a68d", text: "#111111" },
   { id: "steel-blue", label: "钢蓝", value: "#506a78", text: "#ffffff" },
   { id: "olive", label: "橄榄绿", value: "#59644c", text: "#ffffff" },
-  { id: "ruby", label: "宝石红", value: "#a4262c", text: "#ffffff" },
-  { id: "yellow", label: "金黄", value: "#f2d13b", text: "#111111" },
-  { id: "beige", label: "米灰", value: "#cfc5ad", text: "#111111" }
+  { id: "sapphire", label: "宝石蓝", value: "#244e7a", text: "#ffffff" },
+  { id: "goose-yellow", label: "鹅黄", value: "#f1d86a", text: "#111111" },
+  { id: "orange", label: "橙色", value: "#e76f3c", text: "#111111" },
+  { id: "pink", label: "粉红", value: "#d9829d", text: "#111111" },
+  { id: "eggplant", label: "茄子蓝", value: "#4c426b", text: "#ffffff" },
+  { id: "green", label: "绿色", value: "#2f7a55", text: "#ffffff" },
+  { id: "ruby", label: "红色", value: "#a4262c", text: "#ffffff" },
+  { id: "yellow", label: "黄色", value: "#f2d13b", text: "#111111" },
+  { id: "silver", label: "银色", value: "#b8c0c5", text: "#111111" },
+  { id: "dark-grey", label: "深灰", value: "#4a4f53", text: "#ffffff" },
+  { id: "brown", label: "棕色", value: "#6b4d3a", text: "#ffffff" }
 ];
 
 export const CELL_OPTIONS: Array<{ id: CellKind; label: string; short: string }> = [
@@ -62,13 +84,28 @@ export const CELL_OPTIONS: Array<{ id: CellKind; label: string; short: string }>
   { id: "tray", label: "托盘格", short: "托" }
 ];
 
+export const STRUCTURE_MODE_OPTIONS: Array<{ id: StructureMode; label: string; description: string }> = [
+  { id: "complete", label: "完整箱体", description: "保留当前格子的板件和门板" },
+  { id: "noFront", label: "去正面", description: "隐藏正面门板，保留背板和内部结构" },
+  { id: "noPanels", label: "去面板", description: "批量显示为开放格，保留底部搁板" },
+  { id: "frameOnly", label: "全框架", description: "隐藏全部板件，只保留框架、钢管和节点" }
+];
+
+export const FEET_OPTIONS: FeetOption[] = [
+  { id: "glides", label: "脚垫", heightOffset: 40, unitPrice: 42 },
+  { id: "caster-low", label: "低滚轮", heightOffset: 64, unitPrice: 135 },
+  { id: "caster-high", label: "高滚轮", heightOffset: 88, unitPrice: 168 }
+];
+
 export const DEFAULT_CONFIG: CabinetConfig = {
   depth: 350,
   columnWidths: [750],
   rowHeights: [350],
   panelColor: "#f4f2eb",
+  colorScope: "all",
   frameFinish: "chrome",
   feet: "glides",
+  structureMode: "complete",
   showDimensions: true,
   cells: [[{ kind: "drop" }]]
 };
@@ -85,24 +122,31 @@ export function normalizeConfig(input: Partial<CabinetConfig> | null | undefined
   const rows = rowHeights.length;
   const columns = columnWidths.length;
   const cells = createCells(rows, columns);
+  const feet: FeetKind = FEET_OPTIONS.some((option) => option.id === input?.feet) ? input?.feet as FeetKind : "glides";
+  const structureMode: StructureMode = STRUCTURE_MODE_OPTIONS.some((option) => option.id === input?.structureMode)
+    ? input?.structureMode as StructureMode
+    : "complete";
 
   input?.cells?.slice(0, rows).forEach((row, rowIndex) => {
     row?.slice(0, columns).forEach((cell, columnIndex) => {
       cells[rowIndex][columnIndex] = {
-        kind: CELL_OPTIONS.some((option) => option.id === cell?.kind) ? cell.kind : "open"
+        kind: CELL_OPTIONS.some((option) => option.id === cell?.kind) ? cell.kind : "open",
+        color: COLOR_OPTIONS.some((color) => color.value === cell?.color) ? cell.color : undefined
       };
     });
   });
 
   return {
-    depth: DEPTH_OPTIONS.includes(input?.depth as never) ? Number(input?.depth) : DEFAULT_CONFIG.depth,
+    depth: sanitizeSize(input?.depth, DEFAULT_CONFIG.depth),
     columnWidths,
     rowHeights,
     panelColor: COLOR_OPTIONS.some((color) => color.value === input?.panelColor)
       ? String(input?.panelColor)
       : DEFAULT_CONFIG.panelColor,
+    colorScope: input?.colorScope === "single" ? "single" : "all",
     frameFinish: input?.frameFinish === "graphite" ? "graphite" : "chrome",
-    feet: input?.feet === "casters" ? "casters" : "glides",
+    feet,
+    structureMode,
     showDimensions: input?.showDimensions ?? DEFAULT_CONFIG.showDimensions,
     cells
   };
@@ -136,12 +180,67 @@ export function resizeColumns(config: CabinetConfig, columns: number): CabinetCo
   return { ...config, columnWidths, cells };
 }
 
+export function insertColumn(config: CabinetConfig, index: number): CabinetConfig {
+  if (config.columnWidths.length >= 5) {
+    return config;
+  }
+
+  const insertAt = clamp(index, 0, config.columnWidths.length);
+  const columnWidths = [...config.columnWidths];
+  const sourceWidth = columnWidths[Math.max(0, Math.min(insertAt - 1, columnWidths.length - 1))] ?? 350;
+  columnWidths.splice(insertAt, 0, sourceWidth);
+
+  const cells = config.cells.map((row) => {
+    const nextRow = row.map((cell) => ({ ...cell }));
+    nextRow.splice(insertAt, 0, { kind: "open" });
+    return nextRow;
+  });
+
+  return { ...config, columnWidths, cells };
+}
+
+export function insertRow(config: CabinetConfig, index: number): CabinetConfig {
+  if (config.rowHeights.length >= 5) {
+    return config;
+  }
+
+  const insertAt = clamp(index, 0, config.rowHeights.length);
+  const rowHeights = [...config.rowHeights];
+  const sourceHeight = rowHeights[Math.max(0, Math.min(insertAt - 1, rowHeights.length - 1))] ?? 350;
+  rowHeights.splice(insertAt, 0, sourceHeight);
+
+  const cells = config.cells.map((row) => row.map((cell) => ({ ...cell })));
+  cells.splice(insertAt, 0, Array.from({ length: config.columnWidths.length }, () => ({ kind: "open" })));
+
+  return { ...config, rowHeights, cells };
+}
+
 export function setCellKind(config: CabinetConfig, selection: Selection, kind: CellKind): CabinetConfig {
   const cells = config.cells.map((row) => row.map((cell) => ({ ...cell })));
   if (cells[selection.row]?.[selection.column]) {
-    cells[selection.row][selection.column] = { kind };
+    cells[selection.row][selection.column] = { ...cells[selection.row][selection.column], kind };
   }
   return { ...config, cells };
+}
+
+export function setCellColor(config: CabinetConfig, selection: Selection, color: string): CabinetConfig {
+  const cells = config.cells.map((row) => row.map((cell) => ({ ...cell })));
+  if (cells[selection.row]?.[selection.column] && COLOR_OPTIONS.some((option) => option.value === color)) {
+    cells[selection.row][selection.column] = { ...cells[selection.row][selection.column], color };
+  }
+  return { ...config, cells };
+}
+
+export function setPanelColor(config: CabinetConfig, color: string): CabinetConfig {
+  if (!COLOR_OPTIONS.some((option) => option.value === color)) {
+    return config;
+  }
+
+  return {
+    ...config,
+    panelColor: color,
+    cells: config.cells.map((row) => row.map(({ color: _color, ...cell }) => ({ ...cell })))
+  };
 }
 
 export function setSelectedColumnWidth(
@@ -150,9 +249,7 @@ export function setSelectedColumnWidth(
   width: number
 ): CabinetConfig {
   const columnWidths = [...config.columnWidths];
-  if (WIDTH_OPTIONS.includes(width as never)) {
-    columnWidths[selection.column] = width;
-  }
+  columnWidths[selection.column] = sanitizeSize(width, columnWidths[selection.column]);
   return { ...config, columnWidths };
 }
 
@@ -162,18 +259,37 @@ export function setSelectedRowHeight(
   height: number
 ): CabinetConfig {
   const rowHeights = [...config.rowHeights];
-  if (HEIGHT_OPTIONS.includes(height as never)) {
-    rowHeights[selection.row] = height;
-  }
+  rowHeights[selection.row] = sanitizeSize(height, rowHeights[selection.row]);
   return { ...config, rowHeights };
+}
+
+export function setDepth(config: CabinetConfig, depth: number): CabinetConfig {
+  return { ...config, depth: sanitizeSize(depth, config.depth) };
+}
+
+export function applyStructureMode(config: CabinetConfig, mode: StructureMode): CabinetConfig {
+  if (!STRUCTURE_MODE_OPTIONS.some((option) => option.id === mode)) {
+    return config;
+  }
+
+  return { ...config, structureMode: mode };
+}
+
+export function getCellColor(config: CabinetConfig, selection: Selection): string {
+  return config.cells[selection.row]?.[selection.column]?.color ?? config.panelColor;
+}
+
+export function getEffectiveCellColor(config: CabinetConfig, row: number, column: number): string {
+  return config.cells[row]?.[column]?.color ?? config.panelColor;
 }
 
 export function getDimensions(config: CabinetConfig) {
   const innerWidth = sum(config.columnWidths);
   const innerHeight = sum(config.rowHeights);
+  const feet = getFeetOption(config.feet);
   const outerWidth = innerWidth + 23;
   const outerDepth = config.depth + 23;
-  const outerHeight = innerHeight + (config.feet === "casters" ? 64 : 40);
+  const outerHeight = innerHeight + feet.heightOffset;
 
   return {
     innerWidth,
@@ -201,34 +317,39 @@ export function buildBom(config: CabinetConfig): BomItem[] {
   });
 
   addItem(items, "深度钢管", `${config.depth} mm`, (columns + 1) * (rows + 1), "根", tubePrice(config.depth));
-  addItem(items, config.feet === "casters" ? "滚轮脚" : "调平脚垫", "底部支撑", (columns + 1) * 2, "个", config.feet === "casters" ? 135 : 42);
+  const feet = getFeetOption(config.feet);
+  addItem(items, feet.label, "底部支撑", (columns + 1) * 2, "个", feet.unitPrice);
 
   config.cells.forEach((row, rowIndex) => {
     row.forEach((cell, columnIndex) => {
+      if (config.structureMode === "frameOnly") {
+        return;
+      }
       const width = config.columnWidths[columnIndex];
       const height = config.rowHeights[rowIndex];
       const area = (width * height) / 1000000;
+      const effectiveKind = config.structureMode === "noPanels" ? "open" : cell.kind;
 
-      if (cell.kind === "back" || cell.kind === "drop" || cell.kind === "drawer" || cell.kind === "tray") {
+      if (effectiveKind === "back" || effectiveKind === "drop" || effectiveKind === "drawer" || effectiveKind === "tray") {
         addItem(items, "金属背板", `${width} x ${height} mm`, 1, "块", Math.round(220 + area * 260));
       }
 
-      if (cell.kind === "drop") {
+      if (effectiveKind === "drop" && config.structureMode !== "noFront") {
         addItem(items, "下翻门板", `${width} x ${height} mm`, 1, "套", Math.round(520 + area * 680));
         addItem(items, "门铰链五金", "下翻门", 1, "套", 180);
       }
 
-      if (cell.kind === "drawer") {
+      if (effectiveKind === "drawer" && config.structureMode !== "noFront") {
         addItem(items, "抽屉面板", `${width} x ${Math.round(height / 3)} mm`, 3, "块", Math.round(180 + area * 220));
         addItem(items, "抽屉导轨", "三抽屉", 3, "套", 160);
       }
 
-      if (cell.kind === "glass") {
+      if (effectiveKind === "glass" && config.structureMode !== "noFront") {
         addItem(items, "玻璃门", `${width} x ${height} mm`, 1, "套", Math.round(680 + area * 920));
         addItem(items, "玻璃铰链五金", "玻璃门", 1, "套", 210);
       }
 
-      if (cell.kind === "tray") {
+      if (effectiveKind === "tray") {
         addItem(items, "内托盘", `${width} x ${config.depth} mm`, 1, "个", Math.round(260 + (width * config.depth) / 1000000 * 420));
       }
     });
@@ -274,8 +395,16 @@ function sanitizeSizes(
   options: readonly number[],
   fallback: number[]
 ): number[] {
-  const clean = values?.filter((value) => options.includes(value)).slice(0, 5);
+  const clean = values?.map((value) => sanitizeSize(value, 350)).filter(Boolean).slice(0, 5);
   return clean?.length ? clean : fallback;
+}
+
+function sanitizeSize(value: unknown, fallback: number): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return fallback;
+  }
+  return Math.round(Math.max(MIN_CUSTOM_SIZE, Math.min(MAX_CUSTOM_SIZE, numeric)));
 }
 
 function fitArray<T>(values: T[], length: number, filler: T): T[] {
@@ -292,4 +421,8 @@ function clamp(value: number, min: number, max: number): number {
 
 function tubePrice(length: number): number {
   return Math.round(74 + length * 0.34);
+}
+
+function getFeetOption(feet: FeetKind): FeetOption {
+  return FEET_OPTIONS.find((option) => option.id === feet) ?? FEET_OPTIONS[0];
 }

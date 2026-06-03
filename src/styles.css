@@ -203,6 +203,34 @@ button {
   color: #ffffff;
 }
 
+.size-picker {
+  display: grid;
+  gap: 8px;
+}
+
+.custom-size {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 6px 8px;
+  border: 1px solid #c8ced3;
+  font-weight: 800;
+  color: #4f5961;
+}
+
+.custom-size input {
+  min-width: 0;
+  height: 28px;
+  border: 1px solid #111111;
+  padding: 0 8px;
+  font-weight: 900;
+  text-align: right;
+  background: #ffffff;
+  color: #111111;
+}
+
 .stepper-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -289,10 +317,49 @@ button {
   padding: 0 8px;
 }
 
+.structure-mode-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.mode-button {
+  min-height: 56px;
+  padding: 8px 10px;
+  border: 1px solid #c8ced3;
+  background: #ffffff;
+  color: #111111;
+  text-align: left;
+}
+
+.mode-button strong,
+.mode-button span {
+  display: block;
+}
+
+.mode-button strong {
+  font-size: 13px;
+}
+
+.mode-button span {
+  margin-top: 3px;
+  color: #64707a;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.mode-button.active {
+  border-color: #111111;
+  box-shadow: inset 0 0 0 2px #ffe100;
+}
+
 .choice-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.choice-row.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .switch-line {
@@ -430,8 +497,11 @@ button {
   left: 50%;
   transform: translateX(-50%);
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
   z-index: 2;
+  max-width: calc(100% - 32px);
 }
 
 .ghost-button {

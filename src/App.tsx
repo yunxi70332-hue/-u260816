@@ -27,21 +27,33 @@ import {
   COLOR_OPTIONS,
   DEFAULT_CONFIG,
   DEPTH_OPTIONS,
+  FEET_OPTIONS,
   HEIGHT_OPTIONS,
+  MIN_CUSTOM_SIZE,
+  MAX_CUSTOM_SIZE,
+  STRUCTURE_MODE_OPTIONS,
   WIDTH_OPTIONS,
+  applyStructureMode,
   buildBom,
   createPreset,
   estimatePrice,
   formatRmb,
+  getCellColor,
   getDimensions,
+  insertColumn,
+  insertRow,
   normalizeConfig,
   resizeColumns,
   resizeRows,
+  setCellColor,
   setCellKind,
+  setDepth,
+  setPanelColor,
   setSelectedColumnWidth,
   setSelectedRowHeight,
   type CabinetConfig,
   type CellKind,
+  type ColorScope,
   type Selection,
   type TabKey
 } from "./model";
@@ -106,6 +118,26 @@ export default function App() {
       const next = resizeColumns(current, current.columnWidths.length + delta);
       setSelection((active) => ({ ...active, column: Math.min(active.column, next.columnWidths.length - 1) }));
       return next;
+    });
+  }
+
+  function expandSelected(direction: "left" | "right" | "top" | "front") {
+    updateConfig((current) => {
+      if (direction === "left") {
+        const next = insertColumn(current, selection.column);
+        setSelection((active) => ({ ...active, column: Math.min(active.column + 1, next.columnWidths.length - 1) }));
+        return next;
+      }
+
+      if (direction === "right") {
+        return insertColumn(current, selection.column + 1);
+      }
+
+      if (direction === "top") {
+        return insertRow(current, selection.row + 1);
+      }
+
+      return setDepth(current, current.depth + 100);
     });
   }
 
@@ -223,12 +255,13 @@ export default function App() {
                 config={config}
                 selection={selection}
                 selectedKind={selectedCell.kind}
-                onDepth={(depth) => updateConfig((current) => ({ ...current, depth }))}
+                onDepth={(depth) => updateConfig((current) => setDepth(current, depth))}
                 onWidth={(width) => updateConfig((current) => setSelectedColumnWidth(current, selection, width))}
                 onHeight={(height) => updateConfig((current) => setSelectedRowHeight(current, selection, height))}
                 onRows={handleRows}
                 onColumns={handleColumns}
                 onCellKind={(kind) => updateConfig((current) => setCellKind(current, selection, kind))}
+                onStructureMode={(mode) => updateConfig((current) => applyStructureMode(current, mode))}
                 onPreset={applyPreset}
               />
             ) : null}
@@ -238,7 +271,7 @@ export default function App() {
             ) : null}
 
             {tab === "colors" ? (
-              <ColorsTab config={config} onChange={updateConfig} />
+              <ColorsTab config={config} selection={selection} onChange={updateConfig} />
             ) : null}
 
             {tab === "bom" ? (
@@ -274,6 +307,18 @@ export default function App() {
             <button type="button" className="ghost-button" onClick={() => handleRows(1)}>
               <Plus size={16} /> 层
             </button>
+            <button type="button" className="ghost-button" onClick={() => expandSelected("left")}>
+              <Plus size={16} /> 左
+            </button>
+            <button type="button" className="ghost-button" onClick={() => expandSelected("right")}>
+              <Plus size={16} /> 右
+            </button>
+            <button type="button" className="ghost-button" onClick={() => expandSelected("top")}>
+              <Plus size={16} /> 上
+            </button>
+            <button type="button" className="ghost-button" onClick={() => expandSelected("front")}>
+              <Plus size={16} /> 深
+            </button>
             <button type="button" className="ghost-button" onClick={() => setConfig((current) => ({ ...current, showDimensions: !current.showDimensions }))}>
               <ChevronDown size={16} /> 尺寸
             </button>
@@ -296,6 +341,7 @@ function StructureTab({
   onRows,
   onColumns,
   onCellKind,
+  onStructureMode,
   onPreset
 }: {
   config: CabinetConfig;
@@ -307,20 +353,21 @@ function StructureTab({
   onRows: (delta: number) => void;
   onColumns: (delta: number) => void;
   onCellKind: (kind: CellKind) => void;
+  onStructureMode: (mode: CabinetConfig["structureMode"]) => void;
   onPreset: (columns: number, rows: number, kind?: CellKind) => void;
 }) {
   return (
     <div className="tab-stack">
       <OptionGroup label="深度 mm">
-        <Segmented values={DEPTH_OPTIONS} active={config.depth} onChange={onDepth} />
+        <SizePicker values={DEPTH_OPTIONS} active={config.depth} onChange={onDepth} />
       </OptionGroup>
 
       <OptionGroup label={`第 ${selection.column + 1} 列宽度 mm`}>
-        <Segmented values={WIDTH_OPTIONS} active={config.columnWidths[selection.column]} onChange={onWidth} />
+        <SizePicker values={WIDTH_OPTIONS} active={config.columnWidths[selection.column]} onChange={onWidth} />
       </OptionGroup>
 
       <OptionGroup label={`第 ${selection.row + 1} 层高度 mm`}>
-        <Segmented values={HEIGHT_OPTIONS} active={config.rowHeights[selection.row]} onChange={onHeight} compact />
+        <SizePicker values={HEIGHT_OPTIONS} active={config.rowHeights[selection.row]} onChange={onHeight} compact />
       </OptionGroup>
 
       <div className="stepper-grid">
@@ -352,6 +399,22 @@ function StructureTab({
           <button type="button" onClick={() => onPreset(3, 2, "open")}><Layers3 size={16} /> 展示柜</button>
         </div>
       </OptionGroup>
+
+      <OptionGroup label="批量结构预设">
+        <div className="structure-mode-grid">
+          {STRUCTURE_MODE_OPTIONS.map((mode) => (
+            <button
+              key={mode.id}
+              type="button"
+              className={config.structureMode === mode.id ? "mode-button active" : "mode-button"}
+              onClick={() => onStructureMode(mode.id)}
+            >
+              <strong>{mode.label}</strong>
+              <span>{mode.description}</span>
+            </button>
+          ))}
+        </div>
+      </OptionGroup>
     </div>
   );
 }
@@ -360,9 +423,15 @@ function FittingsTab({ config, onChange }: { config: CabinetConfig; onChange: (n
   return (
     <div className="tab-stack">
       <OptionGroup label="底部支撑">
-        <div className="choice-row">
-          <ToggleButton active={config.feet === "glides"} onClick={() => onChange((current) => ({ ...current, feet: "glides" }))} label="脚垫" />
-          <ToggleButton active={config.feet === "casters"} onClick={() => onChange((current) => ({ ...current, feet: "casters" }))} label="滚轮" />
+        <div className="choice-row three">
+          {FEET_OPTIONS.map((option) => (
+            <ToggleButton
+              key={option.id}
+              active={config.feet === option.id}
+              onClick={() => onChange((current) => ({ ...current, feet: option.id }))}
+              label={option.label}
+            />
+          ))}
         </div>
       </OptionGroup>
 
@@ -387,20 +456,49 @@ function FittingsTab({ config, onChange }: { config: CabinetConfig; onChange: (n
   );
 }
 
-function ColorsTab({ config, onChange }: { config: CabinetConfig; onChange: (next: CabinetConfig | ((current: CabinetConfig) => CabinetConfig)) => void }) {
+function ColorsTab({
+  config,
+  selection,
+  onChange
+}: {
+  config: CabinetConfig;
+  selection: Selection;
+  onChange: (next: CabinetConfig | ((current: CabinetConfig) => CabinetConfig)) => void;
+}) {
+  const activeColor = config.colorScope === "single" ? getCellColor(config, selection) : config.panelColor;
+
   return (
     <div className="tab-stack">
+      <OptionGroup label="作用范围">
+        <div className="choice-row">
+          <ToggleButton
+            active={config.colorScope === "all"}
+            onClick={() => onChange((current) => ({ ...current, colorScope: "all" }))}
+            label="全部"
+          />
+          <ToggleButton
+            active={config.colorScope === "single"}
+            onClick={() => onChange((current) => ({ ...current, colorScope: "single" }))}
+            label="单体"
+          />
+        </div>
+      </OptionGroup>
+
       <OptionGroup label="板件颜色">
         <div className="swatch-grid">
           {COLOR_OPTIONS.map((color) => (
             <button
               key={color.id}
-              className={config.panelColor === color.value ? "swatch active" : "swatch"}
+              className={activeColor === color.value ? "swatch active" : "swatch"}
               type="button"
               style={{ backgroundColor: color.value, color: color.text }}
-              onClick={() => onChange((current) => ({ ...current, panelColor: color.value }))}
+              onClick={() => onChange((current) => (
+                current.colorScope === "single"
+                  ? setCellColor(current, selection, color.value)
+                  : setPanelColor(current, color.value)
+              ))}
             >
-              {config.panelColor === color.value ? <Check size={16} /> : null}
+              {activeColor === color.value ? <Check size={16} /> : null}
               <span>{color.label}</span>
             </button>
           ))}
@@ -469,6 +567,56 @@ function Segmented({
           {value}
         </button>
       ))}
+    </div>
+  );
+}
+
+function SizePicker({
+  values,
+  active,
+  onChange,
+  compact = false
+}: {
+  values: readonly number[];
+  active: number;
+  onChange: (value: number) => void;
+  compact?: boolean;
+}) {
+  const [draft, setDraft] = useState(String(active));
+
+  useEffect(() => {
+    setDraft(String(active));
+  }, [active]);
+
+  function submitDraft() {
+    const value = Number(draft);
+    if (Number.isFinite(value)) {
+      onChange(value);
+    } else {
+      setDraft(String(active));
+    }
+  }
+
+  return (
+    <div className="size-picker">
+      <Segmented values={values} active={active} onChange={onChange} compact={compact} />
+      <label className="custom-size">
+        <span>自定义</span>
+        <input
+          type="number"
+          min={MIN_CUSTOM_SIZE}
+          max={MAX_CUSTOM_SIZE}
+          step={1}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={submitDraft}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.currentTarget.blur();
+            }
+          }}
+        />
+      </label>
     </div>
   );
 }
