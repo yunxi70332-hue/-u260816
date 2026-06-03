@@ -1,8 +1,9 @@
 import { Canvas, useThree } from "@react-three/fiber";
 import { ContactShadows, OrbitControls } from "@react-three/drei";
-import { Suspense, useEffect, useMemo } from "react";
+import { Suspense, useEffect, useMemo, type ReactNode } from "react";
 import * as THREE from "three";
-import type { CabinetConfig, Selection } from "./model";
+import type { AccessoryModelKind } from "./accessoryCatalog";
+import type { CabinetConfig, CellKind, Selection } from "./model";
 import { getDimensions, getEffectiveCellColor } from "./model";
 
 interface SceneApi {
@@ -11,8 +12,9 @@ interface SceneApi {
 
 interface BuilderSceneProps {
   config: CabinetConfig;
-  selection: Selection;
-  onSelect: (selection: Selection) => void;
+  selection: Selection | null;
+  onSelect: (selection: Selection | null) => void;
+  onExpand: (direction: "left" | "right" | "top" | "front") => void;
   onReady: (api: SceneApi) => void;
 }
 
@@ -27,12 +29,18 @@ interface LayoutCell {
   depth: number;
 }
 
+interface Segment {
+  key: string;
+  length: number;
+  position: [number, number, number];
+}
+
 const SCALE = 0.004;
 const TUBE_RADIUS = 0.025;
 const BALL_RADIUS = 0.062;
 const PANEL_THICKNESS = 0.035;
 
-export function BuilderScene({ config, selection, onSelect, onReady }: BuilderSceneProps) {
+export function BuilderScene({ config, selection, onSelect, onExpand, onReady }: BuilderSceneProps) {
   const metrics = getSceneMetrics(config);
 
   return (
@@ -41,16 +49,17 @@ export function BuilderScene({ config, selection, onSelect, onReady }: BuilderSc
       shadows
       camera={{ position: [3.8, 2.6, 4.3], fov: 42, near: 0.1, far: 100 }}
       gl={{ antialias: true, preserveDrawingBuffer: true }}
+      onPointerMissed={() => onSelect(null)}
     >
       <color attach="background" args={["#edf1f3"]} />
       <fog attach="fog" args={["#edf1f3", 24, 64]} />
       <Suspense fallback={null}>
         <SceneReady onReady={onReady} />
         <CameraRig metrics={metrics} />
-        <ambientLight intensity={0.78} />
-        <directionalLight position={[3, 6, 5]} intensity={1.15} castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} />
-        <directionalLight position={[-4, 3, -2]} intensity={0.38} />
-        <CabinetModel config={config} selection={selection} onSelect={onSelect} />
+        <ambientLight intensity={0.76} />
+        <directionalLight position={[3, 6, 5]} intensity={1.2} castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} />
+        <directionalLight position={[-4, 3, -2]} intensity={0.36} />
+        <CabinetModel config={config} selection={selection} onSelect={onSelect} onExpand={onExpand} />
         <Ground />
         <ContactShadows opacity={0.28} scale={10} blur={2.6} far={4.8} resolution={512} color="#5b6670" />
         <OrbitControls
@@ -89,18 +98,8 @@ function CameraRig({ metrics }: { metrics: ReturnType<typeof getSceneMetrics> })
     const target = new THREE.Vector3(0, metrics.totalHeight * 0.52, 0);
     const narrow = size.width < 560;
     const wideCabinet = metrics.totalWidth > 4.2;
-    const widthFactor = narrow ? (wideCabinet ? 2.2 : 1.75) : wideCabinet ? 2.35 : 1.38;
-    const distance = Math.max(
-      4.4,
-      (metrics.totalWidth * widthFactor) / aspect,
-      metrics.totalHeight * 2.2,
-      metrics.depth * 4
-    );
-    const direction = new THREE.Vector3(
-      wideCabinet ? 0.34 : narrow ? 0.38 : 0.64,
-      0.42,
-      wideCabinet || narrow ? 0.82 : 0.72
-    ).normalize();
+    const distance = Math.max(4.4, (metrics.totalWidth * (wideCabinet ? 2.35 : 1.38)) / aspect, metrics.totalHeight * 2.2, metrics.depth * 4);
+    const direction = new THREE.Vector3(wideCabinet ? 0.34 : narrow ? 0.38 : 0.64, 0.42, wideCabinet || narrow ? 0.82 : 0.72).normalize();
     camera.position.copy(target.clone().add(direction.multiplyScalar(distance)));
     camera.lookAt(target);
     camera.updateProjectionMatrix();
@@ -112,11 +111,13 @@ function CameraRig({ metrics }: { metrics: ReturnType<typeof getSceneMetrics> })
 function CabinetModel({
   config,
   selection,
-  onSelect
+  onSelect,
+  onExpand
 }: {
   config: CabinetConfig;
-  selection: Selection;
-  onSelect: (selection: Selection) => void;
+  selection: Selection | null;
+  onSelect: (selection: Selection | null) => void;
+  onExpand: (direction: "left" | "right" | "top" | "front") => void;
 }) {
   const layout = useMemo(() => createLayout(config), [config]);
   const frameColor = config.frameFinish === "chrome" ? "#d7dce2" : "#2b2f32";
@@ -125,40 +126,39 @@ function CabinetModel({
 
   return (
     <group position={[0, 0.05, 0]}>
-      <group>
-        {layout.xBounds.map((x, xIndex) =>
-          layout.yBounds.map((y, yIndex) =>
-            layout.zBounds.map((z, zIndex) => (
-              <mesh key={`ball-${xIndex}-${yIndex}-${zIndex}`} position={[x, y, z]} castShadow receiveShadow>
-                <sphereGeometry args={[BALL_RADIUS, 32, 20]} />
-                <meshPhysicalMaterial color={frameColor} metalness={metalness} roughness={roughness} clearcoat={0.6} />
-              </mesh>
-            ))
-          )
-        )}
-
-        {layout.xSegments.map((segment) => (
-          <Tube key={`x-${segment.key}`} axis="x" length={segment.length} position={segment.position} color={frameColor} metalness={metalness} roughness={roughness} />
-        ))}
-        {layout.ySegments.map((segment) => (
-          <Tube key={`y-${segment.key}`} axis="y" length={segment.length} position={segment.position} color={frameColor} metalness={metalness} roughness={roughness} />
-        ))}
-        {layout.zSegments.map((segment) => (
-          <Tube key={`z-${segment.key}`} axis="z" length={segment.length} position={segment.position} color={frameColor} metalness={metalness} roughness={roughness} />
-        ))}
-      </group>
-
-      {layout.cells.map((cell) => (
-        <CellContent
-          key={`cell-${cell.row}-${cell.column}`}
-          cell={cell}
-          kind={config.structureMode === "noPanels" || config.structureMode === "frameOnly" ? "open" : config.cells[cell.row][cell.column].kind}
-          color={getEffectiveCellColor(config, cell.row, cell.column)}
-          structureMode={config.structureMode}
-          selected={selection.row === cell.row && selection.column === cell.column}
-          onSelect={() => onSelect({ row: cell.row, column: cell.column })}
-        />
+      {layout.points.map((point) => (
+        <mesh key={point.key} position={point.position} castShadow receiveShadow>
+          <sphereGeometry args={[BALL_RADIUS, 32, 20]} />
+          <meshPhysicalMaterial color={frameColor} metalness={metalness} roughness={roughness} clearcoat={0.6} />
+        </mesh>
       ))}
+
+      {layout.xSegments.map((segment) => (
+        <Tube key={`x-${segment.key}`} axis="x" length={segment.length} position={segment.position} color={frameColor} metalness={metalness} roughness={roughness} />
+      ))}
+      {layout.ySegments.map((segment) => (
+        <Tube key={`y-${segment.key}`} axis="y" length={segment.length} position={segment.position} color={frameColor} metalness={metalness} roughness={roughness} />
+      ))}
+      {layout.zSegments.map((segment) => (
+        <Tube key={`z-${segment.key}`} axis="z" length={segment.length} position={segment.position} color={frameColor} metalness={metalness} roughness={roughness} />
+      ))}
+
+      {layout.cells.map((cell) => {
+        const rawKind = config.cells[cell.row][cell.column].kind;
+        const kind = config.structureMode === "noPanels" || config.structureMode === "frameOnly" ? "open" : rawKind;
+        return (
+          <CellContent
+            key={`cell-${cell.row}-${cell.column}`}
+            cell={cell}
+            kind={kind}
+            color={getEffectiveCellColor(config, cell.row, cell.column)}
+            structureMode={config.structureMode}
+            selected={selection?.row === cell.row && selection.column === cell.column}
+            onSelect={() => onSelect({ row: cell.row, column: cell.column })}
+            onExpand={onExpand}
+          />
+        );
+      })}
 
       <Feet layout={layout} feet={config.feet} />
       {config.showDimensions ? <DimensionLabels layout={layout} config={config} /> : null}
@@ -172,116 +172,288 @@ function CellContent({
   color,
   structureMode,
   selected,
-  onSelect
+  onSelect,
+  onExpand
 }: {
   cell: LayoutCell;
-  kind: string;
+  kind: CellKind;
   color: string;
   structureMode: CabinetConfig["structureMode"];
   selected: boolean;
   onSelect: () => void;
+  onExpand: (direction: "left" | "right" | "top" | "front") => void;
 }) {
   const frontZ = cell.z + cell.depth / 2 + PANEL_THICKNESS / 2;
   const backZ = cell.z - cell.depth / 2 - PANEL_THICKNESS / 2;
   const innerDepth = Math.max(0.05, cell.depth - 0.16);
-  const panelMaterial = (
-    <meshStandardMaterial color={color} roughness={0.44} metalness={0.06} side={THREE.DoubleSide} />
-  );
 
   return (
     <group onClick={(event) => { event.stopPropagation(); onSelect(); }}>
-      {structureMode !== "frameOnly" && structureMode !== "noPanels" && kind !== "open" && kind !== "glass" ? (
-        <PanelBox position={[cell.x, cell.y, backZ]} args={[cell.width - 0.08, cell.height - 0.08, PANEL_THICKNESS]}>
-          {panelMaterial}
-        </PanelBox>
-      ) : null}
-
-      {structureMode !== "frameOnly" && kind === "open" ? (
-        <PanelBox position={[cell.x, cell.y - cell.height / 2 + PANEL_THICKNESS / 2, cell.z]} args={[cell.width - 0.12, PANEL_THICKNESS, innerDepth]}>
-          <meshStandardMaterial color="#f7f7f2" roughness={0.6} metalness={0.02} opacity={0.68} transparent />
-        </PanelBox>
-      ) : null}
-
-      {structureMode !== "frameOnly" && kind === "back" ? (
-        <PanelBox position={[cell.x, cell.y - cell.height / 2 + PANEL_THICKNESS / 2, cell.z]} args={[cell.width - 0.12, PANEL_THICKNESS, innerDepth]}>
-          {panelMaterial}
-        </PanelBox>
-      ) : null}
-
-      {structureMode !== "frameOnly" && structureMode !== "noFront" && kind === "drop" ? (
-        <Door position={[cell.x, cell.y, frontZ]} width={cell.width - 0.09} height={cell.height - 0.09} color={color} />
-      ) : null}
-
-      {structureMode !== "frameOnly" && structureMode !== "noFront" && kind === "drawer" ? (
-        <Drawers position={[cell.x, cell.y, frontZ]} width={cell.width - 0.09} height={cell.height - 0.09} color={color} />
-      ) : null}
-
-      {structureMode !== "frameOnly" && structureMode !== "noFront" && kind === "glass" ? (
-        <>
-          <PanelBox position={[cell.x, cell.y, frontZ]} args={[cell.width - 0.09, cell.height - 0.09, PANEL_THICKNESS]}>
-            <meshPhysicalMaterial color="#d9eef6" metalness={0.02} roughness={0.04} transmission={0.55} opacity={0.34} transparent />
-          </PanelBox>
-          <PanelBox position={[cell.x, cell.y, backZ]} args={[cell.width - 0.1, cell.height - 0.1, PANEL_THICKNESS]}>
-            <meshPhysicalMaterial color="#eef8fb" metalness={0} roughness={0.1} opacity={0.22} transparent />
-          </PanelBox>
-        </>
-      ) : null}
-
-      {structureMode !== "frameOnly" && kind === "tray" ? (
-        <>
-          <PanelBox position={[cell.x, cell.y - cell.height * 0.15, cell.z]} args={[cell.width - 0.13, PANEL_THICKNESS, innerDepth]}>
-            {panelMaterial}
-          </PanelBox>
-          <PanelBox position={[cell.x, cell.y - cell.height / 2 + PANEL_THICKNESS / 2, cell.z]} args={[cell.width - 0.13, PANEL_THICKNESS, innerDepth]}>
-            {panelMaterial}
-          </PanelBox>
-        </>
+      {structureMode !== "frameOnly" ? (
+        <AccessoryGeometry kind={kind} cell={cell} color={color} frontZ={frontZ} backZ={backZ} innerDepth={innerDepth} hideFront={structureMode === "noFront"} />
       ) : null}
 
       <mesh position={[cell.x, cell.y, cell.z]} renderOrder={5}>
         <boxGeometry args={[cell.width, cell.height, cell.depth]} />
         <meshBasicMaterial transparent opacity={0.01} color="#ffe500" depthWrite={false} />
       </mesh>
+
       {selected ? (
         <>
           <SelectionFrame cell={cell} />
-          <ExpandHints cell={cell} />
+          <ExpandHints cell={cell} onExpand={onExpand} />
         </>
       ) : null}
     </group>
   );
 }
 
-function Door({ position, width, height, color }: { position: [number, number, number]; width: number; height: number; color: string }) {
+function AccessoryGeometry({
+  kind,
+  cell,
+  color,
+  frontZ,
+  backZ,
+  innerDepth,
+  hideFront
+}: {
+  kind: CellKind;
+  cell: LayoutCell;
+  color: string;
+  frontZ: number;
+  backZ: number;
+  innerDepth: number;
+  hideFront: boolean;
+}) {
+  const panel = <meshStandardMaterial color={color} roughness={0.46} metalness={0.06} side={THREE.DoubleSide} />;
+  const glass = <meshPhysicalMaterial color="#cfeefa" metalness={0.02} roughness={0.04} transmission={0.4} opacity={0.38} transparent />;
+  const isDoor = ["dropDoor", "flipUpDoor", "sideOpenDoor", "glassDropDoor"].includes(kind);
+
   return (
-    <group position={position}>
-      <PanelBox position={[0, 0, 0]} args={[width, height, PANEL_THICKNESS]}>
+    <group>
+      {kind !== "open" && kind !== "noBackModule" && kind !== "glassPanelModule" && !["softPanelLow", "softPanelWide", "softPanelTall"].includes(kind) ? (
+        <PanelBox position={[cell.x, cell.y, backZ]} args={[cell.width - 0.08, cell.height - 0.08, PANEL_THICKNESS]}>{panel}</PanelBox>
+      ) : null}
+
+      {kind === "open" ? <OpenBase cell={cell} innerDepth={innerDepth} /> : null}
+      {kind === "metalBackModule" ? <MetalBox cell={cell} backZ={backZ} innerDepth={innerDepth} color={color} includeBack /> : null}
+      {kind === "noBackModule" ? <MetalBox cell={cell} backZ={backZ} innerDepth={innerDepth} color={color} includeBack={false} /> : null}
+      {kind === "glassPanelModule" ? <GlassBox cell={cell} backZ={backZ} innerDepth={innerDepth} /> : null}
+      {kind === "openBackPanel" ? <OpenBackPanel cell={cell} backZ={backZ} innerDepth={innerDepth} color={color} /> : null}
+      {kind === "sidePanel" ? <SidePanel cell={cell} innerDepth={innerDepth} color={color} /> : null}
+
+      {!hideFront && kind === "dropDoor" ? <DropDoor cell={cell} frontZ={frontZ} color={color} /> : null}
+      {!hideFront && kind === "flipUpDoor" ? <FlipUpDoor cell={cell} frontZ={frontZ} color={color} /> : null}
+      {!hideFront && kind === "sideOpenDoor" ? <SideOpenDoor cell={cell} frontZ={frontZ} color={color} /> : null}
+      {!hideFront && kind === "glassDropDoor" ? <GlassDoor cell={cell} frontZ={frontZ} /> : null}
+
+      {kind === "softPanelLow" ? <SoftPanel cell={cell} backZ={backZ} widthRatio={0.9} heightRatio={0.36} yBias={-0.18} /> : null}
+      {kind === "softPanelWide" ? <SoftPanel cell={cell} backZ={backZ} widthRatio={0.88} heightRatio={0.48} yBias={0} /> : null}
+      {kind === "softPanelTall" ? <SoftPanel cell={cell} backZ={backZ} widthRatio={0.42} heightRatio={0.86} yBias={0} /> : null}
+
+      {kind === "shelf" ? <Shelf cell={cell} innerDepth={innerDepth} color={color} /> : null}
+      {kind === "pullOutShelf" ? <PullOutShelf cell={cell} frontZ={frontZ} innerDepth={innerDepth} color={color} /> : null}
+      {kind === "boxDrawer" ? <BoxDrawer cell={cell} frontZ={frontZ} innerDepth={innerDepth} color={color} /> : null}
+      {kind === "displayTray" ? <DisplayTray cell={cell} innerDepth={innerDepth} color={color} /> : null}
+      {kind === "glassShelf" ? <GlassShelf cell={cell} innerDepth={innerDepth} material={glass} /> : null}
+
+      {isDoor ? <OpenBase cell={cell} innerDepth={innerDepth} subtle /> : null}
+    </group>
+  );
+}
+
+function OpenBase({ cell, innerDepth, subtle = false }: { cell: LayoutCell; innerDepth: number; subtle?: boolean }) {
+  return (
+    <PanelBox position={[cell.x, cell.y - cell.height / 2 + PANEL_THICKNESS / 2, cell.z]} args={[cell.width - 0.12, PANEL_THICKNESS, innerDepth]}>
+      <meshStandardMaterial color="#f7f7f2" roughness={0.6} metalness={0.02} opacity={subtle ? 0.42 : 0.72} transparent />
+    </PanelBox>
+  );
+}
+
+function MetalBox({ cell, backZ, innerDepth, color, includeBack }: { cell: LayoutCell; backZ: number; innerDepth: number; color: string; includeBack: boolean }) {
+  const material = <meshStandardMaterial color={color} roughness={0.46} metalness={0.06} />;
+  return (
+    <group>
+      {includeBack ? <PanelBox position={[cell.x, cell.y, backZ]} args={[cell.width - 0.08, cell.height - 0.08, PANEL_THICKNESS]}>{material}</PanelBox> : null}
+      <PanelBox position={[cell.x, cell.y - cell.height / 2 + PANEL_THICKNESS / 2, cell.z]} args={[cell.width - 0.12, PANEL_THICKNESS, innerDepth]}>{material}</PanelBox>
+      <PanelBox position={[cell.x, cell.y + cell.height / 2 - PANEL_THICKNESS / 2, cell.z]} args={[cell.width - 0.12, PANEL_THICKNESS, innerDepth]}>{material}</PanelBox>
+      <PanelBox position={[cell.x - cell.width / 2 + PANEL_THICKNESS / 2, cell.y, cell.z]} args={[PANEL_THICKNESS, cell.height - 0.12, innerDepth]}>{material}</PanelBox>
+      <PanelBox position={[cell.x + cell.width / 2 - PANEL_THICKNESS / 2, cell.y, cell.z]} args={[PANEL_THICKNESS, cell.height - 0.12, innerDepth]}>{material}</PanelBox>
+    </group>
+  );
+}
+
+function GlassBox({ cell, backZ, innerDepth }: { cell: LayoutCell; backZ: number; innerDepth: number }) {
+  const glass = <meshPhysicalMaterial color="#d6f4ff" metalness={0.02} roughness={0.02} transmission={0.45} opacity={0.32} transparent side={THREE.DoubleSide} />;
+  return (
+    <group>
+      <PanelBox position={[cell.x, cell.y, backZ]} args={[cell.width - 0.08, cell.height - 0.08, PANEL_THICKNESS]}>{glass}</PanelBox>
+      <PanelBox position={[cell.x, cell.y - cell.height / 2 + PANEL_THICKNESS / 2, cell.z]} args={[cell.width - 0.12, PANEL_THICKNESS, innerDepth]}>{glass}</PanelBox>
+      <PanelBox position={[cell.x, cell.y + cell.height / 2 - PANEL_THICKNESS / 2, cell.z]} args={[cell.width - 0.12, PANEL_THICKNESS, innerDepth]}>{glass}</PanelBox>
+      <PanelBox position={[cell.x - cell.width / 2 + PANEL_THICKNESS / 2, cell.y, cell.z]} args={[PANEL_THICKNESS, cell.height - 0.12, innerDepth]}>{glass}</PanelBox>
+      <PanelBox position={[cell.x + cell.width / 2 - PANEL_THICKNESS / 2, cell.y, cell.z]} args={[PANEL_THICKNESS, cell.height - 0.12, innerDepth]}>{glass}</PanelBox>
+    </group>
+  );
+}
+
+function OpenBackPanel({ cell, backZ, innerDepth, color }: { cell: LayoutCell; backZ: number; innerDepth: number; color: string }) {
+  return (
+    <group>
+      <PanelBox position={[cell.x, cell.y, backZ]} args={[cell.width - 0.08, cell.height - 0.08, PANEL_THICKNESS]}>
+        <meshStandardMaterial color={color} roughness={0.46} metalness={0.06} />
+      </PanelBox>
+      <OpenBase cell={cell} innerDepth={innerDepth} />
+    </group>
+  );
+}
+
+function SidePanel({ cell, innerDepth, color }: { cell: LayoutCell; innerDepth: number; color: string }) {
+  return (
+    <group>
+      <PanelBox position={[cell.x - cell.width / 2 + PANEL_THICKNESS / 2, cell.y, cell.z]} args={[PANEL_THICKNESS, cell.height - 0.12, innerDepth]}>
+        <meshStandardMaterial color={color} roughness={0.46} metalness={0.06} />
+      </PanelBox>
+      <OpenBase cell={cell} innerDepth={innerDepth} />
+    </group>
+  );
+}
+
+function DropDoor({ cell, frontZ, color }: { cell: LayoutCell; frontZ: number; color: string }) {
+  return (
+    <group position={[cell.x, cell.y - cell.height / 2 + 0.04, frontZ]} rotation={[-0.62, 0, 0]}>
+      <PanelBox position={[0, cell.height / 2 - 0.04, 0]} args={[cell.width - 0.09, cell.height - 0.09, PANEL_THICKNESS]}>
         <meshStandardMaterial color={color} roughness={0.42} metalness={0.08} />
       </PanelBox>
-      <PanelBox position={[0, height / 2 - 0.05, PANEL_THICKNESS / 2 + 0.012]} args={[width - 0.16, 0.016, 0.012]}>
-        <meshStandardMaterial color="#6d7175" roughness={0.35} metalness={0.7} />
+      <Handle width={cell.width - 0.18} y={cell.height - 0.11} />
+      <LockDot x={cell.width / 2 - 0.12} y={0.12} />
+    </group>
+  );
+}
+
+function FlipUpDoor({ cell, frontZ, color }: { cell: LayoutCell; frontZ: number; color: string }) {
+  return (
+    <group position={[cell.x, cell.y + cell.height / 2 - 0.04, frontZ]} rotation={[0.72, 0, 0]}>
+      <PanelBox position={[0, -cell.height / 2 + 0.04, 0]} args={[cell.width - 0.09, cell.height - 0.09, PANEL_THICKNESS]}>
+        <meshStandardMaterial color={color} roughness={0.42} metalness={0.08} />
       </PanelBox>
-      <PanelBox position={[width / 2 - 0.1, -height / 2 + 0.1, PANEL_THICKNESS / 2 + 0.015]} args={[0.06, 0.06, 0.014]}>
-        <meshStandardMaterial color="#ffdf1f" roughness={0.28} metalness={0.12} />
+      <Handle width={cell.width - 0.18} y={-0.1} />
+    </group>
+  );
+}
+
+function SideOpenDoor({ cell, frontZ, color }: { cell: LayoutCell; frontZ: number; color: string }) {
+  return (
+    <group position={[cell.x - cell.width / 2 + 0.04, cell.y, frontZ]} rotation={[0, -0.86, 0]}>
+      <PanelBox position={[cell.width / 2 - 0.04, 0, 0]} args={[cell.width - 0.09, cell.height - 0.09, PANEL_THICKNESS]}>
+        <meshStandardMaterial color={color} roughness={0.42} metalness={0.08} />
+      </PanelBox>
+      <PanelBox position={[0.03, 0, 0.018]} args={[0.018, cell.height - 0.18, 0.018]}>
+        <meshStandardMaterial color="#5b6064" roughness={0.28} metalness={0.75} />
       </PanelBox>
     </group>
   );
 }
 
-function Drawers({ position, width, height, color }: { position: [number, number, number]; width: number; height: number; color: string }) {
-  const drawerHeight = height / 3;
+function GlassDoor({ cell, frontZ }: { cell: LayoutCell; frontZ: number }) {
   return (
-    <group position={position}>
-      {[0, 1, 2].map((index) => (
-        <group key={index} position={[0, height / 2 - drawerHeight * (index + 0.5), 0]}>
-          <PanelBox position={[0, 0, 0]} args={[width, drawerHeight - 0.025, PANEL_THICKNESS]}>
-            <meshStandardMaterial color={color} roughness={0.42} metalness={0.08} />
-          </PanelBox>
-          <PanelBox position={[0, drawerHeight * 0.23, PANEL_THICKNESS / 2 + 0.012]} args={[width * 0.45, 0.014, 0.012]}>
-            <meshStandardMaterial color="#5a5f63" roughness={0.32} metalness={0.75} />
-          </PanelBox>
-        </group>
-      ))}
+    <group position={[cell.x, cell.y, frontZ]}>
+      <PanelBox position={[0, 0, 0]} args={[cell.width - 0.09, cell.height - 0.09, PANEL_THICKNESS]}>
+        <meshPhysicalMaterial color="#d6f4ff" metalness={0.02} roughness={0.03} transmission={0.48} opacity={0.36} transparent />
+      </PanelBox>
+      <FrameRect width={cell.width - 0.09} height={cell.height - 0.09} z={PANEL_THICKNESS / 2 + 0.015} />
+    </group>
+  );
+}
+
+function SoftPanel({ cell, backZ, widthRatio, heightRatio, yBias }: { cell: LayoutCell; backZ: number; widthRatio: number; heightRatio: number; yBias: number }) {
+  return (
+    <group>
+      <PanelBox position={[cell.x, cell.y + cell.height * yBias, backZ + 0.04]} args={[cell.width * widthRatio, cell.height * heightRatio, 0.045]}>
+        <meshStandardMaterial color="#22272c" roughness={0.86} metalness={0.02} />
+      </PanelBox>
+      <PanelBox position={[cell.x, cell.y + cell.height * yBias, backZ + 0.065]} args={[cell.width * widthRatio - 0.05, 0.014, 0.012]}>
+        <meshStandardMaterial color="#4a4f55" roughness={0.72} />
+      </PanelBox>
+    </group>
+  );
+}
+
+function Shelf({ cell, innerDepth, color }: { cell: LayoutCell; innerDepth: number; color: string }) {
+  return (
+    <PanelBox position={[cell.x, cell.y, cell.z]} args={[cell.width - 0.13, PANEL_THICKNESS, innerDepth]}>
+      <meshStandardMaterial color={color} roughness={0.46} metalness={0.06} />
+    </PanelBox>
+  );
+}
+
+function PullOutShelf({ cell, frontZ, innerDepth, color }: { cell: LayoutCell; frontZ: number; innerDepth: number; color: string }) {
+  const extension = Math.min(0.48, innerDepth * 0.34);
+  return (
+    <group>
+      <PanelBox position={[cell.x, cell.y - cell.height * 0.08, cell.z + extension / 2]} args={[cell.width - 0.13, PANEL_THICKNESS, innerDepth]}><meshStandardMaterial color={color} roughness={0.46} metalness={0.06} /></PanelBox>
+      <PanelBox position={[cell.x - cell.width * 0.42, cell.y - cell.height * 0.12, frontZ - 0.12]} args={[0.035, 0.03, extension + 0.16]}><meshStandardMaterial color="#6d7378" metalness={0.7} roughness={0.28} /></PanelBox>
+      <PanelBox position={[cell.x + cell.width * 0.42, cell.y - cell.height * 0.12, frontZ - 0.12]} args={[0.035, 0.03, extension + 0.16]}><meshStandardMaterial color="#6d7378" metalness={0.7} roughness={0.28} /></PanelBox>
+    </group>
+  );
+}
+
+function BoxDrawer({ cell, frontZ, innerDepth, color }: { cell: LayoutCell; frontZ: number; innerDepth: number; color: string }) {
+  const drawerDepth = innerDepth * 0.72;
+  return (
+    <group position={[cell.x, cell.y - cell.height * 0.08, cell.z + innerDepth * 0.12]}>
+      <PanelBox position={[0, 0, 0]} args={[cell.width - 0.16, cell.height * 0.56, drawerDepth]}>
+        <meshStandardMaterial color="#d7dcdf" roughness={0.5} metalness={0.04} />
+      </PanelBox>
+      <PanelBox position={[0, 0, frontZ - cell.z - innerDepth * 0.12 + 0.01]} args={[cell.width - 0.12, cell.height * 0.62, PANEL_THICKNESS]}>
+        <meshStandardMaterial color={color} roughness={0.42} metalness={0.08} />
+      </PanelBox>
+      <Handle width={(cell.width - 0.18) * 0.46} y={cell.height * 0.12} />
+    </group>
+  );
+}
+
+function DisplayTray({ cell, innerDepth, color }: { cell: LayoutCell; innerDepth: number; color: string }) {
+  const y = cell.y - cell.height * 0.18;
+  const rim = 0.07;
+  return (
+    <group>
+      <PanelBox position={[cell.x, y, cell.z]} args={[cell.width - 0.13, PANEL_THICKNESS, innerDepth]}><meshStandardMaterial color={color} roughness={0.48} metalness={0.05} /></PanelBox>
+      <PanelBox position={[cell.x - cell.width / 2 + 0.11, y + rim / 2, cell.z]} args={[0.035, rim, innerDepth]}><meshStandardMaterial color={color} roughness={0.48} metalness={0.05} /></PanelBox>
+      <PanelBox position={[cell.x + cell.width / 2 - 0.11, y + rim / 2, cell.z]} args={[0.035, rim, innerDepth]}><meshStandardMaterial color={color} roughness={0.48} metalness={0.05} /></PanelBox>
+      <PanelBox position={[cell.x, y + rim / 2, cell.z - innerDepth / 2 + 0.02]} args={[cell.width - 0.13, rim, 0.035]}><meshStandardMaterial color={color} roughness={0.48} metalness={0.05} /></PanelBox>
+    </group>
+  );
+}
+
+function GlassShelf({ cell, innerDepth, material }: { cell: LayoutCell; innerDepth: number; material: ReactNode }) {
+  return <PanelBox position={[cell.x, cell.y, cell.z]} args={[cell.width - 0.13, PANEL_THICKNESS, innerDepth]}>{material}</PanelBox>;
+}
+
+function Handle({ width, y }: { width: number; y: number }) {
+  return (
+    <PanelBox position={[0, y, PANEL_THICKNESS / 2 + 0.012]} args={[width, 0.016, 0.012]}>
+      <meshStandardMaterial color="#6d7175" roughness={0.35} metalness={0.7} />
+    </PanelBox>
+  );
+}
+
+function LockDot({ x, y }: { x: number; y: number }) {
+  return (
+    <mesh position={[x, y, PANEL_THICKNESS / 2 + 0.018]}>
+      <sphereGeometry args={[0.035, 20, 12]} />
+      <meshStandardMaterial color="#ffdf1f" roughness={0.28} metalness={0.12} />
+    </mesh>
+  );
+}
+
+function FrameRect({ width, height, z }: { width: number; height: number; z: number }) {
+  const color = "#8f9ba4";
+  return (
+    <group>
+      <PanelBox position={[0, height / 2, z]} args={[width, 0.026, 0.016]}><meshStandardMaterial color={color} metalness={0.75} roughness={0.24} /></PanelBox>
+      <PanelBox position={[0, -height / 2, z]} args={[width, 0.026, 0.016]}><meshStandardMaterial color={color} metalness={0.75} roughness={0.24} /></PanelBox>
+      <PanelBox position={[-width / 2, 0, z]} args={[0.026, height, 0.016]}><meshStandardMaterial color={color} metalness={0.75} roughness={0.24} /></PanelBox>
+      <PanelBox position={[width / 2, 0, z]} args={[0.026, height, 0.016]}><meshStandardMaterial color={color} metalness={0.75} roughness={0.24} /></PanelBox>
     </group>
   );
 }
@@ -292,38 +464,41 @@ function SelectionFrame({ cell }: { cell: LayoutCell }) {
   const color = "#ffe100";
   return (
     <group>
-      <PanelBox position={[cell.x, cell.y + cell.height / 2, z]} args={[cell.width + 0.04, thickness, thickness]}>
-        <meshBasicMaterial color={color} />
-      </PanelBox>
-      <PanelBox position={[cell.x, cell.y - cell.height / 2, z]} args={[cell.width + 0.04, thickness, thickness]}>
-        <meshBasicMaterial color={color} />
-      </PanelBox>
-      <PanelBox position={[cell.x - cell.width / 2, cell.y, z]} args={[thickness, cell.height + 0.04, thickness]}>
-        <meshBasicMaterial color={color} />
-      </PanelBox>
-      <PanelBox position={[cell.x + cell.width / 2, cell.y, z]} args={[thickness, cell.height + 0.04, thickness]}>
-        <meshBasicMaterial color={color} />
-      </PanelBox>
+      <PanelBox position={[cell.x, cell.y + cell.height / 2, z]} args={[cell.width + 0.04, thickness, thickness]}><meshBasicMaterial color={color} /></PanelBox>
+      <PanelBox position={[cell.x, cell.y - cell.height / 2, z]} args={[cell.width + 0.04, thickness, thickness]}><meshBasicMaterial color={color} /></PanelBox>
+      <PanelBox position={[cell.x - cell.width / 2, cell.y, z]} args={[thickness, cell.height + 0.04, thickness]}><meshBasicMaterial color={color} /></PanelBox>
+      <PanelBox position={[cell.x + cell.width / 2, cell.y, z]} args={[thickness, cell.height + 0.04, thickness]}><meshBasicMaterial color={color} /></PanelBox>
     </group>
   );
 }
 
-function ExpandHints({ cell }: { cell: LayoutCell }) {
+function ExpandHints({ cell, onExpand }: { cell: LayoutCell; onExpand: (direction: "left" | "right" | "top" | "front") => void }) {
   const z = cell.z + cell.depth / 2 + 0.12;
-  const positions: Array<[number, number, number]> = [
-    [cell.x - cell.width / 2 - 0.16, cell.y, z],
-    [cell.x + cell.width / 2 + 0.16, cell.y, z],
-    [cell.x, cell.y + cell.height / 2 + 0.16, z],
-    [cell.x, cell.y, cell.z + cell.depth / 2 + 0.32]
+  const buttons: Array<{ direction: "left" | "right" | "top" | "front"; position: [number, number, number] }> = [
+    { direction: "left", position: [cell.x - cell.width / 2 - 0.16, cell.y, z] },
+    { direction: "right", position: [cell.x + cell.width / 2 + 0.16, cell.y, z] },
+    { direction: "top", position: [cell.x, cell.y + cell.height / 2 + 0.16, z] },
+    { direction: "front", position: [cell.x, cell.y, cell.z + cell.depth / 2 + 0.32] }
   ];
 
   return (
     <group>
-      {positions.map((position, index) => (
-        <group key={index} position={position}>
-          <mesh>
-            <circleGeometry args={[0.09, 28]} />
-            <meshBasicMaterial color="#111111" transparent opacity={0.82} depthTest={false} />
+      {buttons.map((button) => (
+        <group
+          key={button.direction}
+          position={button.position}
+          onClick={(event) => {
+            event.stopPropagation();
+            onExpand(button.direction);
+          }}
+        >
+          <mesh renderOrder={20}>
+            <circleGeometry args={[0.11, 32]} />
+            <meshBasicMaterial color="#ffffff" transparent opacity={0.08} depthTest={false} />
+          </mesh>
+          <mesh renderOrder={21}>
+            <ringGeometry args={[0.082, 0.105, 32]} />
+            <meshBasicMaterial color="#111111" transparent opacity={0.88} depthTest={false} />
           </mesh>
           <PlusMark />
         </group>
@@ -335,83 +510,62 @@ function ExpandHints({ cell }: { cell: LayoutCell }) {
 function PlusMark() {
   return (
     <group position={[0, 0, 0.012]}>
-      <PanelBox position={[0, 0, 0]} args={[0.1, 0.014, 0.01]}>
-        <meshBasicMaterial color="#ffffff" depthTest={false} />
-      </PanelBox>
-      <PanelBox position={[0, 0, 0]} args={[0.014, 0.1, 0.01]}>
-        <meshBasicMaterial color="#ffffff" depthTest={false} />
-      </PanelBox>
+      <PanelBox position={[0, 0, 0]} args={[0.12, 0.014, 0.01]}><meshBasicMaterial color="#111111" depthTest={false} /></PanelBox>
+      <PanelBox position={[0, 0, 0]} args={[0.014, 0.12, 0.01]}><meshBasicMaterial color="#111111" depthTest={false} /></PanelBox>
     </group>
   );
 }
 
 function Feet({ layout, feet }: { layout: ReturnType<typeof createLayout>; feet: CabinetConfig["feet"] }) {
-  const bottomY = layout.yBounds[0] - 0.075;
+  const bottomY = layout.minY - 0.075;
   const isCaster = feet !== "glides";
   const wheelRadius = feet === "caster-high" ? 0.095 : 0.075;
   const bracketHeight = feet === "caster-high" ? 0.08 : 0.055;
+
   return (
     <group>
-      {layout.xBounds.map((x, xIndex) =>
-        layout.zBounds.map((z, zIndex) => (
-          <group key={`foot-${xIndex}-${zIndex}`} position={[x, bottomY, z]}>
-            {isCaster ? (
-              <>
-                <mesh rotation={[Math.PI / 2, 0, 0]} castShadow>
-                  <cylinderGeometry args={[wheelRadius, wheelRadius, 0.035, 24]} />
-                  <meshStandardMaterial color="#1f2224" roughness={0.38} metalness={0.2} />
-                </mesh>
-                <PanelBox position={[0, 0.045, 0]} args={[0.11, bracketHeight, 0.035]}>
-                  <meshStandardMaterial color="#303438" roughness={0.36} metalness={0.5} />
-                </PanelBox>
-              </>
-            ) : (
-              <mesh castShadow>
-                <cylinderGeometry args={[0.08, 0.095, 0.05, 28]} />
-                <meshStandardMaterial color="#1f2224" roughness={0.42} metalness={0.25} />
+      {layout.feet.map((foot) => (
+        <group key={foot.key} position={[foot.x, bottomY, foot.z]}>
+          {isCaster ? (
+            <>
+              <mesh rotation={[Math.PI / 2, 0, 0]} castShadow>
+                <cylinderGeometry args={[wheelRadius, wheelRadius, 0.035, 24]} />
+                <meshStandardMaterial color="#1f2224" roughness={0.38} metalness={0.2} />
               </mesh>
-            )}
-          </group>
-        ))
-      )}
+              <PanelBox position={[0, 0.045, 0]} args={[0.11, bracketHeight, 0.035]}><meshStandardMaterial color="#303438" roughness={0.36} metalness={0.5} /></PanelBox>
+            </>
+          ) : (
+            <mesh castShadow>
+              <cylinderGeometry args={[0.08, 0.095, 0.05, 28]} />
+              <meshStandardMaterial color="#1f2224" roughness={0.42} metalness={0.25} />
+            </mesh>
+          )}
+        </group>
+      ))}
     </group>
   );
 }
 
 function DimensionLabels({ layout, config }: { layout: ReturnType<typeof createLayout>; config: CabinetConfig }) {
   const dims = getDimensions(config);
-  const topY = layout.yBounds[layout.yBounds.length - 1] + 0.2;
-  const frontZ = layout.zBounds[1] + 0.18;
-  const rightX = layout.xBounds[layout.xBounds.length - 1] + 0.18;
-  const bottomY = layout.yBounds[0] - 0.02;
+  const topY = layout.maxY + 0.2;
+  const frontZ = layout.frontZ + 0.18;
+  const rightX = layout.maxX + 0.18;
+  const bottomY = layout.minY - 0.02;
 
   return (
     <group>
-      <DimensionLine start={[layout.xBounds[0], topY, frontZ]} end={[layout.xBounds[layout.xBounds.length - 1], topY, frontZ]} label={`${dims.innerWidth} mm`} />
-      <DimensionLine start={[rightX, bottomY, frontZ]} end={[rightX, layout.yBounds[layout.yBounds.length - 1], frontZ]} label={`${dims.innerHeight} mm`} vertical />
-      <DimensionLine start={[layout.xBounds[0] - 0.16, bottomY, layout.zBounds[0]]} end={[layout.xBounds[0] - 0.16, bottomY, layout.zBounds[1]]} label={`${dims.innerDepth} mm`} />
+      <DimensionLine start={[layout.minX, topY, frontZ]} end={[layout.maxX, topY, frontZ]} label={`${dims.innerWidth} mm`} />
+      <DimensionLine start={[rightX, bottomY, frontZ]} end={[rightX, layout.maxY, frontZ]} label={`${dims.innerHeight} mm`} vertical />
+      <DimensionLine start={[layout.minX - 0.16, bottomY, layout.backZ]} end={[layout.minX - 0.16, bottomY, layout.frontZ]} label={`${dims.innerDepth} mm`} />
       <LabelSprite position={[0, -0.24, frontZ + 0.24]} label={`外部尺寸 ${dims.outerWidth} x ${dims.outerHeight} x ${dims.outerDepth} mm`} />
     </group>
   );
 }
 
-function DimensionLine({
-  start,
-  end,
-  label,
-  vertical = false
-}: {
-  start: [number, number, number];
-  end: [number, number, number];
-  label: string;
-  vertical?: boolean;
-}) {
+function DimensionLine({ start, end, label, vertical = false }: { start: [number, number, number]; end: [number, number, number]; label: string; vertical?: boolean }) {
   const points = useMemo(() => [new THREE.Vector3(...start), new THREE.Vector3(...end)], [end, start]);
-  const center: [number, number, number] = [
-    (start[0] + end[0]) / 2,
-    (start[1] + end[1]) / 2,
-    (start[2] + end[2]) / 2
-  ];
+  const center: [number, number, number] = [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2, (start[2] + end[2]) / 2];
   return (
     <group>
       <line>
@@ -423,25 +577,10 @@ function DimensionLine({
   );
 }
 
-function LabelSprite({
-  position,
-  label,
-  vertical = false
-}: {
-  position: [number, number, number];
-  label: string;
-  vertical?: boolean;
-}) {
+function LabelSprite({ position, label, vertical = false }: { position: [number, number, number]; label: string; vertical?: boolean }) {
   const texture = useMemo(() => createLabelTexture(label, vertical), [label, vertical]);
-
-  useEffect(() => {
-    return () => texture.dispose();
-  }, [texture]);
-
-  const scale: [number, number, number] = vertical
-    ? [0.18, Math.max(0.52, label.length * 0.09), 1]
-    : [Math.max(0.48, label.length * 0.085), 0.18, 1];
-
+  useEffect(() => () => texture.dispose(), [texture]);
+  const scale: [number, number, number] = vertical ? [0.18, Math.max(0.52, label.length * 0.09), 1] : [Math.max(0.48, label.length * 0.085), 0.18, 1];
   return (
     <sprite position={position} scale={scale}>
       <spriteMaterial map={texture} transparent depthTest={false} />
@@ -449,24 +588,8 @@ function LabelSprite({
   );
 }
 
-function Tube({
-  axis,
-  length,
-  position,
-  color,
-  metalness,
-  roughness
-}: {
-  axis: "x" | "y" | "z";
-  length: number;
-  position: [number, number, number];
-  color: string;
-  metalness: number;
-  roughness: number;
-}) {
-  const rotation: [number, number, number] =
-    axis === "x" ? [0, 0, Math.PI / 2] : axis === "z" ? [Math.PI / 2, 0, 0] : [0, 0, 0];
-
+function Tube({ axis, length, position, color, metalness, roughness }: { axis: "x" | "y" | "z"; length: number; position: [number, number, number]; color: string; metalness: number; roughness: number }) {
+  const rotation: [number, number, number] = axis === "x" ? [0, 0, Math.PI / 2] : axis === "z" ? [Math.PI / 2, 0, 0] : [0, 0, 0];
   return (
     <mesh position={position} rotation={rotation} castShadow receiveShadow>
       <cylinderGeometry args={[TUBE_RADIUS, TUBE_RADIUS, length, 28]} />
@@ -475,15 +598,7 @@ function Tube({
   );
 }
 
-function PanelBox({
-  position,
-  args,
-  children
-}: {
-  position: [number, number, number];
-  args: [number, number, number];
-  children: React.ReactNode;
-}) {
+function PanelBox({ position, args, children }: { position: [number, number, number]; args: [number, number, number]; children: ReactNode }) {
   return (
     <mesh position={position} castShadow receiveShadow>
       <boxGeometry args={args} />
@@ -501,14 +616,118 @@ function Ground() {
   );
 }
 
+function createLayout(config: CabinetConfig) {
+  const scaledWidths = config.columnWidths.map((width) => width * SCALE);
+  const scaledHeights = config.rowHeights.map((height) => height * SCALE);
+  const depth = config.depth * SCALE;
+  const totalWidth = scaledWidths.reduce((total, width) => total + width, 0);
+  const totalHeight = scaledHeights.reduce((total, height) => total + height, 0);
+  const xBounds = [-totalWidth / 2];
+  const yBounds = [0];
+  const zBounds = [-depth / 2, depth / 2];
+
+  scaledWidths.forEach((width) => xBounds.push(xBounds[xBounds.length - 1] + width));
+  scaledHeights.forEach((height) => yBounds.push(yBounds[yBounds.length - 1] + height));
+
+  const cells: LayoutCell[] = [];
+  const points = new Map<string, { key: string; position: [number, number, number] }>();
+  const feet = new Map<string, { key: string; x: number; z: number }>();
+  const xSegments = new Map<string, Segment>();
+  const ySegments = new Map<string, Segment>();
+  const zSegments = new Map<string, Segment>();
+
+  let minX = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+
+  config.cells.forEach((row, rowIndex) => {
+    row.forEach((cfg, columnIndex) => {
+      if (!cfg.enabled) return;
+      const x0 = xBounds[columnIndex];
+      const x1 = xBounds[columnIndex + 1];
+      const y0 = yBounds[rowIndex];
+      const y1 = yBounds[rowIndex + 1];
+      const width = x1 - x0;
+      const height = y1 - y0;
+      minX = Math.min(minX, x0);
+      maxX = Math.max(maxX, x1);
+      minY = Math.min(minY, y0);
+      maxY = Math.max(maxY, y1);
+
+      cells.push({ row: rowIndex, column: columnIndex, x: (x0 + x1) / 2, y: (y0 + y1) / 2, z: 0, width, height, depth });
+
+      [columnIndex, columnIndex + 1].forEach((xIndex) => {
+        [rowIndex, rowIndex + 1].forEach((yIndex) => {
+          [0, 1].forEach((zIndex) => {
+            const key = `${xIndex}:${yIndex}:${zIndex}`;
+            points.set(key, { key, position: [xBounds[xIndex], yBounds[yIndex], zBounds[zIndex]] });
+          });
+          const zKey = `${xIndex}:${yIndex}`;
+          zSegments.set(zKey, { key: zKey, length: depth, position: [xBounds[xIndex], yBounds[yIndex], 0] });
+        });
+      });
+
+      [rowIndex, rowIndex + 1].forEach((yIndex) => {
+        [0, 1].forEach((zIndex) => {
+          const key = `${columnIndex}:${yIndex}:${zIndex}`;
+          xSegments.set(key, { key, length: width, position: [(x0 + x1) / 2, yBounds[yIndex], zBounds[zIndex]] });
+        });
+      });
+
+      [columnIndex, columnIndex + 1].forEach((xIndex) => {
+        [0, 1].forEach((zIndex) => {
+          const key = `${xIndex}:${rowIndex}:${zIndex}`;
+          ySegments.set(key, { key, length: height, position: [xBounds[xIndex], (y0 + y1) / 2, zBounds[zIndex]] });
+        });
+      });
+
+      if (rowIndex === 0) {
+        [columnIndex, columnIndex + 1].forEach((xIndex) => [0, 1].forEach((zIndex) => {
+          const key = `${xIndex}:${zIndex}`;
+          feet.set(key, { key, x: xBounds[xIndex], z: zBounds[zIndex] });
+        }));
+      }
+    });
+  });
+
+  if (!Number.isFinite(minX)) {
+    minX = xBounds[0];
+    maxX = xBounds[xBounds.length - 1];
+    minY = yBounds[0];
+    maxY = yBounds[yBounds.length - 1];
+  }
+
+  return {
+    cells,
+    points: [...points.values()],
+    feet: [...feet.values()],
+    xSegments: [...xSegments.values()],
+    ySegments: [...ySegments.values()],
+    zSegments: [...zSegments.values()],
+    minX,
+    maxX,
+    minY,
+    maxY,
+    backZ: zBounds[0],
+    frontZ: zBounds[1],
+    totalWidth: Math.max(0.1, maxX - minX),
+    totalHeight: Math.max(0.1, maxY - minY),
+    depth
+  };
+}
+
+function getSceneMetrics(config: CabinetConfig) {
+  const layout = createLayout(config);
+  return { totalWidth: layout.totalWidth, totalHeight: layout.totalHeight, depth: layout.depth };
+}
+
 function createLabelTexture(label: string, vertical: boolean) {
   const canvas = document.createElement("canvas");
   canvas.width = vertical ? 160 : 640;
   canvas.height = vertical ? 640 : 160;
   const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    return new THREE.CanvasTexture(canvas);
-  }
+  if (!ctx) return new THREE.CanvasTexture(canvas);
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "rgba(237, 241, 243, 0.78)";
@@ -545,86 +764,4 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: n
   ctx.lineTo(x, y + radius);
   ctx.quadraticCurveTo(x, y, x + radius, y);
   ctx.closePath();
-}
-
-function createLayout(config: CabinetConfig) {
-  const scaledWidths = config.columnWidths.map((width) => width * SCALE);
-  const scaledHeights = config.rowHeights.map((height) => height * SCALE);
-  const depth = config.depth * SCALE;
-  const totalWidth = scaledWidths.reduce((total, width) => total + width, 0);
-  const totalHeight = scaledHeights.reduce((total, height) => total + height, 0);
-  const xBounds = [-totalWidth / 2];
-  const yBounds = [0];
-  const zBounds = [-depth / 2, depth / 2];
-
-  scaledWidths.forEach((width) => xBounds.push(xBounds[xBounds.length - 1] + width));
-  scaledHeights.forEach((height) => yBounds.push(yBounds[yBounds.length - 1] + height));
-
-  const cells: LayoutCell[] = [];
-  for (let row = 0; row < scaledHeights.length; row += 1) {
-    for (let column = 0; column < scaledWidths.length; column += 1) {
-      const x0 = xBounds[column];
-      const x1 = xBounds[column + 1];
-      const y0 = yBounds[row];
-      const y1 = yBounds[row + 1];
-      cells.push({
-        row,
-        column,
-        x: (x0 + x1) / 2,
-        y: (y0 + y1) / 2,
-        z: 0,
-        width: x1 - x0,
-        height: y1 - y0,
-        depth
-      });
-    }
-  }
-
-  const xSegments = [];
-  const ySegments = [];
-  const zSegments = [];
-
-  for (let rowBoundary = 0; rowBoundary < yBounds.length; rowBoundary += 1) {
-    for (let zIndex = 0; zIndex < zBounds.length; zIndex += 1) {
-      for (let column = 0; column < scaledWidths.length; column += 1) {
-        xSegments.push({
-          key: `${rowBoundary}-${zIndex}-${column}`,
-          length: scaledWidths[column],
-          position: [(xBounds[column] + xBounds[column + 1]) / 2, yBounds[rowBoundary], zBounds[zIndex]] as [number, number, number]
-        });
-      }
-    }
-  }
-
-  for (let columnBoundary = 0; columnBoundary < xBounds.length; columnBoundary += 1) {
-    for (let zIndex = 0; zIndex < zBounds.length; zIndex += 1) {
-      for (let row = 0; row < scaledHeights.length; row += 1) {
-        ySegments.push({
-          key: `${columnBoundary}-${zIndex}-${row}`,
-          length: scaledHeights[row],
-          position: [xBounds[columnBoundary], (yBounds[row] + yBounds[row + 1]) / 2, zBounds[zIndex]] as [number, number, number]
-        });
-      }
-    }
-  }
-
-  for (let columnBoundary = 0; columnBoundary < xBounds.length; columnBoundary += 1) {
-    for (let rowBoundary = 0; rowBoundary < yBounds.length; rowBoundary += 1) {
-      zSegments.push({
-        key: `${columnBoundary}-${rowBoundary}`,
-        length: depth,
-        position: [xBounds[columnBoundary], yBounds[rowBoundary], 0] as [number, number, number]
-      });
-    }
-  }
-
-  return { xBounds, yBounds, zBounds, cells, xSegments, ySegments, zSegments, totalWidth, totalHeight, depth };
-}
-
-function getSceneMetrics(config: CabinetConfig) {
-  return {
-    totalWidth: config.columnWidths.reduce((total, width) => total + width * SCALE, 0),
-    totalHeight: config.rowHeights.reduce((total, height) => total + height * SCALE, 0),
-    depth: config.depth * SCALE
-  };
 }
