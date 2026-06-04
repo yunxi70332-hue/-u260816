@@ -1,10 +1,10 @@
 import { Canvas, useThree } from "@react-three/fiber";
 import { ContactShadows, OrbitControls } from "@react-three/drei";
-import { Suspense, useEffect, useMemo, type ReactNode } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
 import type { AccessoryModelKind } from "./accessoryCatalog";
-import type { CabinetConfig, CellKind, DoorOpenState, Selection } from "./model";
-import { getDimensions, getEffectiveCellColor } from "./model";
+import type { CabinetConfig, CellFittingKind, CellKind, DoorAccessoryKind, DoorOpenState, Selection } from "./model";
+import { getDimensions, getEffectiveCellColor, RIMMED_DRAWER_RIM_HEIGHT_MM } from "./model";
 
 interface SceneApi {
   capturePng: () => string;
@@ -15,6 +15,7 @@ interface BuilderSceneProps {
   selection: Selection | null;
   onSelect: (selection: Selection | null) => void;
   onExpand: (direction: "left" | "right" | "top" | "front") => void;
+  onDrawerPull: (selection: Selection, value: number, remember?: boolean) => void;
   onReady: (api: SceneApi) => void;
 }
 
@@ -40,8 +41,9 @@ const TUBE_RADIUS = 0.025;
 const BALL_RADIUS = 0.062;
 const PANEL_THICKNESS = 0.035;
 
-export function BuilderScene({ config, selection, onSelect, onExpand, onReady }: BuilderSceneProps) {
+export function BuilderScene({ config, selection, onSelect, onExpand, onDrawerPull, onReady }: BuilderSceneProps) {
   const metrics = getSceneMetrics(config);
+  const [drawerDragging, setDrawerDragging] = useState(false);
 
   return (
     <Canvas
@@ -59,11 +61,12 @@ export function BuilderScene({ config, selection, onSelect, onExpand, onReady }:
         <ambientLight intensity={0.76} />
         <directionalLight position={[3, 6, 5]} intensity={1.2} castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} />
         <directionalLight position={[-4, 3, -2]} intensity={0.36} />
-        <CabinetModel config={config} selection={selection} onSelect={onSelect} onExpand={onExpand} />
+        <CabinetModel config={config} selection={selection} onSelect={onSelect} onExpand={onExpand} onDrawerPull={onDrawerPull} onDrawerDragActive={setDrawerDragging} />
         <Ground />
         <ContactShadows opacity={0.28} scale={10} blur={2.6} far={4.8} resolution={512} color="#5b6670" />
         <OrbitControls
           makeDefault
+          enabled={!drawerDragging}
           enableDamping
           dampingFactor={0.08}
           minDistance={2.3}
@@ -146,11 +149,13 @@ function CabinetModel({
       {layout.cells.map((cell) => {
         const rawKind = config.cells[cell.row][cell.column].kind;
         const kind = config.structureMode === "noPanels" || config.structureMode === "frameOnly" ? "open" : rawKind;
+        const door = config.structureMode === "noPanels" || config.structureMode === "frameOnly" ? "none" : config.cells[cell.row][cell.column].door ?? "none";
         return (
           <CellContent
             key={`cell-${cell.row}-${cell.column}`}
             cell={cell}
             kind={kind}
+            door={door}
             doorState={config.cells[cell.row][cell.column].doorState ?? "half"}
             color={getEffectiveCellColor(config, cell.row, cell.column)}
             structureMode={config.structureMode}
@@ -170,6 +175,7 @@ function CabinetModel({
 function CellContent({
   cell,
   kind,
+  door,
   doorState,
   color,
   structureMode,
@@ -179,6 +185,7 @@ function CellContent({
 }: {
   cell: LayoutCell;
   kind: CellKind;
+  door: DoorAccessoryKind;
   doorState: DoorOpenState;
   color: string;
   structureMode: CabinetConfig["structureMode"];
@@ -193,7 +200,7 @@ function CellContent({
   return (
     <group onClick={(event) => { event.stopPropagation(); onSelect(); }}>
       {structureMode !== "frameOnly" ? (
-        <AccessoryGeometry kind={kind} doorState={doorState} cell={cell} color={color} frontZ={frontZ} backZ={backZ} innerDepth={innerDepth} hideFront={structureMode === "noFront"} />
+        <AccessoryGeometry kind={kind} door={door} doorState={doorState} cell={cell} color={color} frontZ={frontZ} backZ={backZ} innerDepth={innerDepth} hideFront={structureMode === "noFront"} />
       ) : null}
 
       <mesh position={[cell.x, cell.y, cell.z]} renderOrder={5}>
@@ -213,6 +220,7 @@ function CellContent({
 
 function AccessoryGeometry({
   kind,
+  door,
   doorState,
   cell,
   color,
@@ -222,6 +230,7 @@ function AccessoryGeometry({
   hideFront
 }: {
   kind: CellKind;
+  door: DoorAccessoryKind;
   doorState: DoorOpenState;
   cell: LayoutCell;
   color: string;
@@ -232,7 +241,6 @@ function AccessoryGeometry({
 }) {
   const panel = <meshStandardMaterial color={color} roughness={0.46} metalness={0.06} side={THREE.DoubleSide} />;
   const glass = <meshPhysicalMaterial color="#cfeefa" metalness={0.02} roughness={0.04} transmission={0.4} opacity={0.38} transparent />;
-  const isDoor = ["dropDoor", "flipUpDoor", "sideOpenDoor", "glassDropDoor"].includes(kind);
 
   return (
     <group>
@@ -247,10 +255,10 @@ function AccessoryGeometry({
       {kind === "openBackPanel" ? <OpenBackPanel cell={cell} backZ={backZ} innerDepth={innerDepth} color={color} /> : null}
       {kind === "sidePanel" ? <SidePanel cell={cell} innerDepth={innerDepth} color={color} /> : null}
 
-      {kind === "dropDoor" ? <DropDoor cell={cell} frontZ={frontZ} backZ={backZ} innerDepth={innerDepth} color={color} doorState={doorState} hideDoor={hideFront} /> : null}
-      {!hideFront && kind === "flipUpDoor" ? <FlipUpDoor cell={cell} frontZ={frontZ} color={color} /> : null}
-      {!hideFront && kind === "sideOpenDoor" ? <SideOpenDoor cell={cell} frontZ={frontZ} color={color} /> : null}
-      {!hideFront && kind === "glassDropDoor" ? <GlassDoor cell={cell} frontZ={frontZ} /> : null}
+      {door === "dropDoor" ? <DropDoor cell={cell} frontZ={frontZ} innerDepth={innerDepth} color={color} doorState={doorState} hideDoor={hideFront} /> : null}
+      {!hideFront && door === "flipUpDoor" ? <FlipUpDoor cell={cell} frontZ={frontZ} color={color} /> : null}
+      {!hideFront && door === "sideOpenDoor" ? <SideOpenDoor cell={cell} frontZ={frontZ} color={color} /> : null}
+      {!hideFront && door === "glassDropDoor" ? <GlassDoor cell={cell} frontZ={frontZ} /> : null}
 
       {kind === "softPanelLow" ? <SoftPanel cell={cell} backZ={backZ} widthRatio={0.9} heightRatio={0.36} yBias={-0.18} /> : null}
       {kind === "softPanelWide" ? <SoftPanel cell={cell} backZ={backZ} widthRatio={0.88} heightRatio={0.48} yBias={0} /> : null}
@@ -261,8 +269,6 @@ function AccessoryGeometry({
       {kind === "boxDrawer" ? <BoxDrawer cell={cell} frontZ={frontZ} innerDepth={innerDepth} color={color} /> : null}
       {kind === "displayTray" ? <DisplayTray cell={cell} innerDepth={innerDepth} color={color} /> : null}
       {kind === "glassShelf" ? <GlassShelf cell={cell} innerDepth={innerDepth} material={glass} /> : null}
-
-      {isDoor && kind !== "dropDoor" ? <OpenBase cell={cell} innerDepth={innerDepth} subtle /> : null}
     </group>
   );
 }
@@ -326,7 +332,6 @@ function SidePanel({ cell, innerDepth, color }: { cell: LayoutCell; innerDepth: 
 function DropDoor({
   cell,
   frontZ,
-  backZ,
   innerDepth,
   color,
   doorState,
@@ -334,7 +339,6 @@ function DropDoor({
 }: {
   cell: LayoutCell;
   frontZ: number;
-  backZ: number;
   innerDepth: number;
   color: string;
   doorState: DoorOpenState;
@@ -352,8 +356,6 @@ function DropDoor({
 
   return (
     <group>
-      <MetalBox cell={cell} backZ={backZ} innerDepth={innerDepth} color={color} includeBack />
-
       {!hideDoor ? (
         <>
           <group position={[cell.x, pivotY, pivotZ]} rotation={[angle, 0, 0]}>

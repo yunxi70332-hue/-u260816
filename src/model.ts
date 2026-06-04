@@ -5,9 +5,12 @@ export const HEIGHT_OPTIONS = [100, 175, 250, 350, 395, 500] as const;
 export const WIDTH_OPTIONS = [250, 350, 395, 500, 750] as const;
 export const MIN_CUSTOM_SIZE = 80;
 export const MAX_CUSTOM_SIZE = 1200;
+export const RIMMED_DRAWER_RIM_HEIGHT_MM = 320;
 
 export type TabKey = "structure" | "fittings" | "colors" | "bom";
 export type CellKind = "open" | AccessoryModelKind;
+export type DoorAccessoryKind = "none" | "dropDoor" | "flipUpDoor" | "sideOpenDoor" | "glassDropDoor";
+export type CellFittingKind = "none" | "rimmedDrawer";
 export type DoorOpenState = "closed" | "half" | "open";
 export type FeetKind = "glides" | "caster-low" | "caster-high";
 export type FrameFinish = "chrome" | "graphite";
@@ -18,7 +21,10 @@ export interface CellConfig {
   kind: CellKind;
   enabled: boolean;
   color?: string;
+  door?: DoorAccessoryKind;
   doorState?: DoorOpenState;
+  fitting?: CellFittingKind;
+  drawerPull?: number;
 }
 
 export interface CabinetConfig {
@@ -83,8 +89,21 @@ export const COLOR_OPTIONS: ColorOption[] = [
 export const CELL_OPTIONS: Array<{ id: CellKind; label: string; short: string }> = [
   { id: "open", label: "开放格", short: "开" },
   ...ACCESSORY_CATALOG
-    .filter((item) => item.installTarget === "cell")
+    .filter((item) => item.installTarget === "cell" && item.id !== "boxDrawer")
     .map((item) => ({ id: item.id, label: item.name, short: item.shortName }))
+];
+
+export const DOOR_ACCESSORY_OPTIONS: Array<{ id: DoorAccessoryKind; label: string }> = [
+  { id: "none", label: "无门" },
+  { id: "dropDoor", label: "下翻门" },
+  { id: "flipUpDoor", label: "上翻门" },
+  { id: "sideOpenDoor", label: "侧开门" },
+  { id: "glassDropDoor", label: "玻璃门" }
+];
+
+export const CELL_FITTING_OPTIONS: Array<{ id: CellFittingKind; label: string }> = [
+  { id: "none", label: "无" },
+  { id: "rimmedDrawer", label: "带围边抽屉" }
 ];
 
 export const STRUCTURE_MODE_OPTIONS: Array<{ id: StructureMode; label: string; description: string }> = [
@@ -138,12 +157,21 @@ export function normalizeConfig(input: Partial<CabinetConfig> | null | undefined
 
   input?.cells?.slice(0, rows).forEach((row, rowIndex) => {
     row?.slice(0, columns).forEach((cell, columnIndex) => {
-      const kind = normalizeCellKind(cell?.kind);
+      const normalizedKind = normalizeCellKind(cell?.kind);
+      const legacyDoor = isDoorCellKind(normalizedKind);
+      const legacyDrawer = normalizedKind === "boxDrawer";
+      const kind: CellKind = legacyDoor || legacyDrawer ? "metalBackModule" : normalizedKind;
+      const door = legacyDoor ? normalizedKind : normalizeDoorAccessory(cell?.door);
+      const fitting = legacyDrawer ? "rimmedDrawer" : normalizeCellFitting(cell?.fitting, kind);
+      const normalizedDoor = doorCompatible(kind) && fitting === "none" ? door : "none";
       cells[rowIndex][columnIndex] = {
         kind,
         enabled: cell?.enabled !== false,
         color: COLOR_OPTIONS.some((color) => color.value === cell?.color) ? cell.color : undefined,
-        doorState: isDoorCellKind(kind) ? normalizeDoorOpenState(cell?.doorState) : undefined
+        door: normalizedDoor,
+        doorState: normalizedDoor !== "none" ? normalizeDoorOpenState(cell?.doorState) : undefined,
+        fitting,
+        drawerPull: fitting === "rimmedDrawer" ? normalizeDrawerPull(legacyDrawer ? undefined : cell?.drawerPull) : undefined
       };
     });
   });
@@ -267,10 +295,84 @@ export function setCellKind(config: CabinetConfig, selection: Selection, kind: C
   const cells = cloneCells(config.cells);
   if (cells[selection.row]?.[selection.column]?.enabled) {
     const current = cells[selection.row][selection.column];
+    if (isDoorCellKind(kind)) {
+      cells[selection.row][selection.column] = {
+        ...current,
+        kind: "metalBackModule",
+        door: kind,
+        doorState: current.doorState ?? "half",
+        fitting: "none",
+        drawerPull: undefined
+      };
+      return { ...config, cells };
+    }
+    const door = doorCompatible(kind) ? current.door ?? "none" : "none";
+    const fitting = fittingCompatible(kind) && door === "none" ? current.fitting ?? "none" : "none";
     cells[selection.row][selection.column] = {
       ...current,
       kind,
-      doorState: isDoorCellKind(kind) ? current.doorState ?? "half" : undefined
+      door,
+      doorState: door !== "none" ? current.doorState ?? "half" : undefined,
+      fitting,
+      drawerPull: fitting === "rimmedDrawer" ? normalizeDrawerPull(current.drawerPull) : undefined
+    };
+  }
+  return { ...config, cells };
+}
+
+export function doorCompatible(kind: CellKind): boolean {
+  return kind === "metalBackModule" || kind === "noBackModule";
+}
+
+export function fittingCompatible(kind: CellKind): boolean {
+  return kind === "metalBackModule" || kind === "noBackModule";
+}
+
+export function setCellDoor(config: CabinetConfig, selection: Selection, door: DoorAccessoryKind): CabinetConfig {
+  const cells = cloneCells(config.cells);
+  const cell = cells[selection.row]?.[selection.column];
+  if (cell?.enabled) {
+    if (door === "none") {
+      cells[selection.row][selection.column] = { ...cell, door: "none", doorState: undefined };
+      return { ...config, cells };
+    }
+    const kind = doorCompatible(cell.kind) ? cell.kind : "metalBackModule";
+    cells[selection.row][selection.column] = {
+      ...cell,
+      kind,
+      door,
+      doorState: cell.doorState ?? "half",
+      fitting: "none",
+      drawerPull: undefined
+    };
+  }
+  return { ...config, cells };
+}
+
+export function setCellFitting(config: CabinetConfig, selection: Selection, fitting: CellFittingKind): CabinetConfig {
+  const cells = cloneCells(config.cells);
+  const cell = cells[selection.row]?.[selection.column];
+  if (cell?.enabled) {
+    const kind = fitting === "rimmedDrawer" && !fittingCompatible(cell.kind) ? "metalBackModule" : cell.kind;
+    cells[selection.row][selection.column] = {
+      ...cell,
+      kind,
+      door: fitting === "rimmedDrawer" ? "none" : cell.door ?? "none",
+      doorState: fitting === "rimmedDrawer" ? undefined : cell.doorState,
+      fitting,
+      drawerPull: fitting === "rimmedDrawer" ? normalizeDrawerPull(cell.drawerPull) : undefined
+    };
+  }
+  return { ...config, cells };
+}
+
+export function setDrawerPull(config: CabinetConfig, selection: Selection, drawerPull: number): CabinetConfig {
+  const cells = cloneCells(config.cells);
+  const cell = cells[selection.row]?.[selection.column];
+  if (cell?.enabled && cell.fitting === "rimmedDrawer" && fittingCompatible(cell.kind)) {
+    cells[selection.row][selection.column] = {
+      ...cell,
+      drawerPull: normalizeDrawerPull(drawerPull)
     };
   }
   return { ...config, cells };
@@ -279,7 +381,7 @@ export function setCellKind(config: CabinetConfig, selection: Selection, kind: C
 export function setDoorState(config: CabinetConfig, selection: Selection, doorState: DoorOpenState): CabinetConfig {
   const cells = cloneCells(config.cells);
   const cell = cells[selection.row]?.[selection.column];
-  if (cell?.enabled && isDoorCellKind(cell.kind)) {
+  if (cell?.enabled && cell.door && cell.door !== "none") {
     cells[selection.row][selection.column] = { ...cell, doorState };
   }
   return { ...config, cells };
@@ -384,7 +486,18 @@ export function buildBom(config: CabinetConfig): BomItem[] {
         addItem(items, "金属背板", `${width} x ${height} mm`, 1, "块", Math.round(220 + width * height * 0.00028));
       }
 
-      if (effectiveKind === "boxDrawer") addItem(items, "抽屉导轨", `${config.depth} mm`, 2, "根", 160);
+      const effectiveDoor = config.structureMode === "noPanels" ? "none" : cell.door ?? "none";
+      if (effectiveDoor !== "none") {
+        const doorAccessory = getAccessory(effectiveDoor);
+        addItem(items, doorAccessory.bomName, spec, 1, doorAccessory.unit, doorAccessory.unitPrice);
+      }
+
+      if (cell.fitting === "rimmedDrawer" && fittingCompatible(effectiveKind)) {
+        addItem(items, "门板", `${width} x ${height} mm`, 1, "件", 0);
+        addItem(items, "移动托盘", `${width} x ${config.depth} mm`, 1, "件", 0);
+        addItem(items, "围边", `${width} x ${config.depth} x ${RIMMED_DRAWER_RIM_HEIGHT_MM} mm`, 1, "件", 0);
+        addItem(items, "抽屉导轨", `${config.depth} mm`, 2, "条", 0);
+      }
       if (effectiveKind === "pullOutShelf") addItem(items, "拉出搁板导轨", `${config.depth} mm`, 2, "根", 120);
     });
   });
@@ -415,7 +528,7 @@ export function isCellEnabled(config: CabinetConfig, selection: Selection | null
   return config.cells[selection.row]?.[selection.column]?.enabled === true;
 }
 
-export function isDoorCellKind(kind: CellKind): boolean {
+export function isDoorCellKind(kind: CellKind | DoorAccessoryKind): kind is Exclude<DoorAccessoryKind, "none"> {
   return kind === "dropDoor" || kind === "flipUpDoor" || kind === "sideOpenDoor" || kind === "glassDropDoor";
 }
 
@@ -459,8 +572,21 @@ function normalizeDoorOpenState(value: unknown): DoorOpenState {
   return value === "closed" || value === "open" ? value : "half";
 }
 
+function normalizeDoorAccessory(value: unknown): DoorAccessoryKind {
+  return isDoorCellKind(value as CellKind) ? value as Exclude<DoorAccessoryKind, "none"> : "none";
+}
+
+function normalizeCellFitting(value: unknown, kind: CellKind): CellFittingKind {
+  if (value !== "rimmedDrawer" || !fittingCompatible(kind)) return "none";
+  return "rimmedDrawer";
+}
+
+function normalizeDrawerPull(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? clamp(value, 0, 1) : 1;
+}
+
 function needsBackPanel(kind: CellKind) {
-  return !["open", "noBackModule", "glassPanelModule", "sidePanel", "softPanelLow", "softPanelWide", "softPanelTall", "glassShelf"].includes(kind);
+  return !["open", "noBackModule", "glassPanelModule", "dropDoor", "flipUpDoor", "sideOpenDoor", "glassDropDoor", "sidePanel", "softPanelLow", "softPanelWide", "softPanelTall", "glassShelf"].includes(kind);
 }
 
 function addItem(items: BomItem[], name: string, spec: string, qty: number, unit: string, unitPrice: number) {

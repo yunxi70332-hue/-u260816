@@ -107,9 +107,9 @@ export const ACCESSORY_CATALOG: AccessoryCatalogItem[] = [
     installTarget: "cell",
     observedFrom: "门分组第一排：整面板前门，底部铰链，下翻开启效果。",
     parameters: ["width", "height", "panelColor", "doorState", "openingAngle", "lockPosition"],
-    localModel: "三态参数化下翻门：含金属背板模块内胆、底部铰链轴、左右限位支撑、细金属门边和圆形锁点，支持关闭/半开/全开。",
+    localModel: "可叠加在含背/无背箱体上的三态参数化下翻门：底部铰链、左右限位支撑、细金属门边和圆形锁点，支持关闭/半开/全开。",
     iconHint: "front panel tilted down with one dark hinge line",
-    finalEffect: "门板可在关闭、半开、全开之间切换；半开时门板向前下方倾斜并露出金属内胆和两侧支撑五金。",
+    finalEffect: "门板可在关闭、半开、全开之间切换；半开时门板向前下方倾斜，含背箱体保留背板，无背箱体背面开放并保留两侧支撑五金。",
     bomName: "下翻门组件",
     unit: "套",
     unitPrice: 700

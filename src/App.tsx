@@ -23,9 +23,11 @@ import { ACCESSORY_CATEGORIES, ACCESSORY_REQUIREMENTS } from "./accessoryCatalog
 import { BuilderScene } from "./BuilderScene";
 import {
   CELL_OPTIONS,
+  CELL_FITTING_OPTIONS,
   COLOR_OPTIONS,
   DEFAULT_CONFIG,
   DEPTH_OPTIONS,
+  DOOR_ACCESSORY_OPTIONS,
   DOOR_OPEN_STATE_OPTIONS,
   FEET_OPTIONS,
   HEIGHT_OPTIONS,
@@ -40,6 +42,7 @@ import {
   estimatePrice,
   expandCell,
   findNearestEnabled,
+  fittingCompatible,
   formatRmb,
   getCellColor,
   getDimensions,
@@ -49,14 +52,19 @@ import {
   resizeColumns,
   resizeRows,
   setCellColor,
+  setCellDoor,
+  setCellFitting,
   setCellKind,
+  setDrawerPull,
   setDoorState,
   setDepth,
   setPanelColor,
   setSelectedColumnWidth,
   setSelectedRowHeight,
   type CabinetConfig,
+  type CellConfig,
   type CellKind,
+  type DoorAccessoryKind,
   type DoorOpenState,
   type Selection,
   type TabKey
@@ -289,6 +297,7 @@ export default function App() {
                 config={config}
                 selection={activeSelection}
                 selectedKind={selectedCell?.kind ?? "open"}
+                selectedDoor={selectedCell?.door ?? "none"}
                 selectedDoorState={selectedCell?.doorState ?? "half"}
                 onDepth={(depth) => updateConfig((current) => setDepth(current, depth))}
                 onWidth={(width) => activeSelection ? updateConfig((current) => setSelectedColumnWidth(current, activeSelection, width)) : undefined}
@@ -302,7 +311,7 @@ export default function App() {
               />
             ) : null}
 
-            {tab === "fittings" ? <FittingsTab config={config} onChange={updateConfig} /> : null}
+            {tab === "fittings" ? <FittingsTab config={config} selection={activeSelection} selectedCell={selectedCell} onChange={updateConfig} /> : null}
             {tab === "colors" ? <ColorsTab config={config} selection={activeSelection} onChange={updateConfig} /> : null}
             {tab === "bom" ? <BomTab bom={bom} price={price} onExport={exportBom} /> : null}
           </div>
@@ -325,6 +334,7 @@ export default function App() {
             selection={activeSelection}
             onSelect={selectCell}
             onExpand={expandSelected}
+            onDrawerPull={(target, value, remember = true) => updateConfig((current) => setDrawerPull(current, target, value), remember)}
             onReady={(api) => {
               sceneApiRef.current = api;
             }}
@@ -358,6 +368,7 @@ function StructureTab({
   config,
   selection,
   selectedKind,
+  selectedDoor,
   selectedDoorState,
   onDepth,
   onWidth,
@@ -372,6 +383,7 @@ function StructureTab({
   config: CabinetConfig;
   selection: Selection | null;
   selectedKind: CellKind;
+  selectedDoor: DoorAccessoryKind;
   selectedDoorState: DoorOpenState;
   onDepth: (depth: number) => void;
   onWidth: (width: number) => void;
@@ -407,23 +419,27 @@ function StructureTab({
 
       <OptionGroup label="结构元素">
         <div className="cell-kind-grid icon-mode">
-          {CELL_OPTIONS.map((option) => (
-            <button
-              key={option.id}
-              className={selectedKind === option.id ? "kind-button active" : "kind-button"}
-              type="button"
-              title={option.label}
-              disabled={!selection}
-              onClick={() => onCellKind(option.id)}
-            >
-              <span>{option.short}</span>
-              <small>{option.label}</small>
-            </button>
-          ))}
+          {CELL_OPTIONS.map((option) => {
+            const shortcutActive = isDoorCellKind(option.id) && selectedDoor === option.id;
+            const active = shortcutActive || (!isDoorCellKind(option.id) && selectedKind === option.id);
+            return (
+              <button
+                key={option.id}
+                className={active ? "kind-button active" : "kind-button"}
+                type="button"
+                title={option.label}
+                disabled={!selection}
+                onClick={() => onCellKind(option.id)}
+              >
+                <span>{option.short}</span>
+                <small>{option.label}</small>
+              </button>
+            );
+          })}
         </div>
       </OptionGroup>
 
-      {selection && isDoorCellKind(selectedKind) ? (
+      {selection && selectedDoor !== "none" ? (
         <OptionGroup label="门板开合">
           <div className="choice-row three">
             {DOOR_OPEN_STATE_OPTIONS.map((option) => (
@@ -461,9 +477,76 @@ function StructureTab({
   );
 }
 
-function FittingsTab({ config, onChange }: { config: CabinetConfig; onChange: (next: CabinetConfig | ((current: CabinetConfig) => CabinetConfig)) => void }) {
+function FittingsTab({
+  config,
+  selection,
+  selectedCell,
+  onChange
+}: {
+  config: CabinetConfig;
+  selection: Selection | null;
+  selectedCell: CellConfig | undefined;
+  onChange: (next: CabinetConfig | ((current: CabinetConfig) => CabinetConfig)) => void;
+}) {
+  const selectedDoor = selectedCell?.door ?? "none";
+  const selectedDoorState = selectedCell?.doorState ?? "half";
+  const selectedFitting = selectedCell?.fitting ?? "none";
+
   return (
     <div className="tab-stack">
+      <OptionGroup label="门配件">
+        <div className="choice-row">
+          {DOOR_ACCESSORY_OPTIONS.map((option) => (
+            <ToggleButton
+              key={option.id}
+              active={selectedDoor === option.id}
+              onClick={() => {
+                if (!selection) return;
+                onChange((current) => setCellDoor(current, selection, option.id));
+              }}
+              label={option.label}
+            />
+          ))}
+        </div>
+      </OptionGroup>
+
+      {selection && selectedDoor !== "none" ? (
+        <OptionGroup label="门板开合">
+          <div className="choice-row three">
+            {DOOR_OPEN_STATE_OPTIONS.map((option) => (
+              <ToggleButton
+                key={option.id}
+                active={selectedDoorState === option.id}
+                onClick={() => onChange((current) => setDoorState(current, selection, option.id))}
+                label={option.label}
+              />
+            ))}
+          </div>
+        </OptionGroup>
+      ) : null}
+
+      <OptionGroup label="内部配件">
+        <div className="choice-row">
+          {CELL_FITTING_OPTIONS.map((option) => (
+            <ToggleButton
+              key={option.id}
+              active={selectedFitting === option.id}
+              onClick={() => {
+                if (!selection) return;
+                onChange((current) => setCellFitting(current, selection, option.id));
+              }}
+              label={option.label}
+            />
+          ))}
+        </div>
+        {selection && selectedCell && !fittingCompatible(selectedCell.kind) && selectedFitting === "none" ? (
+          <p className="helper-text">选择带围边抽屉会自动切换为含金属背板模块。</p>
+        ) : null}
+        {selection && selectedFitting === "rimmedDrawer" ? (
+          <p className="helper-text">拖动抽屉前板可拉进/拉出。</p>
+        ) : null}
+      </OptionGroup>
+
       <OptionGroup label="底部支撑">
         <div className="choice-row three">
           {FEET_OPTIONS.map((option) => (
