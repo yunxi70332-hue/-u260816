@@ -352,9 +352,7 @@ function DropDoor({
 
   return (
     <group>
-      {doorState !== "closed" && !hideDoor ? (
-        <MetalBox cell={cell} backZ={backZ} innerDepth={innerDepth} color={color} includeBack />
-      ) : null}
+      <MetalBox cell={cell} backZ={backZ} innerDepth={innerDepth} color={color} includeBack />
 
       {!hideDoor ? (
         <>
