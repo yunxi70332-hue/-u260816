@@ -340,88 +340,105 @@ function DropDoor({
   doorState: DoorOpenState;
   hideDoor: boolean;
 }) {
-  const openAngle = doorState === "closed" ? 0 : doorState === "open" ? Math.PI / 2 : Math.PI * 0.24;
-  const panelWidth = Math.max(0.16, cell.width - 0.1);
-  const panelHeight = Math.max(0.12, cell.height - 0.1);
-  const hingeY = cell.y - cell.height / 2 + 0.055;
-  const hingeZ = frontZ + 0.012;
-  const sideX = panelWidth / 2 - 0.09;
-  const doorAnchorY = panelHeight * 0.36;
-  const doorAnchor = (x: number): [number, number, number] => [
-    cell.x + x,
-    hingeY + doorAnchorY * Math.cos(openAngle),
-    hingeZ + doorAnchorY * Math.sin(openAngle) + 0.018
-  ];
-  const cabinetAnchor = (x: number): [number, number, number] => [
-    cell.x + x,
-    cell.y - cell.height * 0.12,
-    frontZ - innerDepth * 0.42
-  ];
-  const metal = "#747a7e";
-  const darkMetal = "#4f5559";
-  const isClosed = doorState === "closed";
+  const angle = doorState === "closed" ? 0 : doorState === "open" ? Math.PI / 2 : Math.PI * 0.24;
+  const panelW = Math.max(0.16, cell.width - 0.1);
+  const panelH = Math.max(0.12, cell.height - 0.1);
+  const pivotY = cell.y - cell.height / 2;
+  const pivotZ = frontZ;
+  const hingeXL = -panelW / 2 + 0.07;
+  const hingeXR = panelW / 2 - 0.07;
+  const darkMetal = "#4a5058";
+  const lightMetal = "#8a9098";
 
   return (
     <group>
-      {!isClosed || hideDoor ? (
-        <>
-          <MetalBox cell={cell} backZ={backZ} innerDepth={innerDepth} color={color} includeBack />
-          <PanelBox position={[cell.x, cell.y + cell.height / 2 - 0.042, frontZ - innerDepth / 2]} args={[panelWidth, 0.026, 0.03]}>
-            <meshStandardMaterial color={metal} metalness={0.82} roughness={0.2} />
-          </PanelBox>
-          <PanelBox position={[cell.x - sideX, cell.y, frontZ - innerDepth / 2]} args={[0.026, cell.height - 0.14, 0.026]}>
-            <meshStandardMaterial color={metal} metalness={0.82} roughness={0.2} />
-          </PanelBox>
-          <PanelBox position={[cell.x + sideX, cell.y, frontZ - innerDepth / 2]} args={[0.026, cell.height - 0.14, 0.026]}>
-            <meshStandardMaterial color={metal} metalness={0.82} roughness={0.2} />
-          </PanelBox>
-        </>
+      {doorState !== "closed" && !hideDoor ? (
+        <MetalBox cell={cell} backZ={backZ} innerDepth={innerDepth} color={color} includeBack />
       ) : null}
 
       {!hideDoor ? (
         <>
-          <mesh position={[cell.x, hingeY, hingeZ]} rotation={[0, 0, Math.PI / 2]} castShadow receiveShadow>
-            <cylinderGeometry args={[0.018, 0.018, panelWidth, 28]} />
-            <meshStandardMaterial color={darkMetal} roughness={0.24} metalness={0.82} />
-          </mesh>
-          {[-sideX, sideX].map((x) => (
-            <group key={`hinge-${x}`} position={[cell.x + x, hingeY + 0.005, hingeZ + 0.012]}>
-              <PanelBox position={[0, 0, 0]} args={[0.07, 0.035, 0.035]}>
-                <meshStandardMaterial color={darkMetal} roughness={0.28} metalness={0.72} />
-              </PanelBox>
-            </group>
-          ))}
+          <group position={[cell.x, pivotY, pivotZ]} rotation={[angle, 0, 0]}>
+            <mesh position={[0, panelH / 2, 0]} castShadow receiveShadow>
+              <boxGeometry args={[panelW, panelH, PANEL_THICKNESS]} />
+              <meshStandardMaterial color={color} roughness={0.42} metalness={0.08} />
+            </mesh>
 
-          {!isClosed ? (
+            <group position={[0, panelH / 2, PANEL_THICKNESS / 2 + 0.003]}>
+              <mesh rotation={[Math.PI / 2, 0, 0]}>
+                <cylinderGeometry args={[0.034, 0.034, 0.006, 32]} />
+                <meshStandardMaterial color={lightMetal} metalness={0.65} roughness={0.28} />
+              </mesh>
+              <mesh position={[0, 0, 0.005]} rotation={[Math.PI / 2, 0, 0]}>
+                <cylinderGeometry args={[0.019, 0.019, 0.008, 32]} />
+                <meshStandardMaterial color={darkMetal} metalness={0.85} roughness={0.18} />
+              </mesh>
+            </group>
+
+            <DropDoorHinge x={hingeXL} darkMetal={darkMetal} />
+            <DropDoorHinge x={hingeXR} darkMetal={darkMetal} />
+          </group>
+
+          {doorState !== "closed" ? (
             <>
-              {[-sideX, sideX].map((x) => (
-                <group key={`stay-${x}`}>
-                  <RodBetween start={cabinetAnchor(x)} end={doorAnchor(x)} radius={0.011} color={metal} />
-                  <mesh position={cabinetAnchor(x)} castShadow>
-                    <sphereGeometry args={[0.026, 16, 10]} />
-                    <meshStandardMaterial color={darkMetal} roughness={0.26} metalness={0.74} />
-                  </mesh>
-                  <mesh position={doorAnchor(x)} castShadow>
-                    <sphereGeometry args={[0.022, 16, 10]} />
-                    <meshStandardMaterial color={darkMetal} roughness={0.26} metalness={0.74} />
-                  </mesh>
-                </group>
-              ))}
+              {[hingeXL, hingeXR].map((x) => {
+                const cabinetPt: [number, number, number] = [
+                  cell.x + x,
+                  cell.y - cell.height * 0.1,
+                  frontZ - innerDepth * 0.38
+                ];
+                const doorPt: [number, number, number] = [
+                  cell.x + x,
+                  pivotY + panelH * 0.38 * Math.cos(angle),
+                  pivotZ + panelH * 0.38 * Math.sin(angle)
+                ];
+                return (
+                  <group key={`stay-${x}`}>
+                    <RodBetween start={cabinetPt} end={doorPt} radius={0.01} color={lightMetal} />
+                    <mesh position={cabinetPt} castShadow>
+                      <sphereGeometry args={[0.022, 16, 10]} />
+                      <meshStandardMaterial color={darkMetal} metalness={0.8} roughness={0.22} />
+                    </mesh>
+                    <mesh position={doorPt} castShadow>
+                      <sphereGeometry args={[0.019, 16, 10]} />
+                      <meshStandardMaterial color={darkMetal} metalness={0.8} roughness={0.22} />
+                    </mesh>
+                  </group>
+                );
+              })}
             </>
           ) : null}
-
-          <group position={[cell.x, hingeY, hingeZ]} rotation={[openAngle, 0, 0]}>
-            <PanelBox position={[0, panelHeight / 2, 0]} args={[panelWidth, panelHeight, PANEL_THICKNESS]}>
-              <meshStandardMaterial color={color} roughness={0.42} metalness={0.08} />
-            </PanelBox>
-            <FrameRect width={panelWidth} height={panelHeight} z={PANEL_THICKNESS / 2 + 0.014} />
-            <PanelBox position={[0, panelHeight - 0.03, PANEL_THICKNESS / 2 + 0.024]} args={[panelWidth - 0.1, 0.018, 0.014]}>
-              <meshStandardMaterial color={darkMetal} roughness={0.28} metalness={0.72} />
-            </PanelBox>
-            <LockDot x={0} y={panelHeight * 0.58} />
-          </group>
         </>
       ) : null}
+    </group>
+  );
+}
+
+function DropDoorHinge({ x, darkMetal }: { x: number; darkMetal: string }) {
+  const shape = useMemo(() => {
+    const s = new THREE.Shape();
+    s.moveTo(-0.014, 0);
+    s.lineTo(0.014, 0);
+    s.lineTo(0.014, 0.058);
+    s.lineTo(0.026, 0.058);
+    s.lineTo(0.026, 0.092);
+    s.lineTo(-0.026, 0.092);
+    s.lineTo(-0.026, 0.058);
+    s.lineTo(-0.014, 0.058);
+    s.closePath();
+
+    const hole = new THREE.Path();
+    hole.absarc(0, 0.078, 0.01, 0, Math.PI * 2, false);
+    s.holes.push(hole);
+    return s;
+  }, []);
+
+  return (
+    <group position={[x, 0, -PANEL_THICKNESS / 2 - 0.003]}>
+      <mesh castShadow receiveShadow>
+        <extrudeGeometry args={[shape, { depth: 0.005, bevelEnabled: false }]} />
+        <meshStandardMaterial color={darkMetal} metalness={0.88} roughness={0.18} />
+      </mesh>
     </group>
   );
 }
@@ -552,15 +569,6 @@ function Handle({ width, y }: { width: number; y: number }) {
     <PanelBox position={[0, y, PANEL_THICKNESS / 2 + 0.012]} args={[width, 0.016, 0.012]}>
       <meshStandardMaterial color="#6d7175" roughness={0.35} metalness={0.7} />
     </PanelBox>
-  );
-}
-
-function LockDot({ x, y }: { x: number; y: number }) {
-  return (
-    <mesh position={[x, y, PANEL_THICKNESS / 2 + 0.018]}>
-      <sphereGeometry args={[0.035, 20, 12]} />
-      <meshStandardMaterial color="#ffdf1f" roughness={0.28} metalness={0.12} />
-    </mesh>
   );
 }
 
