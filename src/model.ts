@@ -8,6 +8,7 @@ export const MAX_CUSTOM_SIZE = 1200;
 
 export type TabKey = "structure" | "fittings" | "colors" | "bom";
 export type CellKind = "open" | AccessoryModelKind;
+export type DoorOpenState = "closed" | "half" | "open";
 export type FeetKind = "glides" | "caster-low" | "caster-high";
 export type FrameFinish = "chrome" | "graphite";
 export type StructureMode = "complete" | "noFront" | "noPanels" | "frameOnly";
@@ -17,6 +18,7 @@ export interface CellConfig {
   kind: CellKind;
   enabled: boolean;
   color?: string;
+  doorState?: DoorOpenState;
 }
 
 export interface CabinetConfig {
@@ -98,6 +100,12 @@ export const FEET_OPTIONS: FeetOption[] = [
   { id: "caster-high", label: "高脚轮", heightOffset: 88, unitPrice: 168 }
 ];
 
+export const DOOR_OPEN_STATE_OPTIONS: Array<{ id: DoorOpenState; label: string }> = [
+  { id: "closed", label: "关闭" },
+  { id: "half", label: "半开" },
+  { id: "open", label: "全开" }
+];
+
 export const DEFAULT_CONFIG: CabinetConfig = {
   depth: 350,
   columnWidths: [750],
@@ -130,10 +138,12 @@ export function normalizeConfig(input: Partial<CabinetConfig> | null | undefined
 
   input?.cells?.slice(0, rows).forEach((row, rowIndex) => {
     row?.slice(0, columns).forEach((cell, columnIndex) => {
+      const kind = normalizeCellKind(cell?.kind);
       cells[rowIndex][columnIndex] = {
-        kind: normalizeCellKind(cell?.kind),
+        kind,
         enabled: cell?.enabled !== false,
-        color: COLOR_OPTIONS.some((color) => color.value === cell?.color) ? cell.color : undefined
+        color: COLOR_OPTIONS.some((color) => color.value === cell?.color) ? cell.color : undefined,
+        doorState: isDoorCellKind(kind) ? normalizeDoorOpenState(cell?.doorState) : undefined
       };
     });
   });
@@ -256,7 +266,21 @@ export function deleteCell(config: CabinetConfig, selection: Selection): Cabinet
 export function setCellKind(config: CabinetConfig, selection: Selection, kind: CellKind): CabinetConfig {
   const cells = cloneCells(config.cells);
   if (cells[selection.row]?.[selection.column]?.enabled) {
-    cells[selection.row][selection.column] = { ...cells[selection.row][selection.column], kind };
+    const current = cells[selection.row][selection.column];
+    cells[selection.row][selection.column] = {
+      ...current,
+      kind,
+      doorState: isDoorCellKind(kind) ? current.doorState ?? "half" : undefined
+    };
+  }
+  return { ...config, cells };
+}
+
+export function setDoorState(config: CabinetConfig, selection: Selection, doorState: DoorOpenState): CabinetConfig {
+  const cells = cloneCells(config.cells);
+  const cell = cells[selection.row]?.[selection.column];
+  if (cell?.enabled && isDoorCellKind(cell.kind)) {
+    cells[selection.row][selection.column] = { ...cell, doorState };
   }
   return { ...config, cells };
 }
@@ -391,6 +415,10 @@ export function isCellEnabled(config: CabinetConfig, selection: Selection | null
   return config.cells[selection.row]?.[selection.column]?.enabled === true;
 }
 
+export function isDoorCellKind(kind: CellKind): boolean {
+  return kind === "dropDoor" || kind === "flipUpDoor" || kind === "sideOpenDoor" || kind === "glassDropDoor";
+}
+
 export function getActiveCellCount(config: CabinetConfig): number {
   return config.cells.reduce((total, row) => total + row.filter((cell) => cell.enabled).length, 0);
 }
@@ -425,6 +453,10 @@ function normalizeCellKind(value: unknown): CellKind {
   if (typeof value === "string" && legacy[value]) return legacy[value];
   if (value === "open" || ACCESSORY_CATALOG.some((item) => item.id === value)) return value as CellKind;
   return "open";
+}
+
+function normalizeDoorOpenState(value: unknown): DoorOpenState {
+  return value === "closed" || value === "open" ? value : "half";
 }
 
 function needsBackPanel(kind: CellKind) {

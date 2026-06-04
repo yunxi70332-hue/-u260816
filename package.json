@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "dev:4": "vite --host 127.0.0.1 --port 5174 --strictPort",
+    "restart:4": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$p=(netstat -ano | Select-String ':5174' | ForEach-Object { ($_ -split '\\\\s+')[-1] } | Sort-Object -Unique); foreach($id in $p){ if($id){ taskkill /F /PID $id 2>$null | Out-Null } }; npm.cmd run dev:4\"",
+    "restart:4:ps": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restart-local-4.ps1",
     "build": "tsc --noEmit && vite build",
+    "export:requirements": "node scripts/export-accessory-requirements.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {

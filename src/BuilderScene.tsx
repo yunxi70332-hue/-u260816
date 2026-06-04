@@ -3,7 +3,7 @@ import { ContactShadows, OrbitControls } from "@react-three/drei";
 import { Suspense, useEffect, useMemo, type ReactNode } from "react";
 import * as THREE from "three";
 import type { AccessoryModelKind } from "./accessoryCatalog";
-import type { CabinetConfig, CellKind, Selection } from "./model";
+import type { CabinetConfig, CellKind, DoorOpenState, Selection } from "./model";
 import { getDimensions, getEffectiveCellColor } from "./model";
 
 interface SceneApi {
@@ -151,6 +151,7 @@ function CabinetModel({
             key={`cell-${cell.row}-${cell.column}`}
             cell={cell}
             kind={kind}
+            doorState={config.cells[cell.row][cell.column].doorState ?? "half"}
             color={getEffectiveCellColor(config, cell.row, cell.column)}
             structureMode={config.structureMode}
             selected={selection?.row === cell.row && selection.column === cell.column}
@@ -169,6 +170,7 @@ function CabinetModel({
 function CellContent({
   cell,
   kind,
+  doorState,
   color,
   structureMode,
   selected,
@@ -177,6 +179,7 @@ function CellContent({
 }: {
   cell: LayoutCell;
   kind: CellKind;
+  doorState: DoorOpenState;
   color: string;
   structureMode: CabinetConfig["structureMode"];
   selected: boolean;
@@ -190,7 +193,7 @@ function CellContent({
   return (
     <group onClick={(event) => { event.stopPropagation(); onSelect(); }}>
       {structureMode !== "frameOnly" ? (
-        <AccessoryGeometry kind={kind} cell={cell} color={color} frontZ={frontZ} backZ={backZ} innerDepth={innerDepth} hideFront={structureMode === "noFront"} />
+        <AccessoryGeometry kind={kind} doorState={doorState} cell={cell} color={color} frontZ={frontZ} backZ={backZ} innerDepth={innerDepth} hideFront={structureMode === "noFront"} />
       ) : null}
 
       <mesh position={[cell.x, cell.y, cell.z]} renderOrder={5}>
@@ -210,6 +213,7 @@ function CellContent({
 
 function AccessoryGeometry({
   kind,
+  doorState,
   cell,
   color,
   frontZ,
@@ -218,6 +222,7 @@ function AccessoryGeometry({
   hideFront
 }: {
   kind: CellKind;
+  doorState: DoorOpenState;
   cell: LayoutCell;
   color: string;
   frontZ: number;
@@ -231,7 +236,7 @@ function AccessoryGeometry({
 
   return (
     <group>
-      {kind !== "open" && kind !== "noBackModule" && kind !== "glassPanelModule" && !["softPanelLow", "softPanelWide", "softPanelTall"].includes(kind) ? (
+      {kind !== "open" && kind !== "dropDoor" && kind !== "noBackModule" && kind !== "glassPanelModule" && !["softPanelLow", "softPanelWide", "softPanelTall"].includes(kind) ? (
         <PanelBox position={[cell.x, cell.y, backZ]} args={[cell.width - 0.08, cell.height - 0.08, PANEL_THICKNESS]}>{panel}</PanelBox>
       ) : null}
 
@@ -242,7 +247,7 @@ function AccessoryGeometry({
       {kind === "openBackPanel" ? <OpenBackPanel cell={cell} backZ={backZ} innerDepth={innerDepth} color={color} /> : null}
       {kind === "sidePanel" ? <SidePanel cell={cell} innerDepth={innerDepth} color={color} /> : null}
 
-      {!hideFront && kind === "dropDoor" ? <DropDoor cell={cell} frontZ={frontZ} color={color} /> : null}
+      {kind === "dropDoor" ? <DropDoor cell={cell} frontZ={frontZ} backZ={backZ} innerDepth={innerDepth} color={color} doorState={doorState} hideDoor={hideFront} /> : null}
       {!hideFront && kind === "flipUpDoor" ? <FlipUpDoor cell={cell} frontZ={frontZ} color={color} /> : null}
       {!hideFront && kind === "sideOpenDoor" ? <SideOpenDoor cell={cell} frontZ={frontZ} color={color} /> : null}
       {!hideFront && kind === "glassDropDoor" ? <GlassDoor cell={cell} frontZ={frontZ} /> : null}
@@ -257,7 +262,7 @@ function AccessoryGeometry({
       {kind === "displayTray" ? <DisplayTray cell={cell} innerDepth={innerDepth} color={color} /> : null}
       {kind === "glassShelf" ? <GlassShelf cell={cell} innerDepth={innerDepth} material={glass} /> : null}
 
-      {isDoor ? <OpenBase cell={cell} innerDepth={innerDepth} subtle /> : null}
+      {isDoor && kind !== "dropDoor" ? <OpenBase cell={cell} innerDepth={innerDepth} subtle /> : null}
     </group>
   );
 }
@@ -318,15 +323,128 @@ function SidePanel({ cell, innerDepth, color }: { cell: LayoutCell; innerDepth: 
   );
 }
 
-function DropDoor({ cell, frontZ, color }: { cell: LayoutCell; frontZ: number; color: string }) {
+function DropDoor({
+  cell,
+  frontZ,
+  backZ,
+  innerDepth,
+  color,
+  doorState,
+  hideDoor
+}: {
+  cell: LayoutCell;
+  frontZ: number;
+  backZ: number;
+  innerDepth: number;
+  color: string;
+  doorState: DoorOpenState;
+  hideDoor: boolean;
+}) {
+  const openAngle = doorState === "closed" ? 0 : doorState === "open" ? Math.PI / 2 : Math.PI * 0.24;
+  const panelWidth = Math.max(0.16, cell.width - 0.1);
+  const panelHeight = Math.max(0.12, cell.height - 0.1);
+  const hingeY = cell.y - cell.height / 2 + 0.055;
+  const hingeZ = frontZ + 0.012;
+  const sideX = panelWidth / 2 - 0.09;
+  const doorAnchorY = panelHeight * 0.36;
+  const doorAnchor = (x: number): [number, number, number] => [
+    cell.x + x,
+    hingeY + doorAnchorY * Math.cos(openAngle),
+    hingeZ + doorAnchorY * Math.sin(openAngle) + 0.018
+  ];
+  const cabinetAnchor = (x: number): [number, number, number] => [
+    cell.x + x,
+    cell.y - cell.height * 0.12,
+    frontZ - innerDepth * 0.42
+  ];
+  const metal = "#747a7e";
+  const darkMetal = "#4f5559";
+  const isClosed = doorState === "closed";
+
   return (
-    <group position={[cell.x, cell.y - cell.height / 2 + 0.04, frontZ]} rotation={[-0.62, 0, 0]}>
-      <PanelBox position={[0, cell.height / 2 - 0.04, 0]} args={[cell.width - 0.09, cell.height - 0.09, PANEL_THICKNESS]}>
-        <meshStandardMaterial color={color} roughness={0.42} metalness={0.08} />
-      </PanelBox>
-      <Handle width={cell.width - 0.18} y={cell.height - 0.11} />
-      <LockDot x={cell.width / 2 - 0.12} y={0.12} />
+    <group>
+      {!isClosed || hideDoor ? (
+        <>
+          <MetalBox cell={cell} backZ={backZ} innerDepth={innerDepth} color={color} includeBack />
+          <PanelBox position={[cell.x, cell.y + cell.height / 2 - 0.042, frontZ - innerDepth / 2]} args={[panelWidth, 0.026, 0.03]}>
+            <meshStandardMaterial color={metal} metalness={0.82} roughness={0.2} />
+          </PanelBox>
+          <PanelBox position={[cell.x - sideX, cell.y, frontZ - innerDepth / 2]} args={[0.026, cell.height - 0.14, 0.026]}>
+            <meshStandardMaterial color={metal} metalness={0.82} roughness={0.2} />
+          </PanelBox>
+          <PanelBox position={[cell.x + sideX, cell.y, frontZ - innerDepth / 2]} args={[0.026, cell.height - 0.14, 0.026]}>
+            <meshStandardMaterial color={metal} metalness={0.82} roughness={0.2} />
+          </PanelBox>
+        </>
+      ) : null}
+
+      {!hideDoor ? (
+        <>
+          <mesh position={[cell.x, hingeY, hingeZ]} rotation={[0, 0, Math.PI / 2]} castShadow receiveShadow>
+            <cylinderGeometry args={[0.018, 0.018, panelWidth, 28]} />
+            <meshStandardMaterial color={darkMetal} roughness={0.24} metalness={0.82} />
+          </mesh>
+          {[-sideX, sideX].map((x) => (
+            <group key={`hinge-${x}`} position={[cell.x + x, hingeY + 0.005, hingeZ + 0.012]}>
+              <PanelBox position={[0, 0, 0]} args={[0.07, 0.035, 0.035]}>
+                <meshStandardMaterial color={darkMetal} roughness={0.28} metalness={0.72} />
+              </PanelBox>
+            </group>
+          ))}
+
+          {!isClosed ? (
+            <>
+              {[-sideX, sideX].map((x) => (
+                <group key={`stay-${x}`}>
+                  <RodBetween start={cabinetAnchor(x)} end={doorAnchor(x)} radius={0.011} color={metal} />
+                  <mesh position={cabinetAnchor(x)} castShadow>
+                    <sphereGeometry args={[0.026, 16, 10]} />
+                    <meshStandardMaterial color={darkMetal} roughness={0.26} metalness={0.74} />
+                  </mesh>
+                  <mesh position={doorAnchor(x)} castShadow>
+                    <sphereGeometry args={[0.022, 16, 10]} />
+                    <meshStandardMaterial color={darkMetal} roughness={0.26} metalness={0.74} />
+                  </mesh>
+                </group>
+              ))}
+            </>
+          ) : null}
+
+          <group position={[cell.x, hingeY, hingeZ]} rotation={[openAngle, 0, 0]}>
+            <PanelBox position={[0, panelHeight / 2, 0]} args={[panelWidth, panelHeight, PANEL_THICKNESS]}>
+              <meshStandardMaterial color={color} roughness={0.42} metalness={0.08} />
+            </PanelBox>
+            <FrameRect width={panelWidth} height={panelHeight} z={PANEL_THICKNESS / 2 + 0.014} />
+            <PanelBox position={[0, panelHeight - 0.03, PANEL_THICKNESS / 2 + 0.024]} args={[panelWidth - 0.1, 0.018, 0.014]}>
+              <meshStandardMaterial color={darkMetal} roughness={0.28} metalness={0.72} />
+            </PanelBox>
+            <LockDot x={0} y={panelHeight * 0.58} />
+          </group>
+        </>
+      ) : null}
     </group>
+  );
+}
+
+function RodBetween({ start, end, radius, color }: { start: [number, number, number]; end: [number, number, number]; radius: number; color: string }) {
+  const { position, quaternion, length } = useMemo(() => {
+    const a = new THREE.Vector3(...start);
+    const b = new THREE.Vector3(...end);
+    const direction = b.clone().sub(a);
+    const length = Math.max(0.001, direction.length());
+    const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+    return {
+      position: a.clone().add(b).multiplyScalar(0.5),
+      quaternion,
+      length
+    };
+  }, [end, start]);
+
+  return (
+    <mesh position={position} quaternion={quaternion} castShadow receiveShadow>
+      <cylinderGeometry args={[radius, radius, length, 14]} />
+      <meshStandardMaterial color={color} metalness={0.76} roughness={0.24} />
+    </mesh>
   );
 }
 

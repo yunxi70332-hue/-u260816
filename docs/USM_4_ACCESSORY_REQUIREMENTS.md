@@ -19,7 +19,7 @@
 | metalBackModule | 结构模块 | 含金属背板模块 | width, height, depth, panelColor, frameFinish | `#metalBackModule` | 单元成为完整金属内胆箱体，正面开放。 |
 | noBackModule | 结构模块 | 不含背板模块 | width, height, depth, panelColor, frameFinish | `#noBackModule` | 形成双面开放的通透单元。 |
 | glassPanelModule | 结构模块 | 含玻璃板模块 | width, height, depth, glassTint, frameFinish | `#glassPanelModule` | 柜格变为透明展示格。 |
-| dropDoor | 门 | 下翻门 | width, height, panelColor, openingAngle, lockPosition | `#dropDoor` | 门板向前下方打开。 |
+| dropDoor | 门 | 下翻门 | width, height, panelColor, doorState, openingAngle, lockPosition | `#dropDoor` | 三态参数化下翻门：关闭、半开、全开，半开时露出金属内胆和两侧支撑五金。 |
 | flipUpDoor | 门 | 上翻门 | width, height, panelColor, openingAngle, topHinge | `#flipUpDoor` | 门板悬在格口上方。 |
 | sideOpenDoor | 门 | 侧开门 | width, height, panelColor, openingAngle, hingeSide | `#sideOpenDoor` | 门板向左外摆。 |
 | glassDropDoor | 门 | 玻璃门 | width, height, glassTint, frameFinish, openingAngle | `#glassDropDoor` | 正面为透明玻璃门。 |

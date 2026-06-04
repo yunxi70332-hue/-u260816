@@ -26,6 +26,7 @@ import {
   COLOR_OPTIONS,
   DEFAULT_CONFIG,
   DEPTH_OPTIONS,
+  DOOR_OPEN_STATE_OPTIONS,
   FEET_OPTIONS,
   HEIGHT_OPTIONS,
   MAX_CUSTOM_SIZE,
@@ -42,18 +43,21 @@ import {
   formatRmb,
   getCellColor,
   getDimensions,
+  isDoorCellKind,
   isCellEnabled,
   normalizeConfig,
   resizeColumns,
   resizeRows,
   setCellColor,
   setCellKind,
+  setDoorState,
   setDepth,
   setPanelColor,
   setSelectedColumnWidth,
   setSelectedRowHeight,
   type CabinetConfig,
   type CellKind,
+  type DoorOpenState,
   type Selection,
   type TabKey
 } from "./model";
@@ -285,12 +289,14 @@ export default function App() {
                 config={config}
                 selection={activeSelection}
                 selectedKind={selectedCell?.kind ?? "open"}
+                selectedDoorState={selectedCell?.doorState ?? "half"}
                 onDepth={(depth) => updateConfig((current) => setDepth(current, depth))}
                 onWidth={(width) => activeSelection ? updateConfig((current) => setSelectedColumnWidth(current, activeSelection, width)) : undefined}
                 onHeight={(height) => activeSelection ? updateConfig((current) => setSelectedRowHeight(current, activeSelection, height)) : undefined}
                 onRows={handleRows}
                 onColumns={handleColumns}
                 onCellKind={(kind) => activeSelection ? updateConfig((current) => setCellKind(current, activeSelection, kind)) : undefined}
+                onDoorState={(doorState) => activeSelection ? updateConfig((current) => setDoorState(current, activeSelection, doorState)) : undefined}
                 onStructureMode={(mode) => updateConfig((current) => applyStructureMode(current, mode))}
                 onPreset={applyPreset}
               />
@@ -352,24 +358,28 @@ function StructureTab({
   config,
   selection,
   selectedKind,
+  selectedDoorState,
   onDepth,
   onWidth,
   onHeight,
   onRows,
   onColumns,
   onCellKind,
+  onDoorState,
   onStructureMode,
   onPreset
 }: {
   config: CabinetConfig;
   selection: Selection | null;
   selectedKind: CellKind;
+  selectedDoorState: DoorOpenState;
   onDepth: (depth: number) => void;
   onWidth: (width: number) => void;
   onHeight: (height: number) => void;
   onRows: (delta: number) => void;
   onColumns: (delta: number) => void;
   onCellKind: (kind: CellKind) => void;
+  onDoorState: (doorState: DoorOpenState) => void;
   onStructureMode: (mode: CabinetConfig["structureMode"]) => void;
   onPreset: (columns: number, rows: number, kind?: CellKind) => void;
 }) {
@@ -412,6 +422,21 @@ function StructureTab({
           ))}
         </div>
       </OptionGroup>
+
+      {selection && isDoorCellKind(selectedKind) ? (
+        <OptionGroup label="门板开合">
+          <div className="choice-row three">
+            {DOOR_OPEN_STATE_OPTIONS.map((option) => (
+              <ToggleButton
+                key={option.id}
+                active={selectedDoorState === option.id}
+                onClick={() => onDoorState(option.id)}
+                label={option.label}
+              />
+            ))}
+          </div>
+        </OptionGroup>
+      ) : null}
 
       <OptionGroup label="快速结构">
         <div className="preset-grid">
