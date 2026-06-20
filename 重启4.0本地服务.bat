@@ -1,11 +1,19 @@
 @echo off
+setlocal
+title USM 4.0 Local
 cd /d "%~dp0"
 
-for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":5174"') do (
-  taskkill /F /PID %%p >nul 2>nul
+echo Restarting USM 4.0 local service...
+echo.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\restart-local-4.ps1" -Port 9011 -OpenBrowser -Foreground
+if errorlevel 1 (
+  echo.
+  echo Failed to restart USM 4.0 local service.
+  pause
+  exit /b 1
 )
 
-start "USM 4.0 Local" cmd /k "npm.cmd run dev:4"
-
-timeout /t 2 >nul
-start "" "http://127.0.0.1:5174/"
+echo.
+echo Service stopped.
+pause
+endlocal

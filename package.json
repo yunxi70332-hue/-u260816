@@ -1,15 +1,22 @@
 {
   "name": "usm-local-builder",
-  "version": "0.1.0",
+  "version": "4.2.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "dev:4": "vite --host 127.0.0.1 --port 5174 --strictPort",
-    "restart:4": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$p=(netstat -ano | Select-String ':5174' | ForEach-Object { ($_ -split '\\\\s+')[-1] } | Sort-Object -Unique); foreach($id in $p){ if($id){ taskkill /F /PID $id 2>$null | Out-Null } }; npm.cmd run dev:4\"",
+    "dev:4": "vite --host 127.0.0.1 --port 9011 --strictPort",
+    "restart:4": "node scripts/restart-local-4.mjs",
     "restart:4:ps": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restart-local-4.ps1",
     "build": "tsc --noEmit && vite build",
     "export:requirements": "node scripts/export-accessory-requirements.mjs",
+    "build:door-assets": ".venv\\Scripts\\python.exe scripts/build-drop-door-assets.py",
+    "build:frame-assets": "..\\.venv\\Scripts\\python.exe scripts/build-frame-assets.py",
+    "build:drop-door-assets": ".venv\\Scripts\\python.exe scripts/build-drop-door-assets.py --door drop",
+    "export:logic-matrix": "node scripts/export-accessory-logic-matrix.mjs",
+    "verify:logic": "node scripts/verify-accessory-logic.mjs",
+    "verify:pricing": "node scripts/verify-price-source.mjs",
+    "verify:local-cdp": "node scripts/verify-local-cdp.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
@@ -25,6 +32,7 @@
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@vitejs/plugin-react": "latest",
+    "playwright": "^1.60.0",
     "typescript": "latest",
     "vite": "latest"
   }

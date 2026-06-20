@@ -1,0 +1,2387 @@
+{
+  "schemaVersion": 1,
+  "id": "lingjian-danpei-price-source",
+  "dealerName": "零件单配",
+  "title": "配件报价表",
+  "currency": "CNY",
+  "generatedAt": "2026-06-16T06:18:25.051Z",
+  "laborRules": [],
+  "items": [
+    {
+      "sourceRow": 1,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "735*580",
+      "unit": "块",
+      "unitPrice": 181.89,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "735*580",
+        "unit": "块",
+        "price": "98",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 2,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "735*485",
+      "unit": "块",
+      "unitPrice": 154.05,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "735*485",
+        "unit": "块",
+        "price": "83",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 3,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "735*380",
+      "unit": "块",
+      "unitPrice": 124.35,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "735*380",
+        "unit": "块",
+        "price": "67",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 4,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "735*335",
+      "unit": "块",
+      "unitPrice": 111.36,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "735*335",
+        "unit": "块",
+        "price": "60",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 5,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "735*285",
+      "unit": "块",
+      "unitPrice": 107.65,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "735*285",
+        "unit": "块",
+        "price": "58",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 6,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "735*235",
+      "unit": "块",
+      "unitPrice": 103.94,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "735*235",
+        "unit": "块",
+        "price": "56",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 7,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "735*160",
+      "unit": "块",
+      "unitPrice": 85.38,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "735*160",
+        "unit": "块",
+        "price": "46",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 8,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "735*85",
+      "unit": "块",
+      "unitPrice": 55.68,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "735*85",
+        "unit": "块",
+        "price": "30",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 9,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "580*485",
+      "unit": "块",
+      "unitPrice": 141.06,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "580*485",
+        "unit": "块",
+        "price": "76",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 10,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "580*380",
+      "unit": "块",
+      "unitPrice": 116.93,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "580*380",
+        "unit": "块",
+        "price": "63",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 11,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "580*335",
+      "unit": "块",
+      "unitPrice": 103.94,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "580*335",
+        "unit": "块",
+        "price": "56",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 12,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "580*285",
+      "unit": "块",
+      "unitPrice": 96.51,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "580*285",
+        "unit": "块",
+        "price": "52",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 13,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "580*235",
+      "unit": "块",
+      "unitPrice": 85.38,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "580*235",
+        "unit": "块",
+        "price": "46",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 14,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "580*160",
+      "unit": "块",
+      "unitPrice": 70.53,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "580*160",
+        "unit": "块",
+        "price": "38",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 15,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "580*85",
+      "unit": "块",
+      "unitPrice": 44.54,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "580*85",
+        "unit": "块",
+        "price": "24",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 16,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "485*485",
+      "unit": "块",
+      "unitPrice": 111.36,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "485*485",
+        "unit": "块",
+        "price": "60",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 17,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "485*485（四排孔）",
+      "unit": "块",
+      "unitPrice": 118.78,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "485*485（ 四排孔）",
+        "unit": "块",
+        "price": "64",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 18,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "485*380",
+      "unit": "块",
+      "unitPrice": 102.08,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "485*380",
+        "unit": "块",
+        "price": "55",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 19,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "485*380（四排孔）",
+      "unit": "块",
+      "unitPrice": 105.79,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "485*380（ 四排孔）",
+        "unit": "块",
+        "price": "57",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 20,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "485*335",
+      "unit": "块",
+      "unitPrice": 92.8,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "485*335",
+        "unit": "块",
+        "price": "50",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 21,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "485*335（四排孔）",
+      "unit": "块",
+      "unitPrice": 96.51,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "485*335（ 四排孔）",
+        "unit": "块",
+        "price": "52",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 22,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "485*285",
+      "unit": "块",
+      "unitPrice": 96.51,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "485*285",
+        "unit": "块",
+        "price": "52",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 23,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "485*235",
+      "unit": "块",
+      "unitPrice": 83.52,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "485*235",
+        "unit": "块",
+        "price": "45",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 24,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "485*235（四排孔）",
+      "unit": "块",
+      "unitPrice": 87.23,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "485*235（ 四排孔）",
+        "unit": "块",
+        "price": "47",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 25,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "485*160",
+      "unit": "块",
+      "unitPrice": 55.68,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "485*160",
+        "unit": "块",
+        "price": "30",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 26,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "485*160（四排孔）",
+      "unit": "块",
+      "unitPrice": 59.39,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "485*160（ 四排孔）",
+        "unit": "块",
+        "price": "32",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 27,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "485*135",
+      "unit": "块",
+      "unitPrice": 53.82,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "485*135",
+        "unit": "块",
+        "price": "29",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 28,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "485*85",
+      "unit": "块",
+      "unitPrice": 40.83,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "485*85",
+        "unit": "块",
+        "price": "22",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 29,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "380*380",
+      "unit": "块",
+      "unitPrice": 89.09,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "380*380",
+        "unit": "块",
+        "price": "48",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 30,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "380*380（四排孔）",
+      "unit": "块",
+      "unitPrice": 92.8,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "380*380（ 四排孔）",
+        "unit": "块",
+        "price": "50",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 31,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "380*335",
+      "unit": "块",
+      "unitPrice": 83.52,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "380*335",
+        "unit": "块",
+        "price": "45",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 32,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "380*335（四排孔）",
+      "unit": "块",
+      "unitPrice": 87.23,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "380*335（ 四排孔）",
+        "unit": "块",
+        "price": "47",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 33,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "380*285",
+      "unit": "块",
+      "unitPrice": 64.96,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "380*285",
+        "unit": "块",
+        "price": "35",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 34,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "380*235",
+      "unit": "块",
+      "unitPrice": 57.54,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "380*235",
+        "unit": "块",
+        "price": "31",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 35,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "380*235（四排孔）",
+      "unit": "块",
+      "unitPrice": 61.25,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "380*235（ 四排孔）",
+        "unit": "块",
+        "price": "33",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 36,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "380*160",
+      "unit": "块",
+      "unitPrice": 44.54,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "380*160",
+        "unit": "块",
+        "price": "24",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 37,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "380*160（四排孔）",
+      "unit": "块",
+      "unitPrice": 48.26,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "380*160（ 四排孔）",
+        "unit": "块",
+        "price": "26",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 38,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "380*85",
+      "unit": "块",
+      "unitPrice": 37.12,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "380*85",
+        "unit": "块",
+        "price": "20",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 39,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "380*85（四排孔）",
+      "unit": "块",
+      "unitPrice": 40.83,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "380*85（ 四排孔）",
+        "unit": "块",
+        "price": "22",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 40,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "335*335",
+      "unit": "块",
+      "unitPrice": 74.24,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "335*335",
+        "unit": "块",
+        "price": "40",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 41,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "335*335（四排孔）",
+      "unit": "块",
+      "unitPrice": 77.95,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "335*335（ 四排孔）",
+        "unit": "块",
+        "price": "42",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 42,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "335*335（洞洞板）",
+      "unit": "块",
+      "unitPrice": 141.06,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "335*335（洞洞板）",
+        "unit": "块",
+        "price": "76",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 43,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "335*285",
+      "unit": "块",
+      "unitPrice": 70.53,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "335*285",
+        "unit": "块",
+        "price": "38",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 44,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "335*285（四排孔）",
+      "unit": "块",
+      "unitPrice": 74.24,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "335*285（四排孔）",
+        "unit": "块",
+        "price": "40",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 45,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "335*235",
+      "unit": "块",
+      "unitPrice": 64.96,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "335*235",
+        "unit": "块",
+        "price": "35",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 46,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "335*235（四排孔）",
+      "unit": "块",
+      "unitPrice": 68.67,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "335*235（ 四排孔）",
+        "unit": "块",
+        "price": "37",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 47,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "335*160",
+      "unit": "块",
+      "unitPrice": 48.26,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "335*160",
+        "unit": "块",
+        "price": "26",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 48,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "335*160（四排孔）",
+      "unit": "块",
+      "unitPrice": 51.97,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "335*160( 四排孔)",
+        "unit": "块",
+        "price": "28",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 49,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "335*135",
+      "unit": "块",
+      "unitPrice": 44.54,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "335*135",
+        "unit": "块",
+        "price": "24",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 50,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "335*85",
+      "unit": "块",
+      "unitPrice": 35.26,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "335*85",
+        "unit": "块",
+        "price": "19",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 51,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "335*85（四排孔）",
+      "unit": "块",
+      "unitPrice": 38.98,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "335*85（ 四排孔）",
+        "unit": "块",
+        "price": "21",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 52,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "285*285",
+      "unit": "块",
+      "unitPrice": 55.68,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "285*285",
+        "unit": "块",
+        "price": "30",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 53,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "285*160",
+      "unit": "块",
+      "unitPrice": 48.26,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "285*160",
+        "unit": "块",
+        "price": "26",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 54,
+      "page": 1,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "235*235",
+      "unit": "块",
+      "unitPrice": 40.83,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "235*235",
+        "unit": "块",
+        "price": "22",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 55,
+      "page": 2,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "235*235（四排孔）",
+      "unit": "块",
+      "unitPrice": 44.54,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "235*235（ 四排孔）",
+        "unit": "块",
+        "price": "24",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 56,
+      "page": 2,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "235*160",
+      "unit": "块",
+      "unitPrice": 29.7,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "235*160",
+        "unit": "块",
+        "price": "16",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 57,
+      "page": 2,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "235*135",
+      "unit": "块",
+      "unitPrice": 27.84,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "235*135",
+        "unit": "块",
+        "price": "15",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 58,
+      "page": 2,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "235*85",
+      "unit": "块",
+      "unitPrice": 25.98,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "235*85",
+        "unit": "块",
+        "price": "14",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 59,
+      "page": 2,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "135*135",
+      "unit": "块",
+      "unitPrice": 24.13,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "135*135",
+        "unit": "块",
+        "price": "13",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 60,
+      "page": 2,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "135*85",
+      "unit": "块",
+      "unitPrice": 22.27,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "135*85",
+        "unit": "块",
+        "price": "12",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 61,
+      "page": 2,
+      "name": "扣板",
+      "canonicalName": "panel",
+      "spec": "85*85",
+      "unit": "块",
+      "unitPrice": 18.56,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板",
+        "spec": "85*85",
+        "unit": "块",
+        "price": "10",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 62,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "735*485",
+      "unit": "块",
+      "unitPrice": 269.12,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "735*485",
+        "unit": "块",
+        "price": "145",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 63,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "735*380",
+      "unit": "块",
+      "unitPrice": 204.16,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "735*380",
+        "unit": "块",
+        "price": "110",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 64,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "735*335",
+      "unit": "块",
+      "unitPrice": 185.6,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "735*335",
+        "unit": "块",
+        "price": "100",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 65,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "735*285",
+      "unit": "块",
+      "unitPrice": 167.04,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "735*285",
+        "unit": "块",
+        "price": "90",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 66,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "735*235",
+      "unit": "块",
+      "unitPrice": 148.48,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "735*235",
+        "unit": "块",
+        "price": "80",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 67,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "735*160",
+      "unit": "块",
+      "unitPrice": 135.49,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "735*160",
+        "unit": "块",
+        "price": "73",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 68,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "735*135",
+      "unit": "块",
+      "unitPrice": 128.06,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "735*135",
+        "unit": "块",
+        "price": "69",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 69,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "735*85",
+      "unit": "块",
+      "unitPrice": 126.21,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "735*85",
+        "unit": "块",
+        "price": "68",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 70,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "580*485",
+      "unit": "块",
+      "unitPrice": 206.02,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "580*485",
+        "unit": "块",
+        "price": "111",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 71,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "580*380",
+      "unit": "块",
+      "unitPrice": 181.89,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "580*380",
+        "unit": "块",
+        "price": "98",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 72,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "580*335",
+      "unit": "块",
+      "unitPrice": 167.04,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "580*335",
+        "unit": "块",
+        "price": "90",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 73,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "580*285",
+      "unit": "块",
+      "unitPrice": 148.48,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "580*285",
+        "unit": "块",
+        "price": "80",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 74,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "580*235",
+      "unit": "块",
+      "unitPrice": 129.92,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "580*235",
+        "unit": "块",
+        "price": "70",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 75,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "580*160",
+      "unit": "块",
+      "unitPrice": 126.21,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "580*160",
+        "unit": "块",
+        "price": "68",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 76,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "580*85",
+      "unit": "块",
+      "unitPrice": 120.64,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "580*85",
+        "unit": "块",
+        "price": "65",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 77,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "485*485",
+      "unit": "块",
+      "unitPrice": 167.04,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "485*485",
+        "unit": "块",
+        "price": "90",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 78,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "485*380",
+      "unit": "块",
+      "unitPrice": 154.05,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "485*380",
+        "unit": "块",
+        "price": "83",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 79,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "485*335",
+      "unit": "块",
+      "unitPrice": 141.06,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "485*335",
+        "unit": "块",
+        "price": "76",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 80,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "485*285",
+      "unit": "块",
+      "unitPrice": 129.92,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "485*285",
+        "unit": "块",
+        "price": "70",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 81,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "485*235",
+      "unit": "块",
+      "unitPrice": 124.35,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "485*235",
+        "unit": "块",
+        "price": "67",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 82,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "485*160",
+      "unit": "块",
+      "unitPrice": 111.36,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "485*160",
+        "unit": "块",
+        "price": "60",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 83,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "485*85",
+      "unit": "块",
+      "unitPrice": 92.8,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "485*85",
+        "unit": "块",
+        "price": "50",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 84,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "380*380",
+      "unit": "块",
+      "unitPrice": 126.21,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "380*380",
+        "unit": "块",
+        "price": "68",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 85,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "380*335",
+      "unit": "块",
+      "unitPrice": 118.78,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "380*335",
+        "unit": "块",
+        "price": "64",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 86,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "380*285",
+      "unit": "块",
+      "unitPrice": 115.07,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "380*285",
+        "unit": "块",
+        "price": "62",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 87,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "380*235",
+      "unit": "块",
+      "unitPrice": 111.36,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "380*235",
+        "unit": "块",
+        "price": "60",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 88,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "380*160",
+      "unit": "块",
+      "unitPrice": 74.24,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "380*160",
+        "unit": "块",
+        "price": "40",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 89,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "380*85",
+      "unit": "块",
+      "unitPrice": 70.53,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "380*85",
+        "unit": "块",
+        "price": "38",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 90,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "335*335",
+      "unit": "块",
+      "unitPrice": 111.36,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "335*335",
+        "unit": "块",
+        "price": "60",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 91,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "335*235",
+      "unit": "块",
+      "unitPrice": 102.08,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "335*235",
+        "unit": "块",
+        "price": "55",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 92,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "335*160",
+      "unit": "块",
+      "unitPrice": 96.51,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "335*160",
+        "unit": "块",
+        "price": "52",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 93,
+      "page": 2,
+      "name": "门板",
+      "canonicalName": "doorPanel",
+      "spec": "335*135",
+      "unit": "块",
+      "unitPrice": 83.52,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "门板",
+        "spec": "335*135",
+        "unit": "块",
+        "price": "45",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 94,
+      "page": 2,
+      "name": "SU201",
+      "canonicalName": "tube201",
+      "spec": "19*732",
+      "unit": "条",
+      "unitPrice": 29.7,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "SU201",
+        "spec": "19*732",
+        "unit": "条",
+        "price": "电镀：16",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 95,
+      "page": 2,
+      "name": "SU201",
+      "canonicalName": "tube201",
+      "spec": "19*577",
+      "unit": "条",
+      "unitPrice": 27.84,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "SU201",
+        "spec": "19*577",
+        "unit": "条",
+        "price": "电镀：15",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 96,
+      "page": 2,
+      "name": "SU201",
+      "canonicalName": "tube201",
+      "spec": "19*482",
+      "unit": "条",
+      "unitPrice": 20.42,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "SU201",
+        "spec": "19*482",
+        "unit": "条",
+        "price": "电镀：11",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 97,
+      "page": 2,
+      "name": "SU201",
+      "canonicalName": "tube201",
+      "spec": "19*377",
+      "unit": "条",
+      "unitPrice": 18.56,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "SU201",
+        "spec": "19*377",
+        "unit": "条",
+        "price": "电镀：10",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 98,
+      "page": 2,
+      "name": "SU201",
+      "canonicalName": "tube201",
+      "spec": "19*332",
+      "unit": "条",
+      "unitPrice": 16.7,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "SU201",
+        "spec": "19*332",
+        "unit": "条",
+        "price": "电镀：9",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 99,
+      "page": 2,
+      "name": "SU201",
+      "canonicalName": "tube201",
+      "spec": "19*282",
+      "unit": "条",
+      "unitPrice": 14.85,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "SU201",
+        "spec": "19*282",
+        "unit": "条",
+        "price": "电镀：8",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 100,
+      "page": 2,
+      "name": "SU201",
+      "canonicalName": "tube201",
+      "spec": "19*232",
+      "unit": "条",
+      "unitPrice": 12.99,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "SU201",
+        "spec": "19*232",
+        "unit": "条",
+        "price": "电镀：7",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 101,
+      "page": 2,
+      "name": "SU201",
+      "canonicalName": "tube201",
+      "spec": "19*157",
+      "unit": "条",
+      "unitPrice": 11.14,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "SU201",
+        "spec": "19*157",
+        "unit": "条",
+        "price": "电镀：6",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 102,
+      "page": 2,
+      "name": "SU201",
+      "canonicalName": "tube201",
+      "spec": "19*82",
+      "unit": "条",
+      "unitPrice": 10.21,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "SU201",
+        "spec": "19*82",
+        "unit": "条",
+        "price": "电镀：5.5",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 103,
+      "page": 2,
+      "name": "SU304",
+      "canonicalName": "tube304",
+      "spec": "19*732",
+      "unit": "条",
+      "unitPrice": 37.12,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "SU304",
+        "spec": "19*732",
+        "unit": "条",
+        "price": "电镀：20",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 104,
+      "page": 2,
+      "name": "SU304",
+      "canonicalName": "tube304",
+      "spec": "19*577",
+      "unit": "条",
+      "unitPrice": 33.41,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "SU304",
+        "spec": "19*577",
+        "unit": "条",
+        "price": "电镀：18",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 105,
+      "page": 2,
+      "name": "SU304",
+      "canonicalName": "tube304",
+      "spec": "19*482",
+      "unit": "条",
+      "unitPrice": 25.06,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "SU304",
+        "spec": "19*482",
+        "unit": "条",
+        "price": "电镀：13.5",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 106,
+      "page": 2,
+      "name": "SU304",
+      "canonicalName": "tube304",
+      "spec": "19*377",
+      "unit": "条",
+      "unitPrice": 22.27,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "SU304",
+        "spec": "19*377",
+        "unit": "条",
+        "price": "电镀：12",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 107,
+      "page": 3,
+      "name": "SU304",
+      "canonicalName": "tube304",
+      "spec": "19*332",
+      "unit": "条",
+      "unitPrice": 20.42,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "SU304",
+        "spec": "19*332",
+        "unit": "条",
+        "price": "电镀：11",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 108,
+      "page": 3,
+      "name": "SU304",
+      "canonicalName": "tube304",
+      "spec": "19*282",
+      "unit": "条",
+      "unitPrice": 18.56,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "SU304",
+        "spec": "19*282",
+        "unit": "条",
+        "price": "电镀：10",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 109,
+      "page": 3,
+      "name": "SU304",
+      "canonicalName": "tube304",
+      "spec": "19*232",
+      "unit": "条",
+      "unitPrice": 14.85,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "SU304",
+        "spec": "19*232",
+        "unit": "条",
+        "price": "电镀：8",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 110,
+      "page": 3,
+      "name": "SU304",
+      "canonicalName": "tube304",
+      "spec": "19*157",
+      "unit": "条",
+      "unitPrice": 12.99,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "SU304",
+        "spec": "19*157",
+        "unit": "条",
+        "price": "电镀：7",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 111,
+      "page": 3,
+      "name": "SU304",
+      "canonicalName": "tube304",
+      "spec": "19*82",
+      "unit": "条",
+      "unitPrice": 11.14,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "SU304",
+        "spec": "19*82",
+        "unit": "条",
+        "price": "电镀：6",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 112,
+      "page": 3,
+      "name": "SU201/304",
+      "canonicalName": "spliceOvalTube",
+      "spec": "拼接-椭圆管",
+      "unit": "条",
+      "unitPrice": "X+1",
+      "pricingRule": "baseMatchedTubePrice + 1",
+      "note": "对应尺寸基础加收1元/条",
+      "raw": {
+        "productName": "SU201/304",
+        "spec": "拼接-椭圆管",
+        "unit": "条",
+        "price": "X+1",
+        "note": "对应尺寸基础加收1元/条"
+      }
+    },
+    {
+      "sourceRow": 113,
+      "page": 3,
+      "name": "黄铜球",
+      "canonicalName": "brassBall",
+      "spec": "",
+      "unit": "颗",
+      "unitPrice": 14.85,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "黄铜球",
+        "spec": "",
+        "unit": "颗",
+        "price": "8",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 114,
+      "page": 3,
+      "name": "膨胀套件",
+      "canonicalName": "expansionSet",
+      "spec": "",
+      "unit": "套",
+      "unitPrice": 5.57,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "膨胀套件",
+        "spec": "",
+        "unit": "套",
+        "price": "3",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 115,
+      "page": 3,
+      "name": "脚轮",
+      "canonicalName": "caster",
+      "spec": "",
+      "unit": "个",
+      "unitPrice": 15.78,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "脚轮",
+        "spec": "",
+        "unit": "个",
+        "price": "8.5",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 116,
+      "page": 3,
+      "name": "脚垫",
+      "canonicalName": "glide",
+      "spec": "",
+      "unit": "个",
+      "unitPrice": 3.34,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "脚垫",
+        "spec": "",
+        "unit": "个",
+        "price": "1.8",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 117,
+      "page": 3,
+      "name": "下翻门铰链",
+      "canonicalName": "dropDoorHinge",
+      "spec": "常用",
+      "unit": "只",
+      "unitPrice": 61.25,
+      "pricingRule": null,
+      "note": "1只已含弹簧+五金件；1个门板需用2只",
+      "raw": {
+        "productName": "下 翻门铰链",
+        "spec": "常用",
+        "unit": "只",
+        "price": "33",
+        "note": "1只已含弹簧+五金件；1个门板需用2只"
+      }
+    },
+    {
+      "sourceRow": 118,
+      "page": 3,
+      "name": "阻尼器",
+      "canonicalName": "damper",
+      "spec": "",
+      "unit": "个",
+      "unitPrice": 12.99,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "阻尼器",
+        "spec": "",
+        "unit": "个",
+        "price": "7",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 119,
+      "page": 3,
+      "name": "一元锁+锁盒",
+      "canonicalName": "coinLockBox",
+      "spec": "",
+      "unit": "套",
+      "unitPrice": 37.12,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "一元锁+锁盒",
+        "spec": "",
+        "unit": "套",
+        "price": "20",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 120,
+      "page": 3,
+      "name": "钥匙锁+锁盒",
+      "canonicalName": "keyLockBox",
+      "spec": "",
+      "unit": "套",
+      "unitPrice": 46.4,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "钥匙锁+锁盒",
+        "spec": "",
+        "unit": "套",
+        "price": "25",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 121,
+      "page": 3,
+      "name": "层板",
+      "canonicalName": "shelfPanel",
+      "spec": "",
+      "unit": "块",
+      "unitPrice": 278.4,
+      "pricingRule": null,
+      "note": "含五金固定件*8",
+      "raw": {
+        "productName": "层板",
+        "spec": "",
+        "unit": "块",
+        "price": "150",
+        "note": "含五金固定件*8"
+      }
+    },
+    {
+      "sourceRow": 122,
+      "page": 3,
+      "name": "托盘",
+      "canonicalName": "tray",
+      "spec": "",
+      "unit": "套",
+      "unitPrice": 501.12,
+      "pricingRule": null,
+      "note": "滑轨*2，边板*2，五金配件",
+      "raw": {
+        "productName": "托盘",
+        "spec": "",
+        "unit": "套",
+        "price": "270",
+        "note": "滑轨*2，边板*2；五金配件"
+      }
+    },
+    {
+      "sourceRow": 123,
+      "page": 3,
+      "name": "抽屉",
+      "canonicalName": "drawer",
+      "spec": "低/高",
+      "unit": "套",
+      "unitPrice": 649.6,
+      "pricingRule": null,
+      "note": "滑轨*2，围板*4，含T型件*2，边板*2，五金配件",
+      "raw": {
+        "productName": "抽屉",
+        "spec": "低/高",
+        "unit": "套",
+        "price": "350",
+        "note": "滑轨*2，围板*4，含T型件*2，边板*2；五金配 件"
+      }
+    },
+    {
+      "sourceRow": 124,
+      "page": 3,
+      "name": "T型件",
+      "canonicalName": "tFitting",
+      "spec": "",
+      "unit": "个",
+      "unitPrice": 27.84,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "T型件",
+        "spec": "",
+        "unit": "个",
+        "price": "15",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 125,
+      "page": 3,
+      "name": "不锈钢拉手",
+      "canonicalName": "stainlessHandle",
+      "spec": "门用",
+      "unit": "个",
+      "unitPrice": 167.04,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "不锈钢拉手",
+        "spec": "门用",
+        "unit": "个",
+        "price": "90",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 126,
+      "page": 3,
+      "name": "玻璃",
+      "canonicalName": "glass",
+      "spec": "",
+      "unit": "方",
+      "unitPrice": 408.32,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "玻璃",
+        "spec": "",
+        "unit": "方",
+        "price": "220",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 127,
+      "page": 3,
+      "name": "玻璃拉手",
+      "canonicalName": "glassHandle",
+      "spec": "",
+      "unit": "个",
+      "unitPrice": 27.84,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "玻璃拉手",
+        "spec": "",
+        "unit": "个",
+        "price": "15",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 128,
+      "page": 3,
+      "name": "玻璃夹",
+      "canonicalName": "glassClip",
+      "spec": "",
+      "unit": "个",
+      "unitPrice": 12.99,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "玻璃夹",
+        "spec": "",
+        "unit": "个",
+        "price": "7",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 129,
+      "page": 3,
+      "name": "玻璃门转",
+      "canonicalName": "glassDoorPivotSet",
+      "spec": "一只门要用一套（4只）",
+      "unit": "套",
+      "unitPrice": 59.39,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "玻璃门转",
+        "spec": "一只门要用一套（4只）",
+        "unit": "套",
+        "price": "32",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 130,
+      "page": 3,
+      "name": "扣板门转",
+      "canonicalName": "panelDoorPivotSet",
+      "spec": "一只门要用一套（4只）",
+      "unit": "套",
+      "unitPrice": 59.39,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "扣板门转",
+        "spec": "一只门要用一套（4只）",
+        "unit": "套",
+        "price": "32",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 131,
+      "page": 3,
+      "name": "国内标准木箱",
+      "canonicalName": "domesticWoodCrate",
+      "spec": "",
+      "unit": "方",
+      "unitPrice": 371.2,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "国内标准木箱",
+        "spec": "",
+        "unit": "方",
+        "price": "200",
+        "note": ""
+      }
+    },
+    {
+      "sourceRow": 132,
+      "page": 3,
+      "name": "海外标准木箱",
+      "canonicalName": "exportWoodCrate",
+      "spec": "",
+      "unit": "方",
+      "unitPrice": 464,
+      "pricingRule": null,
+      "note": "",
+      "raw": {
+        "productName": "海外标准木箱",
+        "spec": "",
+        "unit": "方",
+        "price": "250",
+        "note": ""
+      }
+    }
+  ]
+}

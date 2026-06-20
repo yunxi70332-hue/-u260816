@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { getCdpWaitOptionsFromEnv, prepareCdpWaitTracking, waitForCdpLoadState } from "./cdp-wait-state.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,6 +19,7 @@ const outputDir = path.join(rootDir, "output", "offline");
 const userDataDir = path.join(outputDir, "cdp-profile");
 const screenshotPath = path.join(outputDir, "offline-cdp.png");
 const port = 9224;
+const waitOptions = getCdpWaitOptionsFromEnv();
 
 fs.mkdirSync(outputDir, { recursive: true });
 
@@ -57,6 +59,7 @@ try {
   await cdp.send("Runtime.enable");
   await cdp.send("Log.enable");
   await cdp.send("Page.enable");
+  await prepareCdpWaitTracking(cdp);
 
   const events = [];
   cdp.on("Runtime.consoleAPICalled", (event) => {
@@ -69,7 +72,8 @@ try {
     events.push(`${event.entry.level}: ${event.entry.text}`);
   });
 
-  await delay(5000);
+  await cdp.send("Page.reload", { ignoreCache: true });
+  await waitForCdpLoadState(cdp, waitOptions);
 
   const state = await cdp.evaluate(`(() => {
     const canvas = document.querySelector('canvas');
@@ -97,7 +101,7 @@ try {
   const screenshot = await cdp.send("Page.captureScreenshot", { format: "png" });
   fs.writeFileSync(screenshotPath, Buffer.from(screenshot.data, "base64"));
 
-  console.log(JSON.stringify({ url, state, events, stderr: stderr.join("").slice(0, 2000), screenshotPath }, null, 2));
+  console.log(JSON.stringify({ url, waitOptions, state, events, stderr: stderr.join("").slice(0, 2000), screenshotPath }, null, 2));
   cdp.close();
 } finally {
   chrome.kill("SIGKILL");

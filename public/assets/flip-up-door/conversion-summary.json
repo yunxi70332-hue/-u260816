@@ -1,0 +1,668 @@
+{
+  "frontDwgRead": {
+    "source": "C:\\Users\\Administrator\\Desktop\\上翻门3D.dwg",
+    "dxf": "E:\\Tools\\DWG\\work\\read-dwg-8060c1a06f8f4507a8e18c8b59ba33ec\\上翻门3D.dxf",
+    "layerCount": 7,
+    "layers": [
+      {
+        "name": "0",
+        "color": "     7",
+        "linetype": "Continuous"
+      },
+      {
+        "name": "chrom",
+        "color": "     9",
+        "linetype": "Continuous"
+      },
+      {
+        "name": "Part with no material",
+        "color": "    18",
+        "linetype": "Continuous"
+      },
+      {
+        "name": "Metall verzinkt",
+        "color": "     8",
+        "linetype": "Continuous"
+      },
+      {
+        "name": "reinweiss",
+        "color": "   254",
+        "linetype": "Continuous"
+      },
+      {
+        "name": "plastik schwarz",
+        "color": "   250",
+        "linetype": "Continuous"
+      },
+      {
+        "name": "transparent",
+        "color": "     7",
+        "linetype": "Continuous"
+      }
+    ],
+    "entityCounts": {
+      "INSERT": 39
+    },
+    "textCountReturned": 0,
+    "texts": [],
+    "blockDefinitionCountReturned": 39,
+    "insertsByBlock": {
+      "griff_normal_19HIY99": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "griff_normal_19HIY99",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "stdklemmhalter_19HIY99": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "stdklemmhalter_19HIY99",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "stdklemmhalter_19HIY991": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "stdklemmhalter_19HIY991",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "stdklemmhalter_19HIY992": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "stdklemmhalter_19HIY992",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "stdklemmhalter_19HIY993": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "stdklemmhalter_19HIY993",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "einschubtuergelenk_l_19HIY99": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "einschubtuergelenk_l_19HIY99",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "einschubtuerhalter_19HIY99": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "einschubtuerhalter_19HIY99",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "einschubtuergelenk_r_19HIY99": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "einschubtuergelenk_r_19HIY99",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "einschubtuerhalter_19HIY991": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "einschubtuerhalter_19HIY991",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "einschubtuer350_19HIY99": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "einschubtuer350_19HIY99",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "hallerfuss_19HIY99": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "hallerfuss_19HIY99",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "hallerfuss_19HIY991": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "hallerfuss_19HIY991",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "hallerfuss_19HIY992": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "hallerfuss_19HIY992",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "hallerfuss_19HIY993": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "hallerfuss_19HIY993",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "blech350_750_19HIY99": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "blech350_750_19HIY99",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "blech350_750_19HIY991": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "blech350_750_19HIY991",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "blech350_350_19HIY99": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "blech350_350_19HIY99",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "blech350_350_19HIY991": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "blech350_350_19HIY991",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr350_19HIY99": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr350_19HIY99",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr350_19HIY991": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr350_19HIY991",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr350_19HIY992": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr350_19HIY992",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr350_19HIY993": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr350_19HIY993",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "blech350_750_19HIY992": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "blech350_750_19HIY992",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr750_19HIY99": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr750_19HIY99",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr750_19HIY991": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr750_19HIY991",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr750_19HIY992": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr750_19HIY992",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr750_19HIY993": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr750_19HIY993",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "kugel_std_19HIY99": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "kugel_std_19HIY99",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "kugel_std_19HIY991": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "kugel_std_19HIY991",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr350_19HIY994": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr350_19HIY994",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "kugel_std_19HIY992": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "kugel_std_19HIY992",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "kugel_std_19HIY993": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "kugel_std_19HIY993",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr350_19HIY995": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr350_19HIY995",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr350_19HIY996": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr350_19HIY996",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "kugel_std_19HIY994": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "kugel_std_19HIY994",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "kugel_std_19HIY995": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "kugel_std_19HIY995",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr350_19HIY997": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr350_19HIY997",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "kugel_std_19HIY996": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "kugel_std_19HIY996",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "kugel_std_19HIY997": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "kugel_std_19HIY997",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      }
+    }
+  },
+  "front2dDwgRead": {
+    "source": "C:\\Users\\Administrator\\Desktop\\上翻门2D.dwg",
+    "dxf": "E:\\Tools\\DWG\\work\\read-dwg-6aede4258b214b2cb19ee531c5e48cb7\\上翻门2D.dxf",
+    "layerCount": 4,
+    "layers": [
+      {
+        "name": "0",
+        "color": "     7",
+        "linetype": "Continuous"
+      },
+      {
+        "name": "72_USM_HALLER_D2_GRAFIK_SCHRAFFUR",
+        "color": "     7",
+        "linetype": "Continuous"
+      },
+      {
+        "name": "72_USM_HALLER_D2_GRAFIK_LINIEN",
+        "color": "     5",
+        "linetype": "Continuous"
+      },
+      {
+        "name": "72_USM_INSERT",
+        "color": "     7",
+        "linetype": "Continuous"
+      }
+    ],
+    "entityCounts": {
+      "INSERT": 9
+    },
+    "textCountReturned": 0,
+    "texts": [],
+    "blockDefinitionCountReturned": 4,
+    "insertsByBlock": {
+      "kugel.dwg-  1": {
+        "count": 4,
+        "samples": [
+          {
+            "name": "kugel.dwg-  1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          },
+          {
+            "name": "kugel.dwg-  1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          },
+          {
+            "name": "kugel.dwg-  1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          },
+          {
+            "name": "kugel.dwg-  1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr_750_horiz.dwg-  1": {
+        "count": 2,
+        "samples": [
+          {
+            "name": "rohr_750_horiz.dwg-  1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          },
+          {
+            "name": "rohr_750_horiz.dwg-  1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr_350_vertic.dwg-  1": {
+        "count": 2,
+        "samples": [
+          {
+            "name": "rohr_350_vertic.dwg-  1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          },
+          {
+            "name": "rohr_350_vertic.dwg-  1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "volume_750_350.dwg-  1": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "volume_750_350.dwg-  1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      }
+    }
+  },
+  "frontDxfEntityCounts": {
+    "INSERT": 39
+  },
+  "front2dDxfEntityCounts": {
+    "INSERT": 9
+  },
+  "frontDxfLayers": [
+    "0",
+    "chrom",
+    "Part with no material",
+    "Metall verzinkt",
+    "reinweiss",
+    "plastik schwarz",
+    "transparent",
+    "Defpoints"
+  ],
+  "front2dDxfLayers": [
+    "0",
+    "72_USM_HALLER_D2_GRAFIK_SCHRAFFUR",
+    "72_USM_HALLER_D2_GRAFIK_LINIEN",
+    "72_USM_INSERT",
+    "Defpoints"
+  ],
+  "assetFiles": [
+    "flip-up-door-assembly.glb",
+    "panel.glb",
+    "lock.glb",
+    "hinges.glb"
+  ],
+  "recursiveInsertExpansion": true
+}

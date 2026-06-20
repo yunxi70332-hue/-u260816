@@ -1,0 +1,641 @@
+{
+  "frameDwgRead": {
+    "source": "C:\\Users\\Fox-OS\\Desktop\\dwg文件合集\\392e2df6-537d-41a9-8317-095ae1d9ace7.dwg",
+    "format": "dwgread-json-compact",
+    "createdBy": "LibreDWG 0.13.4",
+    "version": "AC1015",
+    "objectCount": 10630,
+    "subclassCounts": {
+      "AcDbBlockBegin": 59,
+      "AcDbBlockEnd": 59,
+      "AcDbBlockReference": 77,
+      "AcDbCellStyleMap": 1,
+      "AcDbDictionaryWithDefault": 1,
+      "AcDbDimStyleTable": 1,
+      "AcDbFace": 10189,
+      "AcDbLayout": 3,
+      "AcDbMLeaderStyle": 1,
+      "AcDbMaterial": 3,
+      "AcDbMlineStyle": 1,
+      "AcDbScale": 33,
+      "AcDbSun": 1,
+      "AcDbTableStyle": 1,
+      "AcDbVXTable": 1,
+      "AcDbVisualStyle": 24,
+      "DictionaryVariables": 10
+    },
+    "blockDefinitionCountReturned": 59,
+    "targetBlockNames": [
+      "kugel_std_15KC3LS",
+      "kugel_std_15KC3LS1",
+      "kugel_std_15KC3LS2",
+      "kugel_std_15KC3LS3",
+      "kugel_std_15KC3LS4",
+      "kugel_std_15KC3LS5",
+      "kugel_std_15KC3LS6",
+      "kugel_std_15KC3LS7",
+      "rohr350_15KC3LS",
+      "rohr350_15KC3LS1",
+      "rohr350_15KC3LS2",
+      "rohr350_15KC3LS3",
+      "rohr350_15KC3LS4",
+      "rohr350_15KC3LS5",
+      "rohr350_15KC3LS6",
+      "rohr350_15KC3LS7",
+      "rohr750_15KC3LS",
+      "rohr750_15KC3LS1",
+      "rohr750_15KC3LS2",
+      "rohr750_15KC3LS3"
+    ],
+    "targetInsertNames": {}
+  },
+  "frameDwgLayers": [
+    "0",
+    "chrom",
+    "Part with no material",
+    "reinweiss",
+    "Metall verzinkt",
+    "plastik schwarz"
+  ],
+  "frameDxfEntityCounts": {
+    "INSERT": 41,
+    "3DFACE": 256
+  },
+  "frameDxfLayers": [
+    "0",
+    "chrom",
+    "Part with no material",
+    "reinweiss",
+    "Metall verzinkt",
+    "plastik schwarz",
+    "Defpoints"
+  ],
+  "validationSources": [
+    {
+      "path": "C:\\Users\\Fox-OS\\Desktop\\dwg文件合集\\sec.dwg",
+      "sha256": "6a9998705e5889a7f20df4ce59849b9d0ddfd6101acaf7b02cf085f1ccd9093a",
+      "layers": [
+        "0",
+        "chrom",
+        "Part with no material",
+        "goldgelb",
+        "Metall verzinkt",
+        "plastik schwarz"
+      ],
+      "blocks": {
+        "rohr350": {
+          "blockCount": 8,
+          "sampleBlocks": [
+            "rohr350_15LH9XX",
+            "rohr350_15LH9XX1",
+            "rohr350_15LH9XX2",
+            "rohr350_15LH9XX3",
+            "rohr350_15LH9XX4",
+            "rohr350_15LH9XX5",
+            "rohr350_15LH9XX6",
+            "rohr350_15LH9XX7"
+          ],
+          "insertNames": [
+            [
+              "GeometrySelector_15LH9XX12",
+              8
+            ]
+          ],
+          "entityCounts": {
+            "3DFACE": 768
+          },
+          "bboxSize": [
+            1.9,
+            33.034,
+            1.9
+          ]
+        },
+        "rohr750": {
+          "blockCount": 4,
+          "sampleBlocks": [
+            "rohr750_15LH9XX",
+            "rohr750_15LH9XX1",
+            "rohr750_15LH9XX2",
+            "rohr750_15LH9XX3"
+          ],
+          "insertNames": [
+            [
+              "GeometrySelector_15LH9XX13",
+              4
+            ]
+          ],
+          "entityCounts": {
+            "3DFACE": 384
+          },
+          "bboxSize": [
+            1.9,
+            73.034,
+            1.9
+          ]
+        },
+        "kugel_std": {
+          "blockCount": 8,
+          "sampleBlocks": [
+            "kugel_std_15LH9XX",
+            "kugel_std_15LH9XX1",
+            "kugel_std_15LH9XX2",
+            "kugel_std_15LH9XX3",
+            "kugel_std_15LH9XX4",
+            "kugel_std_15LH9XX5",
+            "kugel_std_15LH9XX6",
+            "kugel_std_15LH9XX7"
+          ],
+          "insertNames": [
+            [
+              "GeometrySelector_15LH9XX14",
+              8
+            ]
+          ],
+          "entityCounts": {
+            "3DFACE": 11520
+          },
+          "bboxSize": [
+            2.339595,
+            2.339595,
+            2.339595
+          ]
+        }
+      }
+    },
+    {
+      "path": "C:\\Users\\Fox-OS\\Desktop\\dwg文件合集\\xiafan1.dwg",
+      "sha256": "caeeeed9a7524650e449f083f23a2656c01226f05036bf17744fd6e80f98d890",
+      "layers": [
+        "0",
+        "chrom",
+        "Part with no material",
+        "Metall verzinkt",
+        "reinweiss",
+        "transparent",
+        "plastik schwarz"
+      ],
+      "blocks": {
+        "rohr350": {
+          "blockCount": 8,
+          "sampleBlocks": [
+            "rohr350_15MV7NM",
+            "rohr350_15MV7NM1",
+            "rohr350_15MV7NM2",
+            "rohr350_15MV7NM3",
+            "rohr350_15MV7NM4",
+            "rohr350_15MV7NM5",
+            "rohr350_15MV7NM6",
+            "rohr350_15MV7NM7"
+          ],
+          "insertNames": [
+            [
+              "GeometrySelector_15MV7NM12",
+              8
+            ]
+          ],
+          "entityCounts": {
+            "3DFACE": 768
+          },
+          "bboxSize": [
+            1.9,
+            33.034,
+            1.9
+          ]
+        },
+        "rohr750": {
+          "blockCount": 4,
+          "sampleBlocks": [
+            "rohr750_15MV7NM",
+            "rohr750_15MV7NM1",
+            "rohr750_15MV7NM2",
+            "rohr750_15MV7NM3"
+          ],
+          "insertNames": [
+            [
+              "GeometrySelector_15MV7NM13",
+              4
+            ]
+          ],
+          "entityCounts": {
+            "3DFACE": 384
+          },
+          "bboxSize": [
+            1.9,
+            73.034,
+            1.9
+          ]
+        },
+        "kugel_std": {
+          "blockCount": 8,
+          "sampleBlocks": [
+            "kugel_std_15MV7NM",
+            "kugel_std_15MV7NM1",
+            "kugel_std_15MV7NM2",
+            "kugel_std_15MV7NM3",
+            "kugel_std_15MV7NM4",
+            "kugel_std_15MV7NM5",
+            "kugel_std_15MV7NM6",
+            "kugel_std_15MV7NM7"
+          ],
+          "insertNames": [
+            [
+              "GeometrySelector_15MV7NM14",
+              8
+            ]
+          ],
+          "entityCounts": {
+            "3DFACE": 11520
+          },
+          "bboxSize": [
+            2.339595,
+            2.339595,
+            2.339595
+          ]
+        }
+      }
+    },
+    {
+      "path": "C:\\Users\\Fox-OS\\Desktop\\dwg文件合集\\xiafan2.dwg",
+      "sha256": "684d9bbcfc05d090a4dcdbe8db00bd6cf82698b3498ef8b73bd3942eaefc4d12",
+      "layers": [
+        "0",
+        "chrom",
+        "Part with no material",
+        "Metall verzinkt",
+        "reinweiss",
+        "transparent",
+        "plastik schwarz"
+      ],
+      "blocks": {
+        "rohr350": {
+          "blockCount": 8,
+          "sampleBlocks": [
+            "rohr350_15MVTJY",
+            "rohr350_15MVTJY1",
+            "rohr350_15MVTJY2",
+            "rohr350_15MVTJY3",
+            "rohr350_15MVTJY4",
+            "rohr350_15MVTJY5",
+            "rohr350_15MVTJY6",
+            "rohr350_15MVTJY7"
+          ],
+          "insertNames": [
+            [
+              "GeometrySelector_15MVTJY12",
+              8
+            ]
+          ],
+          "entityCounts": {
+            "3DFACE": 768
+          },
+          "bboxSize": [
+            1.9,
+            33.034,
+            1.9
+          ]
+        },
+        "rohr750": {
+          "blockCount": 4,
+          "sampleBlocks": [
+            "rohr750_15MVTJY",
+            "rohr750_15MVTJY1",
+            "rohr750_15MVTJY2",
+            "rohr750_15MVTJY3"
+          ],
+          "insertNames": [
+            [
+              "GeometrySelector_15MVTJY13",
+              4
+            ]
+          ],
+          "entityCounts": {
+            "3DFACE": 384
+          },
+          "bboxSize": [
+            1.9,
+            73.034,
+            1.9
+          ]
+        },
+        "kugel_std": {
+          "blockCount": 8,
+          "sampleBlocks": [
+            "kugel_std_15MVTJY",
+            "kugel_std_15MVTJY1",
+            "kugel_std_15MVTJY2",
+            "kugel_std_15MVTJY3",
+            "kugel_std_15MVTJY4",
+            "kugel_std_15MVTJY5",
+            "kugel_std_15MVTJY6",
+            "kugel_std_15MVTJY7"
+          ],
+          "insertNames": [
+            [
+              "GeometrySelector_15MVTJY14",
+              8
+            ]
+          ],
+          "entityCounts": {
+            "3DFACE": 11520
+          },
+          "bboxSize": [
+            2.339595,
+            2.339595,
+            2.339595
+          ]
+        }
+      }
+    },
+    {
+      "path": "C:\\Users\\Fox-OS\\Desktop\\dwg文件合集\\xiafan3.dwg",
+      "sha256": "a2d3c8c95c6efa3637cca4be76e8eac3fa94117bf58b40f381e2b0f73d65b212",
+      "layers": [
+        "0",
+        "chrom",
+        "Part with no material",
+        "Metall verzinkt",
+        "reinweiss",
+        "transparent",
+        "plastik schwarz"
+      ],
+      "blocks": {
+        "rohr350": {
+          "blockCount": 8,
+          "sampleBlocks": [
+            "rohr350_15MW9A7",
+            "rohr350_15MW9A71",
+            "rohr350_15MW9A72",
+            "rohr350_15MW9A73",
+            "rohr350_15MW9A74",
+            "rohr350_15MW9A75",
+            "rohr350_15MW9A76",
+            "rohr350_15MW9A77"
+          ],
+          "insertNames": [
+            [
+              "GeometrySelector_15MW9A712",
+              8
+            ]
+          ],
+          "entityCounts": {
+            "3DFACE": 768
+          },
+          "bboxSize": [
+            1.9,
+            33.034,
+            1.9
+          ]
+        },
+        "rohr750": {
+          "blockCount": 4,
+          "sampleBlocks": [
+            "rohr750_15MW9A7",
+            "rohr750_15MW9A71",
+            "rohr750_15MW9A72",
+            "rohr750_15MW9A73"
+          ],
+          "insertNames": [
+            [
+              "GeometrySelector_15MW9A713",
+              4
+            ]
+          ],
+          "entityCounts": {
+            "3DFACE": 384
+          },
+          "bboxSize": [
+            1.9,
+            73.034,
+            1.9
+          ]
+        },
+        "kugel_std": {
+          "blockCount": 8,
+          "sampleBlocks": [
+            "kugel_std_15MW9A7",
+            "kugel_std_15MW9A71",
+            "kugel_std_15MW9A72",
+            "kugel_std_15MW9A73",
+            "kugel_std_15MW9A74",
+            "kugel_std_15MW9A75",
+            "kugel_std_15MW9A76",
+            "kugel_std_15MW9A77"
+          ],
+          "insertNames": [
+            [
+              "GeometrySelector_15MW9A714",
+              8
+            ]
+          ],
+          "entityCounts": {
+            "3DFACE": 11520
+          },
+          "bboxSize": [
+            2.339595,
+            2.339595,
+            2.339595
+          ]
+        }
+      }
+    },
+    {
+      "path": "C:\\Users\\Fox-OS\\Desktop\\dwg文件合集\\gudin4.dwg",
+      "sha256": "b3630ac81ec212b724908875738e2190681478f89b2e655301e6ae859032e5e0",
+      "layers": [
+        "0",
+        "chrom",
+        "Part with no material",
+        "Metall verzinkt",
+        "reinweiss",
+        "plastik schwarz"
+      ],
+      "blocks": {
+        "rohr350": {
+          "blockCount": 8,
+          "sampleBlocks": [
+            "rohr350_15NN322",
+            "rohr350_15NN3221",
+            "rohr350_15NN3222",
+            "rohr350_15NN3223",
+            "rohr350_15NN3224",
+            "rohr350_15NN3225",
+            "rohr350_15NN3226",
+            "rohr350_15NN3227"
+          ],
+          "insertNames": [
+            [
+              "GeometrySelector_15NN3223",
+              8
+            ]
+          ],
+          "entityCounts": {
+            "3DFACE": 768
+          },
+          "bboxSize": [
+            1.9,
+            33.034,
+            1.9
+          ]
+        },
+        "rohr750": {
+          "blockCount": 4,
+          "sampleBlocks": [
+            "rohr750_15NN322",
+            "rohr750_15NN3221",
+            "rohr750_15NN3222",
+            "rohr750_15NN3223"
+          ],
+          "insertNames": [
+            [
+              "GeometrySelector_15NN3224",
+              4
+            ]
+          ],
+          "entityCounts": {
+            "3DFACE": 384
+          },
+          "bboxSize": [
+            1.9,
+            73.034,
+            1.9
+          ]
+        },
+        "kugel_std": {
+          "blockCount": 8,
+          "sampleBlocks": [
+            "kugel_std_15NN322",
+            "kugel_std_15NN3221",
+            "kugel_std_15NN3222",
+            "kugel_std_15NN3223",
+            "kugel_std_15NN3224",
+            "kugel_std_15NN3225",
+            "kugel_std_15NN3226",
+            "kugel_std_15NN3227"
+          ],
+          "insertNames": [
+            [
+              "GeometrySelector_15NN3225",
+              8
+            ]
+          ],
+          "entityCounts": {
+            "3DFACE": 11520
+          },
+          "bboxSize": [
+            2.339595,
+            2.339595,
+            2.339595
+          ]
+        }
+      }
+    },
+    {
+      "path": "C:\\Users\\Fox-OS\\Desktop\\dwg文件合集\\gudin5.dwg",
+      "sha256": "245f496e0bf282d258a12e86e30210f9562fc864fdba30b0ee1808377cd30f16",
+      "layers": [
+        "0",
+        "chrom",
+        "Part with no material",
+        "Metall verzinkt",
+        "reinweiss",
+        "plastik schwarz"
+      ],
+      "blocks": {
+        "rohr350": {
+          "blockCount": 8,
+          "sampleBlocks": [
+            "rohr350_15NNF70",
+            "rohr350_15NNF701",
+            "rohr350_15NNF702",
+            "rohr350_15NNF703",
+            "rohr350_15NNF704",
+            "rohr350_15NNF705",
+            "rohr350_15NNF706",
+            "rohr350_15NNF707"
+          ],
+          "insertNames": [
+            [
+              "GeometrySelector_15NNF703",
+              8
+            ]
+          ],
+          "entityCounts": {
+            "3DFACE": 768
+          },
+          "bboxSize": [
+            1.9,
+            33.034,
+            1.9
+          ]
+        },
+        "rohr750": {
+          "blockCount": 4,
+          "sampleBlocks": [
+            "rohr750_15NNF70",
+            "rohr750_15NNF701",
+            "rohr750_15NNF702",
+            "rohr750_15NNF703"
+          ],
+          "insertNames": [
+            [
+              "GeometrySelector_15NNF704",
+              4
+            ]
+          ],
+          "entityCounts": {
+            "3DFACE": 384
+          },
+          "bboxSize": [
+            1.9,
+            73.034,
+            1.9
+          ]
+        },
+        "kugel_std": {
+          "blockCount": 8,
+          "sampleBlocks": [
+            "kugel_std_15NNF70",
+            "kugel_std_15NNF701",
+            "kugel_std_15NNF702",
+            "kugel_std_15NNF703",
+            "kugel_std_15NNF704",
+            "kugel_std_15NNF705",
+            "kugel_std_15NNF706",
+            "kugel_std_15NNF707"
+          ],
+          "insertNames": [
+            [
+              "GeometrySelector_15NNF705",
+              8
+            ]
+          ],
+          "entityCounts": {
+            "3DFACE": 11520
+          },
+          "bboxSize": [
+            2.339595,
+            2.339595,
+            2.339595
+          ]
+        }
+      }
+    }
+  ],
+  "reference2d": {
+    "path": "C:\\Users\\Fox-OS\\Desktop\\dwg文件合集\\2D_USM_export.dwg",
+    "sha256": "a4a406c9b614d0f84294f58f8a0e78637b560ec8bc755420a07a2cd39d5f2af4",
+    "layers": [
+      "0",
+      "72_USM_HALLER_D2_GRAFIK_SCHRAFFUR",
+      "72_USM_HALLER_D2_GRAFIK_LINIEN",
+      "72_USM_INSERT"
+    ],
+    "usage": "2D layer and structure reference only; not used for generated 3D frame geometry."
+  },
+  "assetFiles": [
+    "tube-350.glb",
+    "tube-750.glb",
+    "ball.glb"
+  ],
+  "recursiveInsertExpansion": true
+}

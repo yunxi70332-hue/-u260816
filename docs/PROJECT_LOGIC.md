@@ -50,10 +50,29 @@ interface CabinetConfig {
   columnWidths: number[];
   rowHeights: number[];
   panelColor: string;
+  colorScope: "all" | "single";
   frameFinish: "chrome" | "graphite";
-  feet: "glides" | "casters";
+  feet: "glides" | "caster-low" | "caster-high";
+  structureMode: "complete" | "noFront" | "noPanels" | "frameOnly";
   showDimensions: boolean;
   cells: CellConfig[][];
+  workSurfaces: WorkSurfaceConfig[];
+}
+
+interface WorkSurfaceConfig {
+  id: string;
+  kind: "deskTop" | "bridgeTop";
+  fromColumn: number;
+  toColumn: number;
+  row: number;
+  depth: number;
+  thickness: number;
+  overhangFront: number;
+  overhangBack: number;
+  overhangLeft: number;
+  overhangRight: number;
+  color?: string;
+  enabled: boolean;
 }
 ```
 
@@ -65,8 +84,10 @@ interface CabinetConfig {
 - `panelColor`：板件颜色
 - `frameFinish`：钢管表面，镀铬或石墨
 - `feet`：脚垫或滚轮
+- `structureMode`：完整、隐藏正面、仅开放格、全框架的批量显示模式
 - `showDimensions`：是否显示尺寸标注
 - `cells`：二维格子配置，行列对应每个模块格
+- `workSurfaces`：跨格台面/桌面配置，独立于单个格子，不占用某个格子的前脸
 
 单元格类型：
 
@@ -125,7 +146,7 @@ type CellKind = "open" | "back" | "drop" | "drawer" | "glass" | "tray";
 列数和层数限制：
 
 - 最少 1
-- 最多 5
+- 最多 10
 
 增加列或层时：
 
@@ -202,7 +223,7 @@ const SCALE = 0.004;
 
 | 类型 | 3D 表现 |
 | --- | --- |
-| 开放格 | 底板/开放空间 |
+| 开放格 | 纯框架/开放空间 |
 | 背板格 | 背板加底板 |
 | 下翻门 | 前门板、拉手、黄色角标 |
 | 三抽屉 | 三块抽屉面板和拉手 |
@@ -242,16 +263,25 @@ BOM 由 `buildBom(config)` 生成。
 - 横向钢管按每列宽度、每层边界、前后两侧计算
 - 竖向钢管按每层高度、每列边界、前后两侧计算
 - 深度钢管按深度、所有边界连接点计算
+- 膨胀螺丝 = 全部钢管数量 * 2
 - 脚垫/滚轮按底部支撑点计算
-- 不同格子类型增加对应板件和五金
+- 工厂 BOM 优先输出可下料细项，不再把下翻门默认合并成单个组件
+
+工厂板件规则：
+
+- `金属扣板` 合并水平扣板和需要金属背面的背板；水平扣板按物理水平板线去重，同一层分隔线只算一次。
+- `外板` 指柜体左右最外侧单面侧板；数量按需要封侧的层数 * 左右两侧计算。
+- `内板` 指左右相邻模块共用的安装面；只有该位置需要安装铰链、抽屉、托盘或内部配件时才计入，一处共享板只算 1 张。
+- 开放格默认只参与水平扣板线；不因为中间有分隔线就自动生成内板。
 
 不同格子的 BOM 增量：
 
-- 背板格：金属背板
-- 下翻门：金属背板、下翻门板、门铰链五金
+- 背板格：金属扣板规格中增加背板数量
+- 下翻门：下翻门门板、一元锁、锁盒+螺丝、下翻门铰链、铰链螺丝、L型金属件、L型垫片、月牙扣
 - 三抽屉：抽屉面板、抽屉导轨
 - 玻璃门：玻璃门、玻璃铰链五金
-- 托盘格：金属背板、内托盘
+- 托盘格：触发内板安装面，按具体配件增加托盘和导轨
+- 跨格桌面：按 `workSurfaces` 的实际列跨度、深度、厚度和出沿生成桌面板
 
 价格由 `estimatePrice(config)` 计算：
 
@@ -351,3 +381,65 @@ usm-bom.csv
 5. 增加工厂 BOM 格式
 6. 打包成 Windows exe
 7. 加入更真实的 USM 材质和零件模型
+
+## 13. 配件逻辑 0.2 入口
+
+配件搭配规则以 `docs/USM_ACCESSORY_LOGIC_MAP.md` 为准。
+
+新口径：
+
+- 结构层要放开，支持异形、错层、局部缺格、不同深度、书桌面和跨格台面。
+- 工厂 BOM 尺寸可以自定义，非官方尺寸不直接灰显。
+- 配件层仍按官方公开搭配逻辑校验：前脸互斥、导轨安装面、玻璃搁板金属 panel 支撑、门/抽屉/托盘开合路径等。
+- UI 状态拆为 `officialExact`、`officialLogicCustomSize`、`needsHardwareCheck`、`blocked`，只有真实结构冲突才禁用。
+
+已落地的第一阶段：
+
+- `src/model.ts` 增加配件四态评估：官方规格、工厂定制尺寸、五金确认、逻辑冲突。
+- 结构元素和带围边抽屉按钮会显示对应状态；自定义尺寸显示为定制或确认，不直接禁用。
+- 网格上限提升到 10 列 / 10 层，继续使用 `enabled=false` 表达局部缺格异形结构。
+- 单格已支持局部深度覆盖：全柜深度作为默认值，选中格可以单独改深度；BOM、外部尺寸、配件评估和 3D 布局会优先使用该格深度。
+- 快速结构增加“阶梯异形”和“书桌单元”预设，作为后续 topology graph 的入口。
+- `CabinetConfig.workSurfaces` 已支持跨格桌面/桥接台面；`书桌单元` 预设会生成 2500 x 640 x 32 mm 的跨格桌面。
+- `buildBom(config)`、外部尺寸和 3D 相机包围盒已纳入跨格桌面；`BuilderScene.tsx` 会渲染桌面厚板和边线。
+- 配件评估已加入玻璃 shell 初筛：玻璃侧板/玻璃箱体不是金属安装面，普通下翻门、上翻门、侧开门、移动托盘、固定托盘和普通层板会禁用；玻璃搁板保留为夹件/五金确认。
+- 配件评估已加入台面路径初筛：上翻门撞台面禁用；移动托盘/带围边抽屉在台面下方按高度、出沿进入禁用或五金确认；下翻门按书桌方向允许但提示限位和开合半径确认。
+- 内部已加入整柜“生产校验”函数，不参与报价，也不在前端单独展示；它用于脚本门禁和后续出厂 BOM 审核，只判断当前 3D 配置能不能在生产中成立。
+- 生产校验会扫描当前已选配件，而不是只看候选按钮。例如玻璃箱体本身不是硬冲突，但内部报告会提示它只能按展示格生产，后续不能直接叠加普通下翻门、移动托盘或固定托盘；如果当前格已经是低高度移动托盘，则内部报告会进入硬冲突。
+
+可运行验证：
+
+- `npm.cmd run export:logic-matrix` 会生成 `docs/USM_ACCESSORY_LOGIC_MATRIX.json`，作为产品逻辑导图到前端按钮状态、BOM 标注、禁用原因的中间矩阵。
+- `npm.cmd run verify:logic` 会验证下翻门基础逻辑、移动托盘与固定托盘分流、带围边抽屉高度、玻璃箱体禁装下翻门/托盘/导轨、自定义尺寸状态、阶梯异形缺格、逻辑矩阵关键状态、整柜生产校验报告，以及门/托盘/抽屉/玻璃箱体之间的替换后数据清理。书桌 BOM 金额与台面路径断言暂时跳过，等书桌模型重做后恢复。
+
+## 14. 经销商报价源 0.3 入口
+
+材料报价表已经作为可替换变量接入，不再把经销商价格写死在产品结构逻辑里。
+
+默认报价源：
+
+- `src/data/simple-home-price-source.json`
+- 来源：`Simple Home 简居家具 / 配件报价表`
+- 行数：132 行
+- 说明文档：`docs/DEALER_PRICE_SOURCE.md`
+
+相关代码：
+
+- `src/pricing.ts` 负责把 `buildBom(config)` 的 BOM 行匹配到经销商报价源。
+- `src/App.tsx` 的 BOM 页签支持导入报价源、导出报价源、恢复默认报价。
+- `scripts/extract-dealer-price-pdf.py` 负责从当前 PDF 报价表生成报价源 JSON。
+- `scripts/verify-price-source.mjs` 验证报价表行数、核心术语和 BOM 匹配结果。
+
+报价状态：
+
+- `sourceExact`：BOM 行直接命中报价表单行。
+- `sourceComposite`：BOM 行按报价表多行组合计价，例如下翻门组件。
+- `sourceFormula`：BOM 行按公式计价，例如玻璃面积。
+- `fallback`：报价源暂时没有匹配项，保留模型默认估算价。
+
+可运行验证：
+
+- `npm.cmd run verify:pricing` 验证默认报价源和关键 BOM 计价。
+- `npm.cmd run build` 验证前端能带默认报价源正常构建。
+
+后续换经销商时，优先导出当前报价源 JSON 作为模板，调整 `dealerName`、价格和备注，再从 BOM 页签导入。只要保持材料 `canonicalName` 稳定，产品配件逻辑不需要改。

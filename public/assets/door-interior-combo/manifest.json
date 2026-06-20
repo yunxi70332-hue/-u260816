@@ -1,0 +1,320 @@
+{
+  "id": "usm-door-interior-combo-dwg",
+  "description": "Official DWG baseline for one drop-door front coexisting with mobile tray interior accessories.",
+  "sourceFiles": {
+    "combo3d": {
+      "path": "C:\\Users\\Administrator\\Desktop\\红色配件下翻门存在时候可以新加移动托盘配件3D.dwg",
+      "sha256": "8183decc9a0e31a6ab80a0e4b7771949201127ddb5ab5f2978daf79d2d9fa27e"
+    },
+    "combo2d": {
+      "path": "C:\\Users\\Administrator\\Desktop\\红色配件下翻门存在时候可以新加移动托盘配件2D.dwg",
+      "sha256": "5b6cd6c15855d6434e23a7885c6f6e156e9b41e1777af2b522bb6d123002cf18"
+    }
+  },
+  "generatedFiles": {
+    "mobileTraySingle": "mobile-tray-single.glb",
+    "mobileTrayRailsSingle": "mobile-tray-rails-single.glb",
+    "assembly": "drop-door-mobile-tray-assembly.glb",
+    "dropDoor": "drop-door.glb",
+    "mobileTray": "mobile-tray.glb",
+    "mobileTrayRails": "mobile-tray-rails.glb",
+    "combo3dDxf": "dxf/door-interior-combo-3d.dxf",
+    "combo2dDxf": "dxf/door-interior-combo-2d.dxf"
+  },
+  "blocks": {
+    "dropDoorPanel": {
+      "prefixes": [
+        "tuerelement750_350"
+      ],
+      "insertNames": [
+        [
+          "tuerelement750_350_1BD8XMC",
+          1
+        ]
+      ],
+      "insertCount": 1,
+      "entityCounts": {
+        "3DFACE": 72
+      },
+      "bbox": {
+        "min": [
+          -63.739322,
+          -51.460527,
+          2.48599
+        ],
+        "max": [
+          9.705078,
+          -18.382643,
+          9.839062
+        ],
+        "size": [
+          73.4444,
+          33.077884,
+          7.353072
+        ]
+      }
+    },
+    "dropDoorLock": {
+      "prefixes": [
+        "griff_normal"
+      ],
+      "insertNames": [
+        [
+          "griff_normal_1BD8XMC",
+          1
+        ]
+      ],
+      "insertCount": 1,
+      "entityCounts": {
+        "3DFACE": 7235
+      },
+      "bbox": {
+        "min": [
+          -29.017122,
+          -49.896583,
+          5.41644
+        ],
+        "max": [
+          -25.017132,
+          -45.870381,
+          8.078261
+        ],
+        "size": [
+          3.99999,
+          4.026202,
+          2.661822
+        ]
+      }
+    },
+    "dropDoorHardware": {
+      "prefixes": [
+        "stdklemmhalter"
+      ],
+      "insertNames": [
+        [
+          "stdklemmhalter_1BD8XMC",
+          1
+        ],
+        [
+          "stdklemmhalter_1BD8XMC1",
+          1
+        ],
+        [
+          "stdklemmhalter_1BD8XMC10",
+          1
+        ],
+        [
+          "stdklemmhalter_1BD8XMC11",
+          1
+        ],
+        [
+          "stdklemmhalter_1BD8XMC12",
+          1
+        ],
+        [
+          "stdklemmhalter_1BD8XMC13",
+          1
+        ],
+        [
+          "stdklemmhalter_1BD8XMC14",
+          1
+        ],
+        [
+          "stdklemmhalter_1BD8XMC15",
+          1
+        ],
+        [
+          "stdklemmhalter_1BD8XMC2",
+          1
+        ],
+        [
+          "stdklemmhalter_1BD8XMC3",
+          1
+        ],
+        [
+          "stdklemmhalter_1BD8XMC4",
+          1
+        ],
+        [
+          "stdklemmhalter_1BD8XMC5",
+          1
+        ],
+        [
+          "stdklemmhalter_1BD8XMC6",
+          1
+        ],
+        [
+          "stdklemmhalter_1BD8XMC7",
+          1
+        ],
+        [
+          "stdklemmhalter_1BD8XMC8",
+          1
+        ],
+        [
+          "stdklemmhalter_1BD8XMC9",
+          1
+        ]
+      ],
+      "insertCount": 16,
+      "entityCounts": {
+        "3DFACE": 896
+      },
+      "bbox": {
+        "min": [
+          -65.138622,
+          -16.625,
+          3.875
+        ],
+        "max": [
+          11.104378,
+          16.625,
+          27.85
+        ],
+        "size": [
+          76.243,
+          33.25,
+          23.975
+        ]
+      }
+    },
+    "mobileTray": {
+      "prefixes": [
+        "ausziehtablar750_350"
+      ],
+      "insertNames": [
+        [
+          "ausziehtablar750_350_1BD8XMC",
+          1
+        ],
+        [
+          "ausziehtablar750_350_1BD8XMC1",
+          1
+        ]
+      ],
+      "insertCount": 2,
+      "entityCounts": {
+        "3DFACE": 52
+      },
+      "bbox": {
+        "min": [
+          -62.408622,
+          -30.511475,
+          16.699999
+        ],
+        "max": [
+          8.374378,
+          6.770119,
+          28.5
+        ],
+        "size": [
+          70.783,
+          37.281594,
+          11.800001
+        ]
+      }
+    },
+    "mobileTraySideAngles": {
+      "prefixes": [
+        "tablarseitenwinkel350_l",
+        "tablarseitenwinkel350_r"
+      ],
+      "insertNames": [
+        [
+          "tablarseitenwinkel350_l_1BD8XMC",
+          1
+        ],
+        [
+          "tablarseitenwinkel350_l_1BD8XMC1",
+          1
+        ],
+        [
+          "tablarseitenwinkel350_r_1BD8XMC",
+          1
+        ],
+        [
+          "tablarseitenwinkel350_r_1BD8XMC1",
+          1
+        ]
+      ],
+      "insertCount": 4,
+      "entityCounts": {
+        "3DFACE": 32
+      },
+      "bbox": {
+        "min": [
+          -63.158622,
+          -30.061475,
+          17.099999
+        ],
+        "max": [
+          9.124378,
+          6.220119,
+          30.1
+        ],
+        "size": [
+          72.283,
+          36.281594,
+          13.000001
+        ]
+      }
+    },
+    "mobileTrayLockRod": {
+      "prefixes": [
+        "sperrstange_90"
+      ],
+      "insertNames": [
+        [
+          "sperrstange_90_1BD8XMC",
+          1
+        ],
+        [
+          "sperrstange_90_1BD8XMC1",
+          1
+        ]
+      ],
+      "insertCount": 2,
+      "entityCounts": {
+        "3DFACE": 384
+      },
+      "bbox": {
+        "min": [
+          -64.217122,
+          14.8,
+          18.9
+        ],
+        "max": [
+          10.482878,
+          15.8,
+          26.1
+        ],
+        "size": [
+          74.7,
+          1.0,
+          7.2
+        ]
+      }
+    }
+  },
+  "coexistenceRule": {
+    "frontAccessoryMax": 1,
+    "frontAccessories": [
+      "dropDoor",
+      "flipUpDoor",
+      "glassDropDoor"
+    ],
+    "interiorAccessories": [
+      "mobileTray",
+      "shelf",
+      "displayTray",
+      "glassShelf"
+    ],
+    "ordinaryInteriorMultiple": true,
+    "rimmedDrawerExclusive": true
+  },
+  "coordinateMapping": {
+    "dwgX": "sceneX",
+    "dwgZ": "sceneY from selected template bounds",
+    "dwgY": "sceneZ, flipped so front face is positive"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "id": "drop-door-realistic-hinge",
+  "sourceFiles": {
+    "referencePhoto": {
+      "path": "C:\\Users\\Fox-OS\\Desktop\\铰链3D渲染资料\\铰链照片.jpg",
+      "projectCopy": "hinge-reference-photo.jpg"
+    },
+    "motionVideo": {
+      "path": "C:\\Users\\Fox-OS\\Desktop\\铰链3D渲染资料\\铰链实物开合动作效果视频.mp4",
+      "usedFor": "open-close motion reference"
+    }
+  },
+  "generatedFiles": {
+    "productRender": "hinge-product-render.png",
+    "desktopVerification": "hinge-viewer-desktop.png",
+    "mobileVerification": "hinge-viewer-mobile.png"
+  },
+  "defaultOpenStates": {
+    "closed": 0,
+    "half": 0.52,
+    "open": 1
+  },
+  "modelNotes": {
+    "implementation": "Procedural Three.js model shared by the cabinet drop-door hinge and the detail viewer.",
+    "visualTargets": [
+      "galvanized long arm with rounded circular end",
+      "black damper housing",
+      "visible extension spring",
+      "moving linkage bars",
+      "screw heads and pivot pins",
+      "mounting plate relationship to drop-door movement"
+    ],
+    "precision": "Photo-real visual reference only; not factory CAD or production hole-position accurate."
+  }
+}

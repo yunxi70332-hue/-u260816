@@ -1,4 +1,4 @@
-import {
+﻿import {
   Box,
   Camera,
   Check,
@@ -20,57 +20,105 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ACCESSORY_CATEGORIES, ACCESSORY_REQUIREMENTS } from "./accessoryCatalog";
-import { BuilderScene } from "./BuilderScene";
+import { BuilderScene, type SelectedAccessory } from "./BuilderScene";
+import {
+  DEFAULT_DEALER_PRICE_SOURCE,
+  estimatePricedBom,
+  priceBomItems,
+  normalizeDealerPriceSource,
+  summarizePriceMatches,
+  type DealerPriceSource,
+  type PricedBomItem
+} from "./pricing";
 import {
   CELL_OPTIONS,
-  CELL_FITTING_OPTIONS,
   COLOR_OPTIONS,
   DEFAULT_CONFIG,
   DEPTH_OPTIONS,
-  DOOR_ACCESSORY_OPTIONS,
-  DOOR_OPEN_STATE_OPTIONS,
+  EIGHTCOLORS_CATALOG_PRESETS,
   FEET_OPTIONS,
+  FRONT_ACCESSORY_OPTIONS,
   HEIGHT_OPTIONS,
+  INTERIOR_ACCESSORY_OPTIONS,
   MAX_CUSTOM_SIZE,
   MIN_CUSTOM_SIZE,
   STRUCTURE_MODE_OPTIONS,
+  STRUCTURE_FRAME_OPTIONS,
+  STRUCTURE_PANEL_MATERIAL_OPTIONS,
+  STRUCTURE_PANEL_OPTIONS,
+  STRUCTURE_VERTEX_OPTIONS,
   WIDTH_OPTIONS,
+  ACCESSORY_STATUS_META,
   applyStructureMode,
   buildBom,
+  createDeskPreset,
+  createKitchenIslandPreset,
   createPreset,
+  createSquareCoffeeTablePreset,
+  createSteppedPreset,
   deleteCell,
-  estimatePrice,
+  evaluateCellFitting,
+  evaluateCellFrontAccessory,
+  evaluateCellKind,
+  evaluateCellInteriorAccessory,
   expandCell,
   findNearestEnabled,
   fittingCompatible,
   formatRmb,
+  getCellConfig,
   getCellColor,
+  getCellDepth,
+  getDepthSegments,
   getDimensions,
-  isDoorCellKind,
+  getEffectiveStructureFrameVisible,
+  getEffectiveStructurePanelMaterial,
+  getEffectiveStructureVertexVisible,
+  getSelectionDepthIndex,
   isCellEnabled,
+  isDoorCellKind,
   normalizeConfig,
+  resetCellStructure,
   resizeColumns,
+  resizeDepthSegments,
   resizeRows,
+  addCellInteriorAccessory,
+  removeCellInteriorAccessory,
   setCellColor,
-  setCellDoor,
   setCellFitting,
+  setCellFrontAccessory,
+  setCellInteriorAccessoryPull,
   setCellKind,
+  setGlassDoorHandleSide,
+  setCellStructureFrameVisible,
+  setCellStructurePanel,
+  setCellStructureVertexVisible,
   setDrawerPull,
-  setDoorState,
+  setDoorOpen,
   setDepth,
   setPanelColor,
+  setSelectedCellDepth,
+  setSelectedDepthSegmentSize,
   setSelectedColumnWidth,
   setSelectedRowHeight,
+  updateCellInteriorAccessory,
   type CabinetConfig,
   type CellConfig,
+  type CellInteriorAccessoryKind,
   type CellKind,
-  type DoorAccessoryKind,
-  type DoorOpenState,
+  type CellFrontAccessoryKind,
+  type GlassDoorHandleSide,
   type Selection,
+  type AccessoryEvaluation,
+  type AccessoryStatus,
+  type StructureFrameKey,
+  type StructurePanelKey,
+  type StructurePanelMaterial,
+  type StructureVertexKey,
   type TabKey
 } from "./model";
 
 const STORAGE_KEY = "usm-local-builder-config";
+const PRICE_SOURCE_STORAGE_KEY = "usm-local-builder-price-source";
 
 interface SceneApi {
   capturePng: () => string;
@@ -83,30 +131,49 @@ const tabs: Array<{ id: TabKey; label: string; icon: React.ComponentType<{ size?
   { id: "bom", label: "BOM", icon: ClipboardList }
 ];
 
+const GLASS_DOOR_HANDLE_OPTIONS: Array<{ id: GlassDoorHandleSide; label: string }> = [
+  { id: "left", label: "左把手" },
+  { id: "right", label: "右把手" }
+];
+
 export default function App() {
   const [config, setConfig] = useState<CabinetConfig>(() => loadConfig());
   const [selection, setSelection] = useState<Selection>(() => findNearestEnabled(loadConfig()));
+  const [selectedAccessory, setSelectedAccessory] = useState<SelectedAccessory>(null);
   const [history, setHistory] = useState<CabinetConfig[]>([]);
   const [tab, setTab] = useState<TabKey>("structure");
   const [toast, setToast] = useState("");
+  const [priceSource, setPriceSource] = useState<DealerPriceSource>(() => loadPriceSource());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const priceSourceInputRef = useRef<HTMLInputElement>(null);
   const sceneApiRef = useRef<SceneApi | null>(null);
 
   const bom = useMemo(() => buildBom(config), [config]);
-  const price = useMemo(() => estimatePrice(config), [config]);
+  const pricedBom = useMemo(() => priceBomItems(bom, priceSource), [bom, priceSource]);
+  const price = useMemo(() => estimatePricedBom(pricedBom), [pricedBom]);
+  const priceSummary = useMemo(() => summarizePriceMatches(pricedBom), [pricedBom]);
   const dimensions = useMemo(() => getDimensions(config), [config]);
   const activeSelection = useMemo(() => findNearestEnabled(config, selection), [config, selection]);
-  const selectedCell = config.cells[activeSelection.row]?.[activeSelection.column] ?? config.cells[0][0];
+  const selectedCell = getCellConfig(config, activeSelection) ?? config.cells[0]?.[0];
+  const selectedAccessoryForScene = selectedAccessory;
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
   }, [config]);
 
   useEffect(() => {
+    window.localStorage.setItem(PRICE_SOURCE_STORAGE_KEY, JSON.stringify(priceSource));
+  }, [priceSource]);
+
+  useEffect(() => {
     if (!toast) return;
     const timer = window.setTimeout(() => setToast(""), 1800);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  useEffect(() => {
+    if (selectedAccessory && !selectedAccessoryForScene) setSelectedAccessory(null);
+  }, [selectedAccessory, selectedAccessoryForScene]);
 
   const updateConfig = useCallback((next: CabinetConfig | ((current: CabinetConfig) => CabinetConfig), remember = true) => {
     setConfig((current) => {
@@ -118,16 +185,53 @@ export default function App() {
     });
   }, []);
 
+  const handleDrawerPull = useCallback((target: Selection, value: number, remember = true, interiorAccessoryId?: string) => {
+    updateConfig((current) => (
+      interiorAccessoryId
+        ? setCellInteriorAccessoryPull(current, target, interiorAccessoryId, value)
+        : setDrawerPull(current, target, value)
+    ), remember);
+    if (interiorAccessoryId) {
+      const bounded = {
+        row: Math.max(0, Math.min(target.row, config.rowHeights.length - 1)),
+        column: Math.max(0, Math.min(target.column, config.columnWidths.length - 1)),
+        depthIndex: Math.max(0, Math.min(target.depthIndex ?? 0, getDepthSegments(config).length - 1))
+      };
+      window.setTimeout(() => {
+        const active = findNearestEnabled(config, bounded);
+        setSelection(active);
+        setSelectedAccessory({ cell: active, accessoryId: interiorAccessoryId });
+      }, 120);
+    }
+  }, [config, updateConfig]);
+
+  const handleDoorOpen = useCallback((target: Selection, value: number, remember = true) => {
+    updateConfig((current) => setDoorOpen(current, target, value), remember);
+  }, [updateConfig]);
+
   const selectCell = useCallback((next: Selection | null) => {
+    setSelectedAccessory(null);
     if (!next) {
       setSelection(findNearestEnabled(config));
       return;
     }
     const bounded = {
       row: Math.max(0, Math.min(next.row, config.rowHeights.length - 1)),
-      column: Math.max(0, Math.min(next.column, config.columnWidths.length - 1))
+      column: Math.max(0, Math.min(next.column, config.columnWidths.length - 1)),
+      depthIndex: Math.max(0, Math.min(next.depthIndex ?? 0, getDepthSegments(config).length - 1))
     };
     setSelection(findNearestEnabled(config, bounded));
+  }, [config]);
+
+  const selectAccessory = useCallback((target: Selection, accessoryId: string) => {
+    const bounded = {
+      row: Math.max(0, Math.min(target.row, config.rowHeights.length - 1)),
+      column: Math.max(0, Math.min(target.column, config.columnWidths.length - 1)),
+      depthIndex: Math.max(0, Math.min(target.depthIndex ?? 0, getDepthSegments(config).length - 1))
+    };
+    const active = findNearestEnabled(config, bounded);
+    setSelection(active);
+    setSelectedAccessory({ cell: active, accessoryId });
   }, [config]);
 
   function handleRows(delta: number) {
@@ -183,8 +287,12 @@ export default function App() {
   }
 
   function applyPreset(columns: number, rows: number, kind: CellKind = "metalBackModule") {
-    updateConfig(createPreset(columns, rows, kind));
-    setSelection({ row: 0, column: 0 });
+    applyConfigPreset(createPreset(columns, rows, kind));
+  }
+
+  function applyConfigPreset(next: CabinetConfig) {
+    updateConfig(next);
+    setSelection(findNearestEnabled(next));
   }
 
   function exportJson() {
@@ -194,10 +302,20 @@ export default function App() {
 
   function exportBom() {
     const lines = [
-      ["名称", "规格", "数量", "单位", "单价", "小计"],
-      ...bom.map((item) => [item.name, item.spec, String(item.qty), item.unit, String(item.unitPrice), String(item.qty * item.unitPrice)])
+      ["名称", "规格", "数量", "单位", "单价", "小计", "价格来源", "来源行", "价格备注"],
+      ...pricedBom.map((item) => [
+        item.name,
+        item.spec,
+        String(item.qty),
+        item.unit,
+        String(item.unitPrice),
+        String(item.qty * item.unitPrice),
+        priceStatusLabel(item.priceStatus),
+        item.priceSourceRows.join("+"),
+        item.priceNote
+      ])
     ];
-    downloadFile("usm-bom.csv", lines.map((line) => line.join(",")).join("\n"), "text/csv;charset=utf-8");
+    downloadFile("usm-bom.csv", lines.map((line) => line.map(csvCell).join(",")).join("\n"), "text/csv;charset=utf-8");
     setToast("BOM 已导出");
   }
 
@@ -210,6 +328,31 @@ export default function App() {
     };
     downloadFile("usm-accessory-requirements.json", JSON.stringify(payload, null, 2), "application/json");
     setToast("配件需求清单已导出");
+  }
+
+  function exportPriceSource() {
+    downloadFile(`${priceSource.id || "dealer-price-source"}.json`, JSON.stringify(priceSource, null, 2), "application/json");
+    setToast("报价源已导出");
+  }
+
+  function importPriceSource(file: File | null) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const next = normalizeDealerPriceSource(JSON.parse(String(reader.result)));
+        setPriceSource(next);
+        setToast("报价源已导入");
+      } catch {
+        setToast("报价源导入失败");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function resetPriceSource() {
+    setPriceSource(DEFAULT_DEALER_PRICE_SOURCE);
+    setToast("已恢复默认报价源");
   }
 
   function exportImage() {
@@ -240,7 +383,7 @@ export default function App() {
 
   function resetConfig() {
     updateConfig(DEFAULT_CONFIG);
-    setSelection({ row: 0, column: 0 });
+    setSelection({ row: 0, column: 0, depthIndex: 0 });
     setToast("已重置");
   }
 
@@ -297,29 +440,57 @@ export default function App() {
                 config={config}
                 selection={activeSelection}
                 selectedKind={selectedCell?.kind ?? "open"}
-                selectedDoor={selectedCell?.door ?? "none"}
-                selectedDoorState={selectedCell?.doorState ?? "half"}
                 onDepth={(depth) => updateConfig((current) => setDepth(current, depth))}
+                onDepthSegments={(count) => updateConfig((current) => resizeDepthSegments(current, count))}
+                onDepthSegmentSize={(depth) => activeSelection ? updateConfig((current) => setSelectedDepthSegmentSize(current, activeSelection, depth)) : undefined}
+                onCellDepth={(depth) => activeSelection ? updateConfig((current) => setSelectedCellDepth(current, activeSelection, depth)) : undefined}
                 onWidth={(width) => activeSelection ? updateConfig((current) => setSelectedColumnWidth(current, activeSelection, width)) : undefined}
                 onHeight={(height) => activeSelection ? updateConfig((current) => setSelectedRowHeight(current, activeSelection, height)) : undefined}
                 onRows={handleRows}
                 onColumns={handleColumns}
                 onCellKind={(kind) => activeSelection ? updateConfig((current) => setCellKind(current, activeSelection, kind)) : undefined}
-                onDoorState={(doorState) => activeSelection ? updateConfig((current) => setDoorState(current, activeSelection, doorState)) : undefined}
+                onStructurePanel={(panel, material) => activeSelection ? updateConfig((current) => setCellStructurePanel(current, activeSelection, panel, material)) : undefined}
+                onStructureFrame={(frame, visible) => activeSelection ? updateConfig((current) => setCellStructureFrameVisible(current, activeSelection, frame, visible)) : undefined}
+                onStructureVertex={(vertex, visible) => activeSelection ? updateConfig((current) => setCellStructureVertexVisible(current, activeSelection, vertex, visible)) : undefined}
+                onResetCellStructure={() => activeSelection ? updateConfig((current) => resetCellStructure(current, activeSelection)) : undefined}
                 onStructureMode={(mode) => updateConfig((current) => applyStructureMode(current, mode))}
                 onPreset={applyPreset}
+                onConfigPreset={applyConfigPreset}
               />
             ) : null}
 
             {tab === "fittings" ? <FittingsTab config={config} selection={activeSelection} selectedCell={selectedCell} onChange={updateConfig} /> : null}
             {tab === "colors" ? <ColorsTab config={config} selection={activeSelection} onChange={updateConfig} /> : null}
-            {tab === "bom" ? <BomTab bom={bom} price={price} onExport={exportBom} /> : null}
+            {tab === "bom" ? (
+              <BomTab
+                bom={pricedBom}
+                price={price}
+                priceSource={priceSource}
+                priceSummary={priceSummary}
+                onExport={exportBom}
+                onExportPriceSource={exportPriceSource}
+                onImportPriceSource={() => priceSourceInputRef.current?.click()}
+                onResetPriceSource={resetPriceSource}
+              />
+            ) : null}
+            {tab === "bom" ? (
+              <input
+                ref={priceSourceInputRef}
+                className="hidden-input"
+                type="file"
+                accept="application/json,.json"
+                onChange={(event) => {
+                  importPriceSource(event.target.files?.[0] ?? null);
+                  event.currentTarget.value = "";
+                }}
+              />
+            ) : null}
           </div>
 
           <footer className="panel-footer">
             <div>
               <span>选中单元</span>
-              <strong>{activeSelection ? `${activeSelection.column + 1} 列 / ${activeSelection.row + 1} 层` : "未选中"}</strong>
+              <strong>{activeSelection ? `${activeSelection.column + 1} 列 / ${getSelectionDepthIndex(config, activeSelection) + 1} 深度 / ${activeSelection.row + 1} 层` : "未选中"}</strong>
             </div>
             <div>
               <span>内部尺寸</span>
@@ -332,9 +503,12 @@ export default function App() {
           <BuilderScene
             config={config}
             selection={activeSelection}
+            selectedAccessory={selectedAccessoryForScene}
             onSelect={selectCell}
+            onSelectAccessory={selectAccessory}
             onExpand={expandSelected}
-            onDrawerPull={(target, value, remember = true) => updateConfig((current) => setDrawerPull(current, target, value), remember)}
+            onDrawerPull={handleDrawerPull}
+            onDoorOpen={handleDoorOpen}
             onReady={(api) => {
               sceneApiRef.current = api;
             }}
@@ -368,40 +542,69 @@ function StructureTab({
   config,
   selection,
   selectedKind,
-  selectedDoor,
-  selectedDoorState,
   onDepth,
+  onDepthSegments,
+  onDepthSegmentSize,
+  onCellDepth,
   onWidth,
   onHeight,
   onRows,
   onColumns,
   onCellKind,
-  onDoorState,
+  onStructurePanel,
+  onStructureFrame,
+  onStructureVertex,
+  onResetCellStructure,
   onStructureMode,
-  onPreset
+  onPreset,
+  onConfigPreset
 }: {
   config: CabinetConfig;
   selection: Selection | null;
   selectedKind: CellKind;
-  selectedDoor: DoorAccessoryKind;
-  selectedDoorState: DoorOpenState;
   onDepth: (depth: number) => void;
+  onDepthSegments: (count: number) => void;
+  onDepthSegmentSize: (depth: number) => void;
+  onCellDepth: (depth: number) => void;
   onWidth: (width: number) => void;
   onHeight: (height: number) => void;
   onRows: (delta: number) => void;
   onColumns: (delta: number) => void;
   onCellKind: (kind: CellKind) => void;
-  onDoorState: (doorState: DoorOpenState) => void;
+  onStructurePanel: (panel: StructurePanelKey, material: StructurePanelMaterial) => void;
+  onStructureFrame: (frame: StructureFrameKey, visible: boolean) => void;
+  onStructureVertex: (vertex: StructureVertexKey, visible: boolean) => void;
+  onResetCellStructure: () => void;
   onStructureMode: (mode: CabinetConfig["structureMode"]) => void;
   onPreset: (columns: number, rows: number, kind?: CellKind) => void;
+  onConfigPreset: (config: CabinetConfig) => void;
 }) {
   const selectedColumn = selection?.column ?? 0;
   const selectedRow = selection?.row ?? 0;
+  const depthSegments = getDepthSegments(config);
+  const selectedDepthIndex = selection ? getSelectionDepthIndex(config, selection) : 0;
+  const selectedDepth = selection ? getCellDepth(config, selection.row, selection.column, selectedDepthIndex) : depthSegments[0] ?? config.depth;
+  const selectedDepthSegment = depthSegments[selectedDepthIndex] ?? config.depth;
+  const selectedKindInStructureOptions = CELL_OPTIONS.some((option) => option.id === selectedKind);
+  const selectedEvaluation = evaluateCellKind(config, selection, selectedKindInStructureOptions ? selectedKind : "open");
+  const selectedCell = getCellConfig(config, selection);
 
   return (
     <div className="tab-stack">
-      <OptionGroup label="深度 mm">
+      <OptionGroup label="全柜默认深度 mm">
         <SizePicker values={DEPTH_OPTIONS} active={config.depth} onChange={onDepth} />
+      </OptionGroup>
+
+      <div className="stepper-grid">
+        <Stepper label="深度段数" value={depthSegments.length} onMinus={() => onDepthSegments(depthSegments.length - 1)} onPlus={() => onDepthSegments(depthSegments.length + 1)} />
+      </div>
+
+      <OptionGroup label={selection ? `第 ${selectedDepthIndex + 1} 深度段 mm` : "深度段尺寸 mm"}>
+        <SizePicker values={DEPTH_OPTIONS} active={selectedDepthSegment} onChange={onDepthSegmentSize} disabled={!selection} />
+      </OptionGroup>
+
+      <OptionGroup label={selection ? `选中格深度 mm${selectedDepth === config.depth ? "（继承默认）" : ""}` : "选中格深度 mm"}>
+        <SizePicker values={DEPTH_OPTIONS} active={selectedDepth} onChange={onCellDepth} disabled={!selection} />
       </OptionGroup>
 
       <OptionGroup label={selection ? `第 ${selectedColumn + 1} 列宽度 mm` : "列宽度 mm"}>
@@ -417,40 +620,52 @@ function StructureTab({
         <Stepper label="层数" value={config.rowHeights.length} onMinus={() => onRows(-1)} onPlus={() => onRows(1)} />
       </div>
 
-      <OptionGroup label="结构元素">
+      <OptionGroup label="结构选择">
+        <StructurePartsEditor
+          cell={selectedCell}
+          kind={selectedKind}
+          disabled={!selection}
+          onPanel={onStructurePanel}
+          onFrame={onStructureFrame}
+          onVertex={onStructureVertex}
+          onReset={onResetCellStructure}
+        />
+      </OptionGroup>
+
+      <OptionGroup label="模块类型">
         <div className="cell-kind-grid icon-mode">
           {CELL_OPTIONS.map((option) => {
-            const shortcutActive = isDoorCellKind(option.id) && selectedDoor === option.id;
-            const active = shortcutActive || (!isDoorCellKind(option.id) && selectedKind === option.id);
+            const evaluation = evaluateCellKind(config, selection, option.id);
+            const blocked = evaluation.status === "blocked";
             return (
               <button
                 key={option.id}
-                className={active ? "kind-button active" : "kind-button"}
+                className={["kind-button", selectedKind === option.id ? "active" : "", statusClass(evaluation.status)].filter(Boolean).join(" ")}
                 type="button"
-                title={option.label}
-                disabled={!selection}
+                title={evaluationTitle(evaluation)}
+                disabled={!selection || blocked}
                 onClick={() => onCellKind(option.id)}
               >
-                <span>{option.short}</span>
+                <span className="kind-icon" aria-hidden="true">
+                  <svg viewBox="0 0 64 48" focusable="false">
+                    <use href={`/accessory-icons/usm-accessory-icons.svg#${option.id}`} />
+                  </svg>
+                </span>
                 <small>{option.label}</small>
+                <AccessoryStatusBadge status={evaluation.status} />
               </button>
             );
           })}
         </div>
+        <AccessoryEvaluationPanel evaluation={selectedEvaluation} />
+        {selection && !selectedKindInStructureOptions ? (
+          <p className="helper-text">当前格的前脸配件请到配件页调整。</p>
+        ) : null}
       </OptionGroup>
 
-      {selection && selectedDoor !== "none" ? (
+      {selection && (selectedKind === "dropDoor" || selectedKind === "flipUpDoor") ? (
         <OptionGroup label="门板开合">
-          <div className="choice-row three">
-            {DOOR_OPEN_STATE_OPTIONS.map((option) => (
-              <ToggleButton
-                key={option.id}
-                active={selectedDoorState === option.id}
-                onClick={() => onDoorState(option.id)}
-                label={option.label}
-              />
-            ))}
-          </div>
+          <p className="helper-text">拖动 3D 门板锁头/把手开合。</p>
         </OptionGroup>
       ) : null}
 
@@ -460,6 +675,26 @@ function StructureTab({
           <button type="button" onClick={() => onPreset(2, 1, "metalBackModule")}><Columns3 size={16} /> 双列矮柜</button>
           <button type="button" onClick={() => onPreset(2, 2, "openBackPanel")}><Grid3X3 size={16} /> 四格柜</button>
           <button type="button" onClick={() => onPreset(3, 2, "open")}><Layers3 size={16} /> 展示柜</button>
+          <button type="button" onClick={() => onConfigPreset(createSteppedPreset())}><Layers3 size={16} /> 阶梯异形</button>
+          <button type="button" onClick={() => onConfigPreset(createDeskPreset())}><Columns3 size={16} /> 书桌单元</button>
+          <button type="button" onClick={() => onConfigPreset(createKitchenIslandPreset())}><Columns3 size={16} /> 双面岛台</button>
+          <button type="button" onClick={() => onConfigPreset(createSquareCoffeeTablePreset())}><Grid3X3 size={16} /> 四宫格茶几</button>
+        </div>
+      </OptionGroup>
+
+      <OptionGroup label="图册基础款">
+        <div className="preset-grid catalog-preset-grid">
+          {EIGHTCOLORS_CATALOG_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              title={preset.reference}
+              onClick={() => onConfigPreset(preset.createConfig())}
+            >
+              <Grid3X3 size={16} />
+              {preset.label}
+            </button>
+          ))}
         </div>
       </OptionGroup>
 
@@ -477,6 +712,91 @@ function StructureTab({
   );
 }
 
+function StructurePartsEditor({
+  cell,
+  kind,
+  disabled,
+  onPanel,
+  onFrame,
+  onVertex,
+  onReset
+}: {
+  cell: CellConfig | undefined;
+  kind: CellKind;
+  disabled: boolean;
+  onPanel: (panel: StructurePanelKey, material: StructurePanelMaterial) => void;
+  onFrame: (frame: StructureFrameKey, visible: boolean) => void;
+  onVertex: (vertex: StructureVertexKey, visible: boolean) => void;
+  onReset: () => void;
+}) {
+  return (
+    <div className="structure-parts">
+      <div className="structure-part-block">
+        <span className="structure-block-title">面板</span>
+        {STRUCTURE_PANEL_OPTIONS.map((option) => {
+          const value = cell ? getEffectiveStructurePanelMaterial(cell, kind, option.id) : "none";
+          return (
+            <div className="structure-material-row" key={option.id}>
+              <span>{option.label}</span>
+              <div className="structure-material-options">
+                {STRUCTURE_PANEL_MATERIAL_OPTIONS.map((material) => (
+                  <button
+                    key={material.id}
+                    type="button"
+                    className={value === material.id ? "active" : ""}
+                    disabled={disabled}
+                    onClick={() => onPanel(option.id, material.id)}
+                  >
+                    {material.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="structure-part-block">
+        <span className="structure-block-title">钢管</span>
+        <div className="structure-check-grid">
+          {STRUCTURE_FRAME_OPTIONS.map((option) => (
+            <label className="structure-check" key={option.id}>
+              <input
+                type="checkbox"
+                checked={cell ? getEffectiveStructureFrameVisible(cell, option.id) : false}
+                disabled={disabled}
+                onChange={(event) => onFrame(option.id, event.currentTarget.checked)}
+              />
+              <span>{option.label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="structure-part-block">
+        <span className="structure-block-title">顶点</span>
+        <div className="structure-check-grid">
+          {STRUCTURE_VERTEX_OPTIONS.map((option) => (
+            <label className="structure-check" key={option.id}>
+              <input
+                type="checkbox"
+                checked={cell ? getEffectiveStructureVertexVisible(cell, option.id) : false}
+                disabled={disabled}
+                onChange={(event) => onVertex(option.id, event.currentTarget.checked)}
+              />
+              <span>{option.label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <button type="button" className="ghost-button structure-reset" disabled={disabled || !cell?.structure} onClick={onReset}>
+        <RotateCcw size={15} /> 恢复默认
+      </button>
+    </div>
+  );
+}
+
 function FittingsTab({
   config,
   selection,
@@ -488,71 +808,134 @@ function FittingsTab({
   selectedCell: CellConfig | undefined;
   onChange: (next: CabinetConfig | ((current: CabinetConfig) => CabinetConfig)) => void;
 }) {
-  const selectedDoor = selectedCell?.door ?? "none";
-  const selectedDoorState = selectedCell?.doorState ?? "half";
+  const selectedFront = selectedCell?.frontAccessory ?? "none";
   const selectedFitting = selectedCell?.fitting ?? "none";
+  const selectedFrontEvaluation = evaluateCellFrontAccessory(config, selection, selectedFront);
+  const drawerEvaluation = evaluateCellFitting(config, selection, "rimmedDrawer");
+  const drawerBlocked = drawerEvaluation.status === "blocked";
+  const [glassDoorExpanded, setGlassDoorExpanded] = useState(selectedFront === "glassDropDoor");
+  const glassDoorSelected = selectedFront === "glassDropDoor";
+  const glassDoorHandleSide = glassDoorSelected ? selectedCell?.glassDoorHandleSide ?? "right" : "right";
+  const showGlassDoorHandles = glassDoorExpanded || glassDoorSelected;
+  const rowHeight = selection ? config.rowHeights[selection.row] ?? 350 : 350;
+  const interiorAccessories = selectedCell?.interiorAccessories ?? [];
+
+  useEffect(() => {
+    setGlassDoorExpanded(glassDoorSelected);
+  }, [selection?.row, selection?.column, selection?.depthIndex, glassDoorSelected]);
 
   return (
     <div className="tab-stack">
-      <OptionGroup label="门配件">
-        <div className="choice-row">
-          {DOOR_ACCESSORY_OPTIONS.map((option) => (
-            <ToggleButton
-              key={option.id}
-              active={selectedDoor === option.id}
-              onClick={() => {
-                if (!selection) return;
-                onChange((current) => setCellDoor(current, selection, option.id));
-              }}
-              label={option.label}
-            />
-          ))}
-        </div>
-      </OptionGroup>
-
-      {selection && selectedDoor !== "none" ? (
-        <OptionGroup label="门板开合">
-          <div className="choice-row three">
-            {DOOR_OPEN_STATE_OPTIONS.map((option) => (
-              <ToggleButton
-                key={option.id}
-                active={selectedDoorState === option.id}
-                onClick={() => onChange((current) => setDoorState(current, selection, option.id))}
-                label={option.label}
-              />
-            ))}
-          </div>
-        </OptionGroup>
-      ) : null}
-
-      <OptionGroup label="内部配件">
-        <div className="choice-row">
-          {CELL_FITTING_OPTIONS.map((option) => (
-            <ToggleButton
-              key={option.id}
-              active={selectedFitting === option.id}
-              onClick={() => {
-                if (!selection) return;
-                onChange((current) => setCellFitting(current, selection, option.id));
-              }}
-              label={option.label}
-            />
-          ))}
-        </div>
-        {selection && selectedCell && !fittingCompatible(selectedCell.kind) && selectedFitting === "none" ? (
-          <p className="helper-text">选择带围边抽屉会自动切换为含金属背板模块。</p>
-        ) : null}
-        {selection && selectedFitting === "rimmedDrawer" ? (
-          <p className="helper-text">拖动抽屉前板可拉进/拉出。</p>
-        ) : null}
-      </OptionGroup>
-
       <OptionGroup label="底部支撑">
         <div className="choice-row three">
           {FEET_OPTIONS.map((option) => (
             <ToggleButton key={option.id} active={config.feet === option.id} onClick={() => onChange((current) => ({ ...current, feet: option.id }))} label={option.label} />
           ))}
         </div>
+      </OptionGroup>
+
+      <OptionGroup label="门板/前脸配件">
+        <div className="choice-row">
+          {FRONT_ACCESSORY_OPTIONS.map((option) => {
+            const evaluation = evaluateCellFrontAccessory(config, selection, option.id);
+            const blocked = evaluation.status === "blocked";
+            return (
+              <ToggleButton
+                key={option.id}
+                active={selectedFront === option.id || (option.id === "none" && selectedFront === "none")}
+                disabled={!selection || blocked}
+                status={evaluation.status}
+                title={evaluationTitle(evaluation)}
+                onClick={() => {
+                  if (!selection || blocked) return;
+                  if (option.id === "glassDropDoor") setGlassDoorExpanded(true);
+                  onChange((current) => setCellFrontAccessory(current, selection, option.id));
+                }}
+                label={option.label}
+              />
+            );
+          })}
+        </div>
+        {showGlassDoorHandles ? (
+          <div className="choice-row glass-door-handle-row">
+            {GLASS_DOOR_HANDLE_OPTIONS.map((option) => (
+              <ToggleButton
+                key={option.id}
+                active={glassDoorSelected && glassDoorHandleSide === option.id}
+                disabled={!selection || !glassDoorSelected}
+                onClick={() => {
+                  if (!selection || !glassDoorSelected) return;
+                  onChange((current) => setGlassDoorHandleSide(current, selection, option.id));
+                }}
+                label={option.label}
+              />
+            ))}
+          </div>
+        ) : null}
+        <AccessoryEvaluationPanel evaluation={selectedFrontEvaluation} />
+      </OptionGroup>
+
+      <OptionGroup label="内部配件">
+        <div className="choice-row">
+          {INTERIOR_ACCESSORY_OPTIONS.map((option) => {
+            const evaluation = evaluateCellInteriorAccessory(config, selection, option.id);
+            const blocked = evaluation.status === "blocked";
+            return (
+              <ToggleButton
+                key={option.id}
+                active={false}
+                disabled={!selection || blocked || selectedFitting === "rimmedDrawer"}
+                status={evaluation.status}
+                title={evaluationTitle(evaluation)}
+                onClick={() => {
+                  if (!selection || blocked) return;
+                  onChange((current) => addCellInteriorAccessory(current, selection, option.id));
+                }}
+                label={`添加${option.label}`}
+              />
+            );
+          })}
+        </div>
+        {interiorAccessories.length ? (
+          <div className="interior-list">
+            {interiorAccessories.map((accessory) => (
+              <InteriorAccessoryRow
+                key={accessory.id}
+                config={config}
+                selection={selection}
+                accessory={accessory}
+                rowHeight={rowHeight}
+                disabled={!selection}
+                onChange={onChange}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="helper-text">该格暂无普通内部配件。</p>
+        )}
+      </OptionGroup>
+
+      <OptionGroup label="抽屉独占件">
+        <div className="choice-row">
+          <ToggleButton
+            active={selectedFitting === "rimmedDrawer"}
+            disabled={!selection || drawerBlocked}
+            status={drawerEvaluation.status}
+            title={evaluationTitle(drawerEvaluation)}
+            onClick={() => {
+              if (!selection || drawerBlocked) return;
+              onChange((current) => setCellFitting(current, selection, selectedFitting === "rimmedDrawer" ? "none" : "rimmedDrawer"));
+            }}
+            label="带围边抽屉"
+          />
+        </div>
+        <AccessoryEvaluationPanel evaluation={drawerEvaluation} />
+        {selection && selectedCell && !fittingCompatible(selectedCell.kind) && selectedFitting !== "rimmedDrawer" ? (
+          <p className="helper-text">选择带围边抽屉会自动切换为含金属背板模块，并清除门类前脸和普通内部配件。</p>
+        ) : null}
+        {selection && selectedFitting === "rimmedDrawer" ? (
+          <p className="helper-text">拖动抽屉前板可拉进/拉出。</p>
+        ) : null}
       </OptionGroup>
 
       <OptionGroup label="钢管表面">
@@ -568,6 +951,119 @@ function FittingsTab({
           <input type="checkbox" checked={config.showDimensions} onChange={(event) => onChange((current) => ({ ...current, showDimensions: event.target.checked }))} />
         </label>
       </OptionGroup>
+    </div>
+  );
+}
+
+function InteriorAccessoryRow({
+  config,
+  selection,
+  accessory,
+  rowHeight,
+  disabled,
+  onChange
+}: {
+  config: CabinetConfig;
+  selection: Selection | null;
+  accessory: NonNullable<CellConfig["interiorAccessories"]>[number];
+  rowHeight: number;
+  disabled: boolean;
+  onChange: (next: CabinetConfig | ((current: CabinetConfig) => CabinetConfig)) => void;
+}) {
+  const evaluation = evaluateCellInteriorAccessory(config, selection, accessory.kind, accessory);
+  const blocked = evaluation.status === "blocked";
+  const maxHeight = Math.max(0, rowHeight);
+
+  return (
+    <div className={`interior-row ${statusClass(evaluation.status)}`}>
+      <div className="interior-row-header">
+        <select
+          value={accessory.kind}
+          disabled={disabled}
+          title={evaluationTitle(evaluation)}
+          onChange={(event) => {
+            if (!selection) return;
+            const kind = event.currentTarget.value as CellInteriorAccessoryKind;
+            onChange((current) => updateCellInteriorAccessory(current, selection, accessory.id, { kind }));
+          }}
+        >
+          {INTERIOR_ACCESSORY_OPTIONS.map((option) => (
+            <option key={option.id} value={option.id}>{option.label}</option>
+          ))}
+        </select>
+        <AccessoryStatusBadge status={evaluation.status} />
+        <button
+          type="button"
+          className="ghost-button interior-delete"
+          disabled={disabled}
+          title="删除"
+          onClick={() => {
+            if (!selection) return;
+            onChange((current) => removeCellInteriorAccessory(current, selection, accessory.id));
+          }}
+        >
+          <Eraser size={14} />
+        </button>
+      </div>
+      <label className="range-line">
+        <span>安装高</span>
+        <input
+          type="range"
+          min={0}
+          max={maxHeight}
+          step={1}
+          value={accessory.mountHeightMm}
+          disabled={disabled || blocked}
+          onChange={(event) => {
+            if (!selection) return;
+            const mountHeightMm = Number(event.currentTarget.value);
+            onChange((current) => updateCellInteriorAccessory(current, selection, accessory.id, { mountHeightMm }));
+          }}
+        />
+        <input
+          type="number"
+          min={0}
+          max={maxHeight}
+          step={1}
+          value={accessory.mountHeightMm}
+          disabled={disabled || blocked}
+          onChange={(event) => {
+            if (!selection) return;
+            const mountHeightMm = Number(event.currentTarget.value);
+            onChange((current) => updateCellInteriorAccessory(current, selection, accessory.id, { mountHeightMm }));
+          }}
+        />
+      </label>
+      {accessory.kind === "mobileTray" ? (
+        <label className="range-line">
+          <span>拉出</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={accessory.pull ?? 1}
+            disabled={disabled || blocked}
+            onChange={(event) => {
+              if (!selection) return;
+              const pull = Number(event.currentTarget.value);
+              onChange((current) => setCellInteriorAccessoryPull(current, selection, accessory.id, pull));
+            }}
+          />
+          <button
+            type="button"
+            className="ghost-button snap-button"
+            disabled={disabled || blocked}
+            onClick={() => {
+              if (!selection) return;
+              onChange((current) => setCellInteriorAccessoryPull(current, selection, accessory.id, (accessory.pull ?? 1) < 0.5 ? 1 : 0));
+            }}
+          >
+            {(accessory.pull ?? 1) < 0.5 ? "拉出" : "收回"}
+          </button>
+        </label>
+      ) : null}
+      <AccessoryEvaluationPanel evaluation={evaluation} />
     </div>
   );
 }
@@ -614,26 +1110,61 @@ function ColorsTab({
   );
 }
 
-function BomTab({ bom, price, onExport }: { bom: ReturnType<typeof buildBom>; price: number; onExport: () => void }) {
+function BomTab({
+  bom,
+  price,
+  priceSource,
+  priceSummary,
+  onExport,
+  onExportPriceSource,
+  onImportPriceSource,
+  onResetPriceSource
+}: {
+  bom: PricedBomItem[];
+  price: number;
+  priceSource: DealerPriceSource;
+  priceSummary: ReturnType<typeof summarizePriceMatches>;
+  onExport: () => void;
+  onExportPriceSource: () => void;
+  onImportPriceSource: () => void;
+  onResetPriceSource: () => void;
+}) {
   return (
     <div className="tab-stack">
       <div className="bom-header">
         <div>
           <span>估算价</span>
           <strong>{formatRmb(price)}</strong>
+          <em>{priceSource.dealerName} · {priceSource.title}</em>
         </div>
         <button type="button" onClick={onExport}>
           <Download size={16} /> CSV
         </button>
       </div>
+      <div className="price-source-actions">
+        <button type="button" onClick={onImportPriceSource}><FileUp size={15} /> 导入报价源</button>
+        <button type="button" onClick={onExportPriceSource}><FileDown size={15} /> 导出报价源</button>
+        <button type="button" onClick={onResetPriceSource}><RotateCcw size={15} /> 默认报价</button>
+      </div>
+      <div className="price-source-summary">
+        <span>命中 {priceSummary.sourceExact}</span>
+        <span>组合 {priceSummary.sourceComposite}</span>
+        <span>公式 {priceSummary.sourceFormula}</span>
+        <span>含入 {priceSummary.sourceIncluded}</span>
+        <span>回退 {priceSummary.fallback}</span>
+      </div>
       <div className="bom-table">
         {bom.map((item) => (
-          <div className="bom-row" key={`${item.name}-${item.spec}`}>
+          <div className={`bom-row price-${item.priceStatus}`} key={`${item.name}-${item.spec}-${item.priceStatus}`}>
             <div>
               <strong>{item.name}</strong>
               <span>{item.spec}</span>
+              <small>{priceStatusLabel(item.priceStatus)}{item.priceSourceRows.length ? ` · 行 ${item.priceSourceRows.join("+")}` : ""}</small>
             </div>
-            <b>{item.qty}{item.unit}</b>
+            <b>
+              {item.qty}{item.unit}
+              <span>{formatRmb(item.unitPrice)}</span>
+            </b>
           </div>
         ))}
       </div>
@@ -738,11 +1269,60 @@ function Stepper({ label, value, onMinus, onPlus }: { label: string; value: numb
   );
 }
 
-function ToggleButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+function AccessoryStatusBadge({ status }: { status: AccessoryStatus }) {
+  return <b className={`accessory-status-badge ${statusClass(status)}`}>{ACCESSORY_STATUS_META[status].shortLabel}</b>;
+}
+
+function AccessoryEvaluationPanel({ evaluation }: { evaluation: AccessoryEvaluation }) {
+  const meta = ACCESSORY_STATUS_META[evaluation.status];
+  const messages = [...evaluation.reasons, ...evaluation.warnings].filter(Boolean);
   return (
-    <button className={active ? "toggle active" : "toggle"} type="button" onClick={onClick}>
+    <div className={`accessory-evaluation ${statusClass(evaluation.status)}`}>
+      <div>
+        <strong>{evaluation.label}</strong>
+        <AccessoryStatusBadge status={evaluation.status} />
+      </div>
+      <p>{evaluation.officialSpec ? `${meta.description} ${evaluation.officialSpec}` : meta.description}</p>
+      {messages.length ? <p>{messages.join(" ")}</p> : null}
+    </div>
+  );
+}
+
+function statusClass(status: AccessoryStatus): string {
+  return `status-${status}`;
+}
+
+function evaluationTitle(evaluation: AccessoryEvaluation): string {
+  const meta = ACCESSORY_STATUS_META[evaluation.status];
+  return [evaluation.label, meta.label, evaluation.officialSpec, ...evaluation.reasons, ...evaluation.warnings].filter(Boolean).join("\n");
+}
+
+function ToggleButton({
+  active,
+  label,
+  onClick,
+  disabled = false,
+  status,
+  title
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  status?: AccessoryStatus;
+  title?: string;
+}) {
+  return (
+    <button
+      className={["toggle", active ? "active" : "", status ? statusClass(status) : ""].filter(Boolean).join(" ")}
+      type="button"
+      disabled={disabled}
+      title={title}
+      onClick={onClick}
+    >
       {active ? <Check size={16} /> : null}
-      {label}
+      <span>{label}</span>
+      {status ? <AccessoryStatusBadge status={status} /> : null}
     </button>
   );
 }
@@ -772,6 +1352,15 @@ function loadConfig(): CabinetConfig {
   }
 }
 
+function loadPriceSource(): DealerPriceSource {
+  try {
+    const stored = window.localStorage.getItem(PRICE_SOURCE_STORAGE_KEY);
+    return normalizeDealerPriceSource(stored ? JSON.parse(stored) : DEFAULT_DEALER_PRICE_SOURCE);
+  } catch {
+    return DEFAULT_DEALER_PRICE_SOURCE;
+  }
+}
+
 function downloadFile(filename: string, body: string, type: string) {
   const blob = new Blob([body], { type });
   const link = document.createElement("a");
@@ -779,4 +1368,19 @@ function downloadFile(filename: string, body: string, type: string) {
   link.href = URL.createObjectURL(blob);
   link.click();
   URL.revokeObjectURL(link.href);
+}
+
+function priceStatusLabel(status: PricedBomItem["priceStatus"]): string {
+  const labels: Record<PricedBomItem["priceStatus"], string> = {
+    sourceExact: "报价表命中",
+    sourceComposite: "组合计价",
+    sourceFormula: "公式计价",
+    sourceIncluded: "已含计价",
+    fallback: "默认回退"
+  };
+  return labels[status];
+}
+
+function csvCell(value: string): string {
+  return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }

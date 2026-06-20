@@ -9,6 +9,7 @@ output/
 别人的成品/
 
 # Local caches and logs
+tmp/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

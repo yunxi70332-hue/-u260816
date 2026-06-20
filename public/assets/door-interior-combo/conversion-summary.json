@@ -1,0 +1,847 @@
+{
+  "combo3dDwgRead": {
+    "source": "C:\\Users\\Administrator\\Desktop\\红色配件下翻门存在时候可以新加移动托盘配件3D.dwg",
+    "dxf": "E:\\Tools\\DWG\\work\\read-dwg-a7c80eba110f4b23a9f0c0472291a2ab\\红色配件下翻门存在时候可以新加移动托盘配件3D.dxf",
+    "layerCount": 7,
+    "layers": [
+      {
+        "name": "0",
+        "color": "     7",
+        "linetype": "Continuous"
+      },
+      {
+        "name": "chrom",
+        "color": "     9",
+        "linetype": "Continuous"
+      },
+      {
+        "name": "plastik schwarz",
+        "color": "   250",
+        "linetype": "Continuous"
+      },
+      {
+        "name": "Metall verzinkt",
+        "color": "     8",
+        "linetype": "Continuous"
+      },
+      {
+        "name": "rubinrot",
+        "color": "   246",
+        "linetype": "Continuous"
+      },
+      {
+        "name": "Part with no material",
+        "color": "    18",
+        "linetype": "Continuous"
+      },
+      {
+        "name": "reinweiss",
+        "color": "   254",
+        "linetype": "Continuous"
+      }
+    ],
+    "entityCounts": {
+      "INSERT": 55,
+      "3DFACE": 1536
+    },
+    "textCountReturned": 0,
+    "texts": [],
+    "blockDefinitionCountReturned": 55,
+    "insertsByBlock": {
+      "sperrstange_90_1BD8XMC": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "sperrstange_90_1BD8XMC",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "sperrstange_90_1BD8XMC1": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "sperrstange_90_1BD8XMC1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "stdklemmhalter_1BD8XMC": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "stdklemmhalter_1BD8XMC",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "stdklemmhalter_1BD8XMC1": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "stdklemmhalter_1BD8XMC1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "stdklemmhalter_1BD8XMC2": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "stdklemmhalter_1BD8XMC2",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "stdklemmhalter_1BD8XMC3": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "stdklemmhalter_1BD8XMC3",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "tablarseitenwinkel350_r_1BD8XMC": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "tablarseitenwinkel350_r_1BD8XMC",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "tablarseitenwinkel350_l_1BD8XMC": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "tablarseitenwinkel350_l_1BD8XMC",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "ausziehtablar750_350_1BD8XMC": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "ausziehtablar750_350_1BD8XMC",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "stdklemmhalter_1BD8XMC4": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "stdklemmhalter_1BD8XMC4",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "stdklemmhalter_1BD8XMC5": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "stdklemmhalter_1BD8XMC5",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "stdklemmhalter_1BD8XMC6": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "stdklemmhalter_1BD8XMC6",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "stdklemmhalter_1BD8XMC7": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "stdklemmhalter_1BD8XMC7",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "tablarseitenwinkel350_r_1BD8XMC1": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "tablarseitenwinkel350_r_1BD8XMC1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "tablarseitenwinkel350_l_1BD8XMC1": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "tablarseitenwinkel350_l_1BD8XMC1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "ausziehtablar750_350_1BD8XMC1": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "ausziehtablar750_350_1BD8XMC1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "griff_normal_1BD8XMC": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "griff_normal_1BD8XMC",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "stdklemmhalter_1BD8XMC8": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "stdklemmhalter_1BD8XMC8",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "stdklemmhalter_1BD8XMC9": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "stdklemmhalter_1BD8XMC9",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "stdklemmhalter_1BD8XMC10": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "stdklemmhalter_1BD8XMC10",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "stdklemmhalter_1BD8XMC11": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "stdklemmhalter_1BD8XMC11",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "stdklemmhalter_1BD8XMC12": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "stdklemmhalter_1BD8XMC12",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "stdklemmhalter_1BD8XMC13": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "stdklemmhalter_1BD8XMC13",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "stdklemmhalter_1BD8XMC14": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "stdklemmhalter_1BD8XMC14",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "stdklemmhalter_1BD8XMC15": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "stdklemmhalter_1BD8XMC15",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "tuerelement750_350_1BD8XMC": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "tuerelement750_350_1BD8XMC",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "hallerfuss_1BD8XMC": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "hallerfuss_1BD8XMC",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "hallerfuss_1BD8XMC1": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "hallerfuss_1BD8XMC1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "hallerfuss_1BD8XMC2": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "hallerfuss_1BD8XMC2",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "hallerfuss_1BD8XMC3": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "hallerfuss_1BD8XMC3",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "blech350_750_1BD8XMC": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "blech350_750_1BD8XMC",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "blech350_750_1BD8XMC1": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "blech350_750_1BD8XMC1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "blech350_350_1BD8XMC": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "blech350_350_1BD8XMC",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "blech350_350_1BD8XMC1": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "blech350_350_1BD8XMC1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr350_1BD8XMC": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr350_1BD8XMC",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr350_1BD8XMC1": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr350_1BD8XMC1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr350_1BD8XMC2": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr350_1BD8XMC2",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr350_1BD8XMC3": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr350_1BD8XMC3",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "blech350_750_1BD8XMC2": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "blech350_750_1BD8XMC2",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr750_1BD8XMC": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr750_1BD8XMC",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr750_1BD8XMC1": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr750_1BD8XMC1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr750_1BD8XMC2": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr750_1BD8XMC2",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr750_1BD8XMC3": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr750_1BD8XMC3",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "kugel_std_1BD8XMC": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "kugel_std_1BD8XMC",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "kugel_std_1BD8XMC1": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "kugel_std_1BD8XMC1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr350_1BD8XMC4": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr350_1BD8XMC4",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "kugel_std_1BD8XMC2": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "kugel_std_1BD8XMC2",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "kugel_std_1BD8XMC3": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "kugel_std_1BD8XMC3",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr350_1BD8XMC5": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr350_1BD8XMC5",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr350_1BD8XMC6": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr350_1BD8XMC6",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "kugel_std_1BD8XMC4": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "kugel_std_1BD8XMC4",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "kugel_std_1BD8XMC5": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "kugel_std_1BD8XMC5",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr350_1BD8XMC7": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "rohr350_1BD8XMC7",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "kugel_std_1BD8XMC6": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "kugel_std_1BD8XMC6",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "kugel_std_1BD8XMC7": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "kugel_std_1BD8XMC7",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      }
+    }
+  },
+  "combo2dDwgRead": {
+    "source": "C:\\Users\\Administrator\\Desktop\\红色配件下翻门存在时候可以新加移动托盘配件2D.dwg",
+    "dxf": "E:\\Tools\\DWG\\work\\read-dwg-4401c556759140deb59ec9f82387abed\\红色配件下翻门存在时候可以新加移动托盘配件2D.dxf",
+    "layerCount": 4,
+    "layers": [
+      {
+        "name": "0",
+        "color": "     7",
+        "linetype": "Continuous"
+      },
+      {
+        "name": "72_USM_HALLER_D2_GRAFIK_SCHRAFFUR",
+        "color": "     7",
+        "linetype": "Continuous"
+      },
+      {
+        "name": "72_USM_HALLER_D2_GRAFIK_LINIEN",
+        "color": "     5",
+        "linetype": "Continuous"
+      },
+      {
+        "name": "72_USM_INSERT",
+        "color": "     7",
+        "linetype": "Continuous"
+      }
+    ],
+    "entityCounts": {
+      "INSERT": 9
+    },
+    "textCountReturned": 0,
+    "texts": [],
+    "blockDefinitionCountReturned": 4,
+    "insertsByBlock": {
+      "kugel.dwg-  1": {
+        "count": 4,
+        "samples": [
+          {
+            "name": "kugel.dwg-  1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          },
+          {
+            "name": "kugel.dwg-  1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          },
+          {
+            "name": "kugel.dwg-  1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          },
+          {
+            "name": "kugel.dwg-  1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr_750_horiz.dwg-  1": {
+        "count": 2,
+        "samples": [
+          {
+            "name": "rohr_750_horiz.dwg-  1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          },
+          {
+            "name": "rohr_750_horiz.dwg-  1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "rohr_350_vertic.dwg-  1": {
+        "count": 2,
+        "samples": [
+          {
+            "name": "rohr_350_vertic.dwg-  1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          },
+          {
+            "name": "rohr_350_vertic.dwg-  1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      },
+      "volume_750_350.dwg-  1": {
+        "count": 1,
+        "samples": [
+          {
+            "name": "volume_750_350.dwg-  1",
+            "layer": "0",
+            "x": null,
+            "y": null,
+            "z": null
+          }
+        ]
+      }
+    }
+  },
+  "combo3dDxfEntityCounts": {
+    "INSERT": 55,
+    "3DFACE": 1536
+  },
+  "combo2dDxfEntityCounts": {
+    "INSERT": 9
+  },
+  "assetFiles": [
+    "mobile-tray-single.glb",
+    "mobile-tray-rails-single.glb",
+    "drop-door-mobile-tray-assembly.glb",
+    "drop-door.glb",
+    "mobile-tray.glb",
+    "mobile-tray-rails.glb"
+  ],
+  "recursiveInsertExpansion": true
+}

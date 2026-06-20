@@ -20,6 +20,6 @@ if not exist node_modules (
 )
 
 echo Starting local USM module builder...
-echo Open http://127.0.0.1:5173/ in your browser.
+echo Open http://127.0.0.1:9011/ in your browser.
 call npm.cmd run dev
 endlocal

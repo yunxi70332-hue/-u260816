@@ -1,4 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="open" viewBox="0 0 64 48">
+    <path d="M11 13h33l9 7v24H20l-9-7z" fill="none" stroke="#4d555c" stroke-width="2" />
+    <path d="M20 20h33" stroke="#4d555c" stroke-width="2" />
+    <path d="M20 20v24" stroke="#4d555c" stroke-width="2" />
+    <path d="M11 13l9 7" stroke="#4d555c" stroke-width="2" />
+  </symbol>
   <symbol id="metalBackModule" viewBox="0 0 64 48">
     <path d="M12 14h32l8 6v25H20l-8-6z" fill="#d9dedf" stroke="#4d555c" />
     <path d="M20 20h32v25H20z" fill="#eef1f2" stroke="#4d555c" />
@@ -9,8 +15,18 @@
     <path d="M20 20h32v25H20z" fill="none" stroke="#4d555c" stroke-width="2" />
   </symbol>
   <symbol id="glassPanelModule" viewBox="0 0 64 48">
-    <path d="M12 14h32l8 6v25H20l-8-6z" fill="#bfefff" fill-opacity=".45" stroke="#4d91a8" />
-    <path d="M20 20h32v25H20z" fill="#d8f7ff" fill-opacity=".42" stroke="#4d91a8" />
+    <rect x="12" y="10" width="40" height="28" fill="#dce9e9" fill-opacity=".38" stroke="#9aa7aa" stroke-width=".8" />
+    <path d="M12 10h40M12 38h40M12 10v28M52 10v28" stroke="#6f777b" stroke-width="3" stroke-linecap="round" />
+    <path d="M16 14h32v20H16z" fill="#eef6f6" fill-opacity=".34" stroke="#aab6b8" stroke-width=".7" />
+    <path d="M18 16l28 16M46 16L18 32" stroke="#c7d4d5" stroke-width=".8" stroke-opacity=".75" />
+    <circle cx="12" cy="10" r="4.2" fill="#eef1f1" stroke="#535b5e" stroke-width="1.5" />
+    <circle cx="52" cy="10" r="4.2" fill="#eef1f1" stroke="#535b5e" stroke-width="1.5" />
+    <circle cx="12" cy="38" r="4.2" fill="#eef1f1" stroke="#535b5e" stroke-width="1.5" />
+    <circle cx="52" cy="38" r="4.2" fill="#eef1f1" stroke="#535b5e" stroke-width="1.5" />
+    <circle cx="12" cy="10" r="1.4" fill="#858d91" />
+    <circle cx="52" cy="10" r="1.4" fill="#858d91" />
+    <circle cx="12" cy="38" r="1.4" fill="#858d91" />
+    <circle cx="52" cy="38" r="1.4" fill="#858d91" />
   </symbol>
   <symbol id="dropDoor" viewBox="0 0 64 48">
     <path d="M16 10h36v20H16z" fill="#d9dedf" stroke="#4d555c" />
@@ -22,8 +38,10 @@
     <path d="M18 8l36 6-4 8-36-6z" fill="#c5ccd0" stroke="#4d555c" />
   </symbol>
   <symbol id="sideOpenDoor" viewBox="0 0 64 48">
-    <path d="M18 12h32v32H18z" fill="none" stroke="#4d555c" />
-    <path d="M18 12l18 7v30l-18-5z" fill="#9fa7ac" stroke="#4d555c" />
+    <path d="M12 15h36l8 6v26H20l-8-6z" fill="none" stroke="#4d555c" stroke-width="2" />
+    <path d="M12 15h36l8 6H20z" fill="#eef1f2" stroke="#4d555c" />
+    <path d="M20 38h36v9H20z" fill="#d9dedf" stroke="#4d555c" />
+    <path d="M14 17l5 4M51 39l5-4" stroke="#f3e600" stroke-width="3" stroke-linecap="round" />
   </symbol>
   <symbol id="glassDropDoor" viewBox="0 0 64 48">
     <path d="M16 10h36v32H16z" fill="#d8f7ff" fill-opacity=".5" stroke="#4d91a8" />

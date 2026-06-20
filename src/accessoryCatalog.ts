@@ -1,4 +1,4 @@
-export type AccessoryCategoryId = "modules" | "doors" | "softPanels" | "shelvesDrawers" | "support";
+export type AccessoryCategoryId = "modules" | "doors" | "frontAccessories" | "softPanels" | "shelvesDrawers" | "support";
 
 export type AccessoryModelKind =
   | "metalBackModule"
@@ -48,6 +48,7 @@ export interface AccessoryRequirementRecord extends AccessoryCatalogItem {
 export const ACCESSORY_CATEGORIES: Array<{ id: AccessoryCategoryId; label: string }> = [
   { id: "modules", label: "结构模块" },
   { id: "doors", label: "门" },
+  { id: "frontAccessories", label: "前脸配件" },
   { id: "softPanels", label: "USM Soft Panel" },
   { id: "shelvesDrawers", label: "搁板和抽屉" },
   { id: "support", label: "底部支撑" }
@@ -107,9 +108,9 @@ export const ACCESSORY_CATALOG: AccessoryCatalogItem[] = [
     installTarget: "cell",
     observedFrom: "门分组第一排：整面板前门，底部铰链，下翻开启效果。",
     parameters: ["width", "height", "panelColor", "doorState", "openingAngle", "lockPosition"],
-    localModel: "可叠加在含背/无背箱体上的三态参数化下翻门：底部铰链、左右限位支撑、细金属门边和圆形锁点，支持关闭/半开/全开。",
+    localModel: "三态参数化下翻门：含金属背板模块内胆、底部铰链轴、左右限位支撑、细金属门边和圆形锁点，支持关闭/半开/全开。",
     iconHint: "front panel tilted down with one dark hinge line",
-    finalEffect: "门板可在关闭、半开、全开之间切换；半开时门板向前下方倾斜，含背箱体保留背板，无背箱体背面开放并保留两侧支撑五金。",
+    finalEffect: "门板可在关闭、半开、全开之间切换；半开时门板向前下方倾斜并露出金属内胆和两侧支撑五金。",
     bomName: "下翻门组件",
     unit: "套",
     unitPrice: 700
@@ -131,22 +132,22 @@ export const ACCESSORY_CATALOG: AccessoryCatalogItem[] = [
   },
   {
     id: "sideOpenDoor",
-    category: "doors",
-    name: "侧开门",
-    shortName: "侧开",
+    category: "modules",
+    name: "不含侧板模块",
+    shortName: "无侧",
     installTarget: "cell",
-    observedFrom: "门分组第一排：门板向侧边打开的深色面板效果。",
-    parameters: ["width", "height", "panelColor", "openingAngle", "hingeSide"],
-    localModel: "单片门板绕左侧竖向铰链开启，显示内侧暗面。",
-    iconHint: "side hinged dark front panel",
-    finalEffect: "门板向左外摆，格口保持可见。",
-    bomName: "侧开门组件",
+    observedFrom: "官方 DWG buhanceban：不含侧板模块，按 2 个 blech350_750 板件转为顶板和底板。",
+    parameters: ["width", "height", "depth", "panelColor", "frameFinish"],
+    localModel: "保留顶板和底板，左右侧面与背面开放，不生成侧板、背板或门板。",
+    iconHint: "open module with top and bottom panels but no side or back panels",
+    finalEffect: "模块正面、左右侧和背面均开放，仅顶部和底部保留金属板。",
+    bomName: "不含侧板模块",
     unit: "套",
-    unitPrice: 680
+    unitPrice: 620
   },
   {
     id: "glassDropDoor",
-    category: "doors",
+    category: "frontAccessories",
     name: "玻璃门",
     shortName: "玻璃",
     installTarget: "cell",
@@ -252,15 +253,15 @@ export const ACCESSORY_CATALOG: AccessoryCatalogItem[] = [
   {
     id: "pullOutShelf",
     category: "shelvesDrawers",
-    name: "拉出搁板",
-    shortName: "拉板",
+    name: "移动托盘",
+    shortName: "托盘",
     installTarget: "cell",
-    observedFrom: "搁板和抽屉分组：前方伸出的托板。",
+    observedFrom: "搁板和抽屉分组：前方伸出的移动托盘。",
     parameters: ["width", "depth", "extension", "railLength"],
-    localModel: "托板向前拉出，左右有短导轨。",
+    localModel: "移动托盘向前拉出，左右有短导轨。",
     iconHint: "shelf pulled forward on rails",
-    finalEffect: "搁板伸出柜体前方，展示可拉出状态。",
-    bomName: "拉出搁板",
+    finalEffect: "移动托盘伸出柜体前方，展示可拉出状态。",
+    bomName: "移动托盘",
     unit: "套",
     unitPrice: 540
   },

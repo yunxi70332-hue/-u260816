@@ -2,16 +2,23 @@ import { spawn, execSync } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = process.cwd();
-const port = Number(process.env.USM_LOCAL_PORT || 5174);
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const port = Number(process.env.USM_LOCAL_PORT || 9011);
 const url = `http://127.0.0.1:${port}/`;
 const outputDir = path.join(root, "output");
 const stdoutLog = path.join(outputDir, `vite-${port}.log`);
 const stderrLog = path.join(outputDir, `vite-${port}.err.log`);
 const statusFile = path.join(outputDir, `service-${port}.status.txt`);
+const viteScript = path.join(root, "node_modules", "vite", "bin", "vite.js");
 
 fs.mkdirSync(outputDir, { recursive: true });
+
+if (!fs.existsSync(viteScript)) {
+  console.error(`Vite was not found at ${viteScript}. Run npm install once before starting the local service.`);
+  process.exit(1);
+}
 
 for (const pid of findPortPids(port)) {
   try {
@@ -25,7 +32,7 @@ await sleep(250);
 removeLog(stdoutLog);
 removeLog(stderrLog);
 
-const child = spawn("cmd.exe", ["/c", "npm.cmd", "run", "dev:4"], {
+const child = spawn(process.execPath, [viteScript, "--host", "127.0.0.1", "--port", String(port), "--strictPort"], {
   cwd: root,
   detached: true,
   stdio: "ignore",
