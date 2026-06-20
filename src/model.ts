@@ -1352,7 +1352,7 @@ export function evaluateCellFitting(config: CabinetConfig, selection: Selection 
         ...reasons,
         `带围边抽屉仍按 ${RIMMED_DRAWER_RIM_HEIGHT_MM} mm 围边建模，当前模块高度较低，但允许建模。`
       ],
-      warnings: [...warnings, "需确认围边、导轨、安装结构和 BOM 输出是否满足当前格高。"] 
+      warnings: [...warnings, "需确认围边、导轨、安装结构和 BOM 输出是否满足当前格高。"]
     }, pathCheck);
   }
 

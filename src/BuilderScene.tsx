@@ -97,9 +97,21 @@ const EXPAND_HINT_FRONT_OFFSET = 0.68;
 const MOBILE_TRAY_SCREEN_HIT_MARGIN = 28;
 const FRAME_TUBE_350_ASSET_URL = "/assets/frame/tube-350.glb";
 const FRAME_TUBE_750_ASSET_URL = "/assets/frame/tube-750.glb";
-const FRAME_BALL_ASSET_URL = "/assets/frame/ball.glb";
+const FRAME_BALL_ASSET_URL = "/assets/frame/kugel_std_hires.glb";
 const FRAME_TUBE_350_TEMPLATE_LENGTH = 350 * SCALE;
 const FRAME_TUBE_750_TEMPLATE_LENGTH = 750 * SCALE;
+const FRAME_BALL_HIRES_ASSET_SCALE = 0.041691;
+const FRAME_BALL_CHROME_COLOR = "#f0f0f0";
+const FRAME_BALL_CHROME_MATERIAL_PROPS = {
+  color: FRAME_BALL_CHROME_COLOR,
+  metalness: 1,
+  roughness: 0.01,
+  envMapIntensity: 2.5,
+  clearcoat: 0.5,
+  clearcoatRoughness: 0.01,
+  reflectivity: 1,
+  side: THREE.DoubleSide
+} satisfies THREE.MeshPhysicalMaterialParameters;
 const OFFICIAL_CHROME_COLOR = "#bebebe";
 const OFFICIAL_CHROME_METALNESS = 0.28;
 const OFFICIAL_CHROME_ROUGHNESS = 0.36;
@@ -179,6 +191,7 @@ export function BuilderScene({ config, selection, selectedAccessory, onSelect, o
       <fog attach="fog" args={["#edf1f3", 24, 64]} />
       <Suspense fallback={null}>
         <SceneReady onReady={onReady} />
+        <StudioReflectionEnvironment />
         <CameraRig metrics={metrics} />
         <ambientLight intensity={0.86} />
         <directionalLight
@@ -230,6 +243,60 @@ function SceneReady({ onReady }: { onReady: (api: SceneApi) => void }) {
       }
     });
   }, [camera, gl, onReady, scene]);
+
+  return null;
+}
+
+function StudioReflectionEnvironment() {
+  const { gl, scene } = useThree();
+
+  useEffect(() => {
+    const previousEnvironment = scene.environment;
+    const pmremGenerator = new THREE.PMREMGenerator(gl);
+    const envScene = new THREE.Scene();
+    const largePlane = new THREE.PlaneGeometry(20, 20);
+
+    function addReflector(
+      position: [number, number, number],
+      size: [number, number],
+      color: THREE.ColorRepresentation,
+      lookAt: [number, number, number] = [0, 0, 0]
+    ) {
+      const reflector = new THREE.Mesh(
+        size[0] === 20 && size[1] === 20 ? largePlane : new THREE.PlaneGeometry(size[0], size[1]),
+        new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide })
+      );
+      reflector.position.set(...position);
+      reflector.lookAt(...lookAt);
+      envScene.add(reflector);
+      return reflector;
+    }
+
+    addReflector([0, 8, 0], [20, 20], 0xffffff);
+    addReflector([5, 3, 5], [6, 6], 0xeeeeff);
+    addReflector([-6, 2, -2], [10, 10], 0x666680);
+    addReflector([0, 2, -6], [8, 4], 0xaaaacc);
+    addReflector([0, -5, 0], [30, 30], 0x111111);
+    addReflector([3, 1, -4], [2, 8], 0xffffff);
+    addReflector([-4, 3, 3], [1, 6], 0xddddff);
+
+    const envRenderTarget = pmremGenerator.fromScene(envScene, 0.04);
+    const envMap = envRenderTarget.texture;
+    scene.environment = envMap;
+
+    return () => {
+      scene.environment = previousEnvironment;
+      envRenderTarget.dispose();
+      pmremGenerator.dispose();
+      envScene.traverse((object) => {
+        if (!(object instanceof THREE.Mesh)) return;
+        object.geometry.dispose();
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        materials.forEach((material) => material.dispose());
+      });
+      largePlane.dispose();
+    };
+  }, [gl, scene]);
 
   return null;
 }
@@ -3863,11 +3930,11 @@ function FrameBall({ position, color, metalness, roughness, scale = 1 }: { posit
   const assets = useFrameAssets();
   const scaledAsset = useMemo(() => {
     if (!assets) return null;
-    const clone = cloneFrameAsset(assets.ball, color, metalness, roughness);
+    const clone = cloneFrameBallAsset(assets.ball);
     clone.position.set(...position);
-    clone.scale.setScalar(scale);
+    clone.scale.setScalar(FRAME_BALL_HIRES_ASSET_SCALE * scale);
     return clone;
-  }, [assets, color, metalness, position[0], position[1], position[2], roughness, scale]);
+  }, [assets, position[0], position[1], position[2], scale]);
 
   useEffect(() => () => disposeClonedAsset(scaledAsset), [scaledAsset]);
 
@@ -3878,7 +3945,7 @@ function FrameBall({ position, color, metalness, roughness, scale = 1 }: { posit
   return (
     <mesh position={position} castShadow receiveShadow>
       <sphereGeometry args={[BALL_RADIUS * scale, 32, 20]} />
-      <meshPhysicalMaterial color={color} metalness={metalness} roughness={roughness} clearcoat={0.85} reflectivity={0.82} />
+      <meshPhysicalMaterial {...FRAME_BALL_CHROME_MATERIAL_PROPS} />
     </mesh>
   );
 }
@@ -3978,6 +4045,19 @@ function cloneFrameAsset(asset: THREE.Group, color: string, metalness: number, r
       reflectivity: 0.82,
       side: THREE.DoubleSide
     });
+  });
+  return clone;
+}
+
+function cloneFrameBallAsset(asset: THREE.Group) {
+  const clone = asset.clone(true);
+  clone.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return;
+    object.castShadow = true;
+    object.receiveShadow = true;
+    object.geometry = object.geometry.clone();
+    object.geometry.computeVertexNormals();
+    object.material = new THREE.MeshPhysicalMaterial(FRAME_BALL_CHROME_MATERIAL_PROPS);
   });
   return clone;
 }
