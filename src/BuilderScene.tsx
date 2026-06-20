@@ -1,5 +1,5 @@
 ﻿import { Canvas, useThree } from "@react-three/fiber";
-import { Billboard, ContactShadows, OrbitControls } from "@react-three/drei";
+import { Billboard, ContactShadows, MeshReflectorMaterial, OrbitControls } from "@react-three/drei";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import * as THREE from "three";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
@@ -94,6 +94,7 @@ const GLASS_EDGE_GAP = 10.5 * SCALE;
 const GLASS_CLIP_EDGE_INSET = 7 * SCALE;
 const EXPAND_HINT_FACE_OFFSET = 0.18;
 const EXPAND_HINT_FRONT_OFFSET = 0.68;
+const EXPAND_HINT_SCREEN_HIT_RADIUS = 32;
 const MOBILE_TRAY_SCREEN_HIT_MARGIN = 28;
 const FRAME_TUBE_350_ASSET_URL = "/assets/frame/tube-350.glb";
 const FRAME_TUBE_750_ASSET_URL = "/assets/frame/tube-750.glb";
@@ -101,20 +102,22 @@ const FRAME_BALL_ASSET_URL = "/assets/frame/kugel_std_hires.glb";
 const FRAME_TUBE_350_TEMPLATE_LENGTH = 350 * SCALE;
 const FRAME_TUBE_750_TEMPLATE_LENGTH = 750 * SCALE;
 const FRAME_BALL_HIRES_ASSET_SCALE = 0.041691;
-const FRAME_BALL_CHROME_COLOR = "#f0f0f0";
+const SCENE_BACKGROUND_COLOR = "#ffffff";
+const FLOOR_REFLECT_INTENSITY = 0.05;
+const FRAME_BALL_CHROME_COLOR = "#ffffff";
 const FRAME_BALL_CHROME_MATERIAL_PROPS = {
   color: FRAME_BALL_CHROME_COLOR,
   metalness: 1,
-  roughness: 0.01,
-  envMapIntensity: 2.5,
-  clearcoat: 0.5,
-  clearcoatRoughness: 0.01,
+  roughness: 0.1,
+  envMapIntensity: 0.3,
+  emissive: new THREE.Color(0xd9d6d0),
+  emissiveIntensity: 0.15,
   reflectivity: 1,
   side: THREE.DoubleSide
 } satisfies THREE.MeshPhysicalMaterialParameters;
-const OFFICIAL_CHROME_COLOR = "#bebebe";
-const OFFICIAL_CHROME_METALNESS = 0.28;
-const OFFICIAL_CHROME_ROUGHNESS = 0.36;
+const OFFICIAL_CHROME_COLOR = "#ffffff";
+const OFFICIAL_CHROME_METALNESS = 1;
+const OFFICIAL_CHROME_ROUGHNESS = 0.1;
 const OFFICIAL_ZINC_COLOR = "#6f6f6f";
 const OFFICIAL_BLACK_PLASTIC_COLOR = "#282828";
 const DROP_DOOR_HINGE_METAL_COLOR = "#747b7f";
@@ -183,28 +186,41 @@ export function BuilderScene({ config, selection, selectedAccessory, onSelect, o
       data-selected-accessory={selectedAccessory?.accessoryId ?? ""}
       data-selected-accessory-cell={selectedAccessory ? `${selectedAccessory.cell.row}:${selectedAccessory.cell.depthIndex ?? 0}:${selectedAccessory.cell.column}` : ""}
       shadows
-      camera={{ position: [3.8, 2.6, 4.3], fov: 42, near: 0.1, far: 100 }}
-      gl={{ antialias: true, preserveDrawingBuffer: true }}
+      camera={{ position: [2, 6, 4], fov: 60, near: 0.5, far: 200 }}
+      gl={{ antialias: true, powerPreference: "high-performance", preserveDrawingBuffer: true }}
+      onCreated={({ gl }) => {
+        gl.setClearColor(SCENE_BACKGROUND_COLOR, 1);
+        gl.toneMapping = THREE.LinearToneMapping;
+        gl.toneMappingExposure = 1;
+        gl.outputColorSpace = THREE.SRGBColorSpace;
+      }}
       onPointerMissed={() => onSelect(null)}
     >
-      <color attach="background" args={["#edf1f3"]} />
-      <fog attach="fog" args={["#edf1f3", 24, 64]} />
+      <color attach="background" args={[SCENE_BACKGROUND_COLOR]} />
       <Suspense fallback={null}>
         <SceneReady onReady={onReady} />
         <StudioReflectionEnvironment />
         <CameraRig metrics={metrics} />
-        <ambientLight intensity={0.86} />
+        <CameraHeadLight />
+        <pointLight position={[-240, -280, 480]} intensity={0.3} />
+        <pointLight position={[240, -560, 160]} intensity={0.3} />
+        <pointLight position={[24, 48, 240]} intensity={0.3} />
+        <ambientLight intensity={0.3} />
         <directionalLight
-          position={[3, 6, 5]}
-          intensity={1.35}
+          position={[2, -2, 6]}
+          intensity={0.1}
           castShadow
           shadow-mapSize-width={2048}
           shadow-mapSize-height={2048}
-          shadow-bias={-0.00035}
-          shadow-normalBias={0.035}
+          shadow-bias={-0.01}
+          shadow-radius={5}
+          shadow-camera-near={0.4}
+          shadow-camera-far={20}
+          shadow-camera-left={-8}
+          shadow-camera-right={8}
+          shadow-camera-top={8}
+          shadow-camera-bottom={-8}
         />
-        <directionalLight position={[-4, 3, -2]} intensity={0.58} />
-        <directionalLight position={[0, 2.8, -5]} intensity={0.42} />
         <CabinetModel
           config={config}
           selection={selection}
@@ -217,7 +233,7 @@ export function BuilderScene({ config, selection, selectedAccessory, onSelect, o
           onDrawerDragActive={setDrawerDragging}
         />
         <Ground />
-        <ContactShadows opacity={0.28} scale={10} blur={2.6} far={4.8} resolution={512} color="#5b6670" />
+        <ContactShadows opacity={0.3} scale={10} blur={2.6} far={4.8} resolution={512} color="#5b6670" />
         <OrbitControls
           makeDefault
           enabled={!drawerDragging}
@@ -307,14 +323,28 @@ function CameraRig({ metrics }: { metrics: ReturnType<typeof getSceneMetrics> })
   useEffect(() => {
     const aspect = Math.max(0.42, size.width / Math.max(1, size.height));
     const target = new THREE.Vector3(metrics.centerX, metrics.centerY, metrics.centerZ);
-    const narrow = size.width < 560;
     const wideCabinet = metrics.totalWidth > 4.2;
-    const distance = Math.max(4.4, (metrics.totalWidth * (wideCabinet ? 2.35 : 1.38)) / aspect, metrics.totalHeight * 2.2, metrics.depth * 4);
-    const direction = new THREE.Vector3(wideCabinet ? 0.34 : narrow ? 0.38 : 0.64, 0.42, wideCabinet || narrow ? 0.82 : 0.72).normalize();
+    const distance = Math.max(4.6, (metrics.totalWidth * (wideCabinet ? 2.45 : 1.55)) / aspect, metrics.totalHeight * 2.45, metrics.depth * 4.4);
+    const direction = new THREE.Vector3(0.34, 1, 0.68).normalize();
     camera.position.copy(target.clone().add(direction.multiplyScalar(distance)));
     camera.lookAt(target);
     camera.updateProjectionMatrix();
   }, [camera, metrics.centerX, metrics.centerY, metrics.centerZ, metrics.depth, metrics.totalHeight, metrics.totalWidth, size.height, size.width]);
+
+  return null;
+}
+
+function CameraHeadLight() {
+  const { camera } = useThree();
+
+  useEffect(() => {
+    const light = new THREE.PointLight(0xffffff, 0.8);
+    camera.add(light);
+    return () => {
+      camera.remove(light);
+      light.dispose();
+    };
+  }, [camera]);
 
   return null;
 }
@@ -504,9 +534,9 @@ function CellContent({
 
       {selected ? (
         <>
-          {!hasInteractiveFront ? <SelectedCellScreenHitArea cell={cell} onSelect={onSelect} /> : null}
           <SelectionFrame cell={cell} />
           {cellConfig.frontAccessory === "glassDropDoor" ? null : <ExpandHints cell={cell} onExpand={onExpand} />}
+          {!hasInteractiveFront ? <SelectedCellScreenHitArea cell={cell} onSelect={onSelect} /> : null}
         </>
       ) : null}
     </group>
@@ -557,7 +587,7 @@ function SelectedCellScreenHitArea({ cell, onSelect }: { cell: LayoutCell; onSel
         new THREE.Vector3(cell.x, cell.y + cell.height / 2 + 0.16, z),
         new THREE.Vector3(cell.x, cell.y, cell.z + cell.depth / 2 + EXPAND_HINT_FRONT_OFFSET)
       ];
-      const radius = 14;
+      const radius = EXPAND_HINT_SCREEN_HIT_RADIUS;
       return positions.some((position) => {
         const projected = projectPoint(rect, position);
         const dx = clientX - projected.x;
@@ -3463,38 +3493,45 @@ function ExpandHints({ cell, onExpand }: { cell: LayoutCell; onExpand: (directio
   ], [cell.depth, cell.height, cell.width, cell.x, cell.y, cell.z, z]);
   const buttonRefs = useRef<Record<string, THREE.Object3D | null>>({});
   const lastRaycastExpandAt = useRef(0);
+  const expandOnce = useCallback((direction: "left" | "right" | "top" | "front") => {
+    const now = performance.now();
+    if (now - lastRaycastExpandAt.current < 160) return;
+    lastRaycastExpandAt.current = now;
+    onExpand(direction);
+  }, [onExpand]);
 
   useEffect(() => {
     const canvas = gl.domElement;
-    const raycaster = new THREE.Raycaster();
-    const pointer = new THREE.Vector2();
+    const scratch = new THREE.Vector3();
+
+    function projectButton(rect: DOMRect, position: [number, number, number]) {
+      scratch.set(...position).project(camera);
+      return {
+        x: rect.left + ((scratch.x + 1) / 2) * rect.width,
+        y: rect.top + ((1 - scratch.y) / 2) * rect.height
+      };
+    }
 
     function handlePointerDown(event: MouseEvent | PointerEvent) {
       const rect = canvas.getBoundingClientRect();
-      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-      raycaster.setFromCamera(pointer, camera);
-
       let hit: "left" | "right" | "top" | "front" | null = null;
-      let hitDistance = Number.POSITIVE_INFINITY;
+      let hitDistance = EXPAND_HINT_SCREEN_HIT_RADIUS * EXPAND_HINT_SCREEN_HIT_RADIUS;
       for (const button of buttons) {
-        const node = buttonRefs.current[button.direction];
-        if (!node) continue;
-        const nextHit = raycaster.intersectObject(node, false)[0];
-        if (nextHit && nextHit.distance < hitDistance) {
+        const projected = projectButton(rect, button.position);
+        const dx = event.clientX - projected.x;
+        const dy = event.clientY - projected.y;
+        const nextDistance = dx * dx + dy * dy;
+        if (nextDistance <= hitDistance) {
           hit = button.direction;
-          hitDistance = nextHit.distance;
+          hitDistance = nextDistance;
         }
       }
 
       if (!hit) return;
-      const now = performance.now();
-      if (now - lastRaycastExpandAt.current < 160) return;
-      lastRaycastExpandAt.current = now;
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
-      onExpand(hit);
+      expandOnce(hit);
     }
 
     canvas.addEventListener("mousedown", handlePointerDown, true);
@@ -3503,7 +3540,7 @@ function ExpandHints({ cell, onExpand }: { cell: LayoutCell; onExpand: (directio
       canvas.removeEventListener("mousedown", handlePointerDown, true);
       canvas.removeEventListener("pointerdown", handlePointerDown, true);
     };
-  }, [buttons, camera, gl, onExpand]);
+  }, [buttons, camera, expandOnce, gl]);
 
   return (
     <group>
@@ -3522,7 +3559,7 @@ function ExpandHints({ cell, onExpand }: { cell: LayoutCell; onExpand: (directio
             renderOrder={22}
             onPointerDown={(event) => {
               event.stopPropagation();
-              onExpand(button.direction);
+              expandOnce(button.direction);
             }}
             onClick={(event) => {
               event.stopPropagation();
@@ -4040,9 +4077,9 @@ function cloneFrameAsset(asset: THREE.Group, color: string, metalness: number, r
       color,
       metalness,
       roughness,
-      clearcoat: 0.85,
-      clearcoatRoughness: 0.08,
-      reflectivity: 0.82,
+      envMapIntensity: 0.3,
+      emissive: new THREE.Color(0xd9d6d0),
+      emissiveIntensity: 0.15,
       side: THREE.DoubleSide
     });
   });
@@ -4083,10 +4120,29 @@ function PanelBox({
 
 function Ground() {
   return (
-    <mesh position={[0, -0.08, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[12, 12]} />
-      <meshStandardMaterial color="#dde4e8" roughness={0.74} metalness={0.02} />
-    </mesh>
+    <group>
+      <mesh position={[0, -0.08, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={-20000}>
+        <planeGeometry args={[80, 80]} />
+        <MeshReflectorMaterial
+          color="#ffffff"
+          mirror={FLOOR_REFLECT_INTENSITY}
+          mixStrength={0.18}
+          mixContrast={0.9}
+          roughness={0.18}
+          metalness={0}
+          resolution={512}
+          depthWrite={false}
+        />
+      </mesh>
+      <mesh position={[0, -0.079, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={-10000}>
+        <planeGeometry args={[82, 82]} />
+        <meshBasicMaterial color="#ffffff" transparent opacity={1 - FLOOR_REFLECT_INTENSITY} depthWrite={false} />
+      </mesh>
+      <mesh position={[0, -0.077, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow renderOrder={-100}>
+        <planeGeometry args={[82, 82]} />
+        <shadowMaterial opacity={0.3} depthWrite={false} />
+      </mesh>
+    </group>
   );
 }
 
