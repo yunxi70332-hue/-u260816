@@ -1,0 +1,14 @@
+ALTER TABLE material_variants ADD COLUMN material_code text;
+UPDATE material_variants SET material_code = upper(regexp_replace(material_key || '-' || spec_key || CASE WHEN color = '' THEN '' ELSE '-' || color END || CASE WHEN finish = '' THEN '' ELSE '-' || finish END, '[^a-zA-Z0-9_-]+', '-', 'g'));
+ALTER TABLE material_variants ALTER COLUMN material_code SET NOT NULL;
+ALTER TABLE material_variants ADD COLUMN category text NOT NULL DEFAULT '';
+ALTER TABLE material_variants ADD COLUMN weight_kg numeric(12,4);
+ALTER TABLE material_variants ADD COLUMN reference_cost_minor integer;
+ALTER TABLE material_variants ADD COLUMN note text NOT NULL DEFAULT '';
+ALTER TABLE material_variants ADD COLUMN source text NOT NULL DEFAULT '';
+CREATE UNIQUE INDEX material_variants_tenant_code_unique ON material_variants(tenant_id, material_code);
+ALTER TABLE stock_documents ADD COLUMN order_id text REFERENCES orders(id);
+ALTER TABLE stock_documents ADD COLUMN source_batch_id text;
+CREATE UNIQUE INDEX stock_documents_tenant_source_batch_unique ON stock_documents(tenant_id, source_batch_id);
+ALTER TABLE inventory_reservations ADD COLUMN issued_qty integer NOT NULL DEFAULT 0;
+ALTER TABLE inventory_reservations ADD COLUMN released_qty integer NOT NULL DEFAULT 0;

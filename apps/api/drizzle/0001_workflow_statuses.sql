@@ -1,0 +1,9 @@
+ALTER TYPE "public"."quote_status" ADD VALUE IF NOT EXISTS 'submitted';--> statement-breakpoint
+ALTER TYPE "public"."quote_status" ADD VALUE IF NOT EXISTS 'changes_requested';--> statement-breakpoint
+ALTER TYPE "public"."quote_status" ADD VALUE IF NOT EXISTS 'approved';--> statement-breakpoint
+ALTER TYPE "public"."quote_status" ADD VALUE IF NOT EXISTS 'customer_confirmed';--> statement-breakpoint
+ALTER TYPE "public"."quote_status" ADD VALUE IF NOT EXISTS 'converted';--> statement-breakpoint
+ALTER TYPE "public"."order_status" ADD VALUE IF NOT EXISTS 'technical_review';--> statement-breakpoint
+ALTER TYPE "public"."order_status" ADD VALUE IF NOT EXISTS 'ready_for_production';--> statement-breakpoint
+ALTER TYPE "public"."order_status" ADD VALUE IF NOT EXISTS 'completed';--> statement-breakpoint
+ALTER TYPE "public"."order_status" ADD VALUE IF NOT EXISTS 'on_hold';--> statement-breakpoint

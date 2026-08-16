@@ -1,0 +1,17 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+.venv
+.playwright-cli
+node_modules
+dist
+apps/*/dist
+artifacts
+output
+tmp
+deploy/backups
+*.log
+*.zip
+*.tsbuildinfo

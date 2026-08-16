@@ -3,21 +3,41 @@
   "version": "4.22.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@11.7.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "dev:designer": "vite --host 127.0.0.1 --port 9011 --strictPort",
+    "dev:erp-ui": "pnpm --filter @usm/erp dev",
+    "dev:api": "pnpm --filter @usm/api dev",
+    "dev:erp": "node scripts/start-erp-dev.mjs",
     "dev:4": "vite --host 127.0.0.1 --port 9011 --strictPort",
     "restart:4": "node scripts/restart-local-4.mjs",
     "restart:4:ps": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restart-local-4.ps1",
-    "build": "tsc --noEmit && vite build",
+    "build": "pnpm build:designer && pnpm build:erp && pnpm build:api",
+    "test": "pnpm test:domain && pnpm test:api",
+    "test:domain": "pnpm --filter @usm/domain test",
+    "test:api": "pnpm --filter @usm/api test",
+    "build:designer": "tsc --noEmit && vite build",
+    "build:erp": "pnpm --filter @usm/erp build",
+    "build:api": "pnpm --filter @usm/api build",
+    "typecheck": "tsc --noEmit && tsc -p packages/contracts/tsconfig.json --noEmit && tsc -p packages/domain/tsconfig.json --noEmit && tsc -p apps/api/tsconfig.json --noEmit && tsc -p apps/erp/tsconfig.json --noEmit",
+    "typecheck:erp": "tsc -p apps/api/tsconfig.json --noEmit && tsc -p apps/erp/tsconfig.json --noEmit",
+    "db:migrate": "pnpm --filter @usm/api db:migrate",
     "export:requirements": "node scripts/export-accessory-requirements.mjs",
     "build:door-assets": ".venv\\Scripts\\python.exe scripts/build-drop-door-assets.py",
     "build:frame-assets": "..\\.venv\\Scripts\\python.exe scripts/build-frame-assets.py",
     "build:drop-door-assets": ".venv\\Scripts\\python.exe scripts/build-drop-door-assets.py --door drop",
     "export:logic-matrix": "node scripts/export-accessory-logic-matrix.mjs",
     "verify:logic": "node scripts/verify-accessory-logic.mjs",
-    "verify:pricing": "node scripts/verify-price-source.mjs",
+    "verify:pricing": "tsx scripts/verify-price-source.mjs",
+    "verify:bom-identity": "tsx scripts/verify-bom-identity.mjs",
     "verify:local-cdp": "node scripts/verify-local-cdp.mjs",
-    "preview": "vite preview --host 127.0.0.1"
+    "preview": "vite preview --host 127.0.0.1",
+    "verify:business": "node scripts/verify-business-gateway.mjs"
   },
   "dependencies": {
     "@react-three/drei": "latest",
@@ -25,14 +45,17 @@
     "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "three": "latest"
+    "three": "latest",
+    "three-stdlib": "^2.36.1"
   },
   "devDependencies": {
     "@types/node": "^25.9.1",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "@types/three": "0.185.4",
     "@vitejs/plugin-react": "latest",
     "playwright": "^1.60.0",
+    "tsx": "^4.20.0",
     "typescript": "latest",
     "vite": "latest"
   }

@@ -1,0 +1,28 @@
+FROM node:24-alpine AS build
+WORKDIR /app
+RUN npm install --global pnpm@11.7.0
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps ./apps
+COPY packages ./packages
+COPY src ./src
+RUN pnpm install --frozen-lockfile
+ARG VITE_ERP_BASE_PATH=/erp/
+ENV VITE_ERP_BASE_PATH=$VITE_ERP_BASE_PATH
+RUN pnpm build:erp && pnpm build:api
+
+FROM node:24-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+RUN npm install --global pnpm@11.7.0
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json apps/api/package.json
+COPY packages/contracts/package.json packages/contracts/package.json
+COPY packages/domain/package.json packages/domain/package.json
+RUN pnpm install --prod --frozen-lockfile --filter @usm/api...
+COPY --from=build /app/apps/api/dist apps/api/dist
+COPY --from=build /app/apps/api/drizzle apps/api/drizzle
+COPY --from=build /app/apps/erp/dist apps/erp/dist
+COPY --from=build /app/packages packages
+EXPOSE 9012
+USER node
+CMD ["node", "apps/api/dist/server.js"]

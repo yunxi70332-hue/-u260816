@@ -1,0 +1,25 @@
+:80 {
+  encode zstd gzip
+
+  route {
+    @erpApi path /erp/api /erp/api/*
+    handle @erpApi {
+      respond 404
+    }
+
+    redir /erp /erp/ 308
+
+    handle_path /erp/* {
+      reverse_proxy api:9012
+    }
+
+    @api path /api /api/*
+    handle @api {
+      reverse_proxy api:9012
+    }
+
+    handle {
+      reverse_proxy designer:8080
+    }
+  }
+}

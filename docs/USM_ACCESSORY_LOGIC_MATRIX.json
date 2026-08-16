@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-17T02:36:12.800Z",
+  "generatedAt": "2026-08-11T11:29:42.362Z",
   "purpose": "USM local configurator accessory logic matrix",
   "statuses": {
     "officialExact": {
@@ -40,6 +40,10 @@
       "selectedCell": {
         "kind": "metalBackModule",
         "frontAccessory": "none",
+        "accessoryMountSide": null,
+        "structurePanels": {},
+        "doorOpen": null,
+        "doorState": null,
         "interiorAccessories": [],
         "fitting": "none",
         "depth": 350,
@@ -172,7 +176,7 @@
       "frontAccessories": {
         "none": {
           "status": "officialExact",
-          "label": "无门类前脸",
+          "label": "无门类前脸 · 前向",
           "officialSpec": null,
           "reasons": [
             "该格不安装门类前脸。"
@@ -186,7 +190,7 @@
         },
         "dropDoor": {
           "status": "officialExact",
-          "label": "下翻门",
+          "label": "下翻门 · 前向",
           "officialSpec": "14 x 20 inch",
           "reasons": [
             "命中官方公开 metal drop-down door 尺寸。"
@@ -200,7 +204,7 @@
         },
         "flipUpDoor": {
           "status": "officialExact",
-          "label": "上翻门",
+          "label": "上翻门 · 前向",
           "officialSpec": null,
           "reasons": [
             "上翻门作为单个前脸配件安装，内部普通配件可按高度继续叠加。"
@@ -214,7 +218,7 @@
         },
         "glassDropDoor": {
           "status": "officialExact",
-          "label": "玻璃门",
+          "label": "玻璃门 · 前向",
           "officialSpec": null,
           "reasons": [
             "玻璃门作为单个前脸配件，默认按左右侧开玻璃门处理。"
@@ -321,6 +325,7 @@
         {
           "name": "深度钢管",
           "spec": "350 mm",
+          "baseSpec": "350 mm",
           "qty": 4,
           "unit": "根",
           "unitPrice": 193
@@ -338,6 +343,10 @@
       "selectedCell": {
         "kind": "metalBackModule",
         "frontAccessory": "none",
+        "accessoryMountSide": null,
+        "structurePanels": {},
+        "doorOpen": null,
+        "doorState": null,
         "interiorAccessories": [],
         "fitting": "none",
         "depth": 350,
@@ -470,7 +479,7 @@
       "frontAccessories": {
         "none": {
           "status": "officialExact",
-          "label": "无门类前脸",
+          "label": "无门类前脸 · 前向",
           "officialSpec": null,
           "reasons": [
             "该格不安装门类前脸。"
@@ -484,7 +493,7 @@
         },
         "dropDoor": {
           "status": "officialLogicCustomSize",
-          "label": "下翻门",
+          "label": "下翻门 · 前向",
           "officialSpec": null,
           "reasons": [
             "下翻门搭配逻辑成立，尺寸按工厂自定义输出。"
@@ -500,7 +509,7 @@
         },
         "flipUpDoor": {
           "status": "officialLogicCustomSize",
-          "label": "上翻门",
+          "label": "上翻门 · 前向",
           "officialSpec": null,
           "reasons": [
             "上翻门作为单个前脸配件安装，内部普通配件可按高度继续叠加。"
@@ -514,7 +523,7 @@
         },
         "glassDropDoor": {
           "status": "officialLogicCustomSize",
-          "label": "玻璃门",
+          "label": "玻璃门 · 前向",
           "officialSpec": null,
           "reasons": [
             "玻璃门作为单个前脸配件，默认按左右侧开玻璃门处理。"
@@ -628,6 +637,7 @@
         {
           "name": "深度钢管",
           "spec": "350 mm",
+          "baseSpec": "350 mm",
           "qty": 4,
           "unit": "根",
           "unitPrice": 193
@@ -645,6 +655,10 @@
       "selectedCell": {
         "kind": "metalBackModule",
         "frontAccessory": "none",
+        "accessoryMountSide": null,
+        "structurePanels": {},
+        "doorOpen": null,
+        "doorState": null,
         "interiorAccessories": [],
         "fitting": "none",
         "depth": 500,
@@ -777,7 +791,7 @@
       "frontAccessories": {
         "none": {
           "status": "officialExact",
-          "label": "无门类前脸",
+          "label": "无门类前脸 · 前向",
           "officialSpec": null,
           "reasons": [
             "该格不安装门类前脸。"
@@ -791,7 +805,7 @@
         },
         "dropDoor": {
           "status": "officialLogicCustomSize",
-          "label": "下翻门",
+          "label": "下翻门 · 前向",
           "officialSpec": null,
           "reasons": [
             "下翻门搭配逻辑成立，尺寸按工厂自定义输出。"
@@ -805,7 +819,7 @@
         },
         "flipUpDoor": {
           "status": "officialExact",
-          "label": "上翻门",
+          "label": "上翻门 · 前向",
           "officialSpec": null,
           "reasons": [
             "上翻门作为单个前脸配件安装，内部普通配件可按高度继续叠加。"
@@ -819,7 +833,7 @@
         },
         "glassDropDoor": {
           "status": "officialExact",
-          "label": "玻璃门",
+          "label": "玻璃门 · 前向",
           "officialSpec": null,
           "reasons": [
             "玻璃门作为单个前脸配件，默认按左右侧开玻璃门处理。"
@@ -929,6 +943,7 @@
         {
           "name": "深度钢管",
           "spec": "500 mm",
+          "baseSpec": "500 mm",
           "qty": 4,
           "unit": "根",
           "unitPrice": 244
@@ -946,6 +961,10 @@
       "selectedCell": {
         "kind": "glassPanelModule",
         "frontAccessory": "none",
+        "accessoryMountSide": null,
+        "structurePanels": {},
+        "doorOpen": null,
+        "doorState": null,
         "interiorAccessories": [],
         "fitting": "none",
         "depth": 350,
@@ -1078,7 +1097,7 @@
       "frontAccessories": {
         "none": {
           "status": "officialExact",
-          "label": "无门类前脸",
+          "label": "无门类前脸 · 前向",
           "officialSpec": null,
           "reasons": [
             "该格不安装门类前脸。"
@@ -1092,7 +1111,7 @@
         },
         "dropDoor": {
           "status": "blocked",
-          "label": "下翻门",
+          "label": "下翻门 · 前向",
           "officialSpec": null,
           "reasons": [
             "当前格是玻璃侧板/玻璃箱体，不是金属门板安装面，不能直接安装普通门类；请先切换为金属箱体或改玻璃门。"
@@ -1106,7 +1125,7 @@
         },
         "flipUpDoor": {
           "status": "blocked",
-          "label": "上翻门",
+          "label": "上翻门 · 前向",
           "officialSpec": null,
           "reasons": [
             "当前格是玻璃侧板/玻璃箱体，不是金属门板安装面，不能直接安装普通门类；请先切换为金属箱体或改玻璃门。"
@@ -1120,7 +1139,7 @@
         },
         "glassDropDoor": {
           "status": "officialExact",
-          "label": "玻璃门",
+          "label": "玻璃门 · 前向",
           "officialSpec": null,
           "reasons": [
             "玻璃门作为单个前脸配件，默认按左右侧开玻璃门处理。"
@@ -1227,9 +1246,329 @@
         {
           "name": "深度钢管",
           "spec": "350 mm",
+          "baseSpec": "350 mm",
           "qty": 4,
           "unit": "根",
           "unitPrice": 193
+        }
+      ]
+    },
+    {
+      "id": "perforated-panel-back",
+      "label": "背向框架洞洞板",
+      "description": "旧的背向前脸洞洞板应迁移为框架背板材质，且不产生门板开合状态。",
+      "selection": {
+        "row": 0,
+        "column": 0,
+        "depthIndex": 0
+      },
+      "selectedCell": {
+        "kind": "metalBackModule",
+        "frontAccessory": "none",
+        "accessoryMountSide": null,
+        "structurePanels": {
+          "back": "perforated"
+        },
+        "doorOpen": null,
+        "doorState": null,
+        "interiorAccessories": [],
+        "fitting": "none",
+        "depth": 350,
+        "enabled": true
+      },
+      "dimensions": {
+        "innerWidth": 350,
+        "innerHeight": 350,
+        "innerDepth": 700,
+        "outerWidth": 373,
+        "outerHeight": 390,
+        "outerDepth": 723
+      },
+      "cellKinds": {
+        "open": {
+          "status": "officialExact",
+          "label": "开放格",
+          "officialSpec": null,
+          "reasons": [
+            "命中官方公开尺寸体系或本地标准模数。"
+          ],
+          "warnings": [],
+          "bomSize": {
+            "width": 350,
+            "height": 350,
+            "depth": 350
+          }
+        },
+        "metalBackModule": {
+          "status": "officialExact",
+          "label": "含金属背板模块",
+          "officialSpec": null,
+          "reasons": [
+            "命中官方公开尺寸体系或本地标准模数。"
+          ],
+          "warnings": [],
+          "bomSize": {
+            "width": 350,
+            "height": 350,
+            "depth": 350
+          }
+        },
+        "noBackModule": {
+          "status": "officialExact",
+          "label": "不含背板模块",
+          "officialSpec": null,
+          "reasons": [
+            "命中官方公开尺寸体系或本地标准模数。"
+          ],
+          "warnings": [],
+          "bomSize": {
+            "width": 350,
+            "height": 350,
+            "depth": 350
+          }
+        },
+        "glassPanelModule": {
+          "status": "officialExact",
+          "label": "含玻璃板模块",
+          "officialSpec": null,
+          "reasons": [
+            "玻璃箱体适合展示格，默认不承载抽屉导轨。"
+          ],
+          "warnings": [],
+          "bomSize": {
+            "width": 350,
+            "height": 350,
+            "depth": 350
+          }
+        },
+        "sideOpenDoor": {
+          "status": "officialExact",
+          "label": "不含侧板模块",
+          "officialSpec": null,
+          "reasons": [
+            "官方 buhanceban 结构：保留顶板和底板，左右侧面与背面开放。"
+          ],
+          "warnings": [],
+          "bomSize": {
+            "width": 350,
+            "height": 350,
+            "depth": 350
+          }
+        },
+        "shelf": {
+          "status": "officialLogicCustomSize",
+          "label": "固定层板",
+          "officialSpec": null,
+          "reasons": [
+            "固定层板 不需要抽拉导轨，可按工厂自定义尺寸输出 BOM。"
+          ],
+          "warnings": [],
+          "bomSize": {
+            "width": 350,
+            "height": 350,
+            "depth": 350
+          }
+        },
+        "displayTray": {
+          "status": "officialLogicCustomSize",
+          "label": "固定托盘",
+          "officialSpec": null,
+          "reasons": [
+            "固定托盘 不需要抽拉导轨，可按工厂自定义尺寸输出 BOM。"
+          ],
+          "warnings": [],
+          "bomSize": {
+            "width": 350,
+            "height": 350,
+            "depth": 350
+          }
+        },
+        "glassShelf": {
+          "status": "needsHardwareCheck",
+          "label": "玻璃搁板",
+          "officialSpec": null,
+          "reasons": [
+            "玻璃搁板可装在玻璃侧板或金属侧板之间，生产需确认夹件、支撑和承重。"
+          ],
+          "warnings": [
+            "玻璃搁板不能只按一块玻璃生产，需要确认玻璃夹、支撑点和承重。"
+          ],
+          "bomSize": {
+            "width": 350,
+            "height": 350,
+            "depth": 350
+          }
+        }
+      },
+      "frontAccessories": {
+        "none": {
+          "status": "officialExact",
+          "label": "无门类前脸 · 前向",
+          "officialSpec": null,
+          "reasons": [
+            "该格不安装门类前脸。"
+          ],
+          "warnings": [],
+          "bomSize": {
+            "width": 350,
+            "height": 350,
+            "depth": 350
+          }
+        },
+        "dropDoor": {
+          "status": "officialExact",
+          "label": "下翻门 · 前向",
+          "officialSpec": "14 x 14 inch",
+          "reasons": [
+            "命中官方公开 metal drop-down door 尺寸。"
+          ],
+          "warnings": [],
+          "bomSize": {
+            "width": 350,
+            "height": 350,
+            "depth": 350
+          }
+        },
+        "flipUpDoor": {
+          "status": "officialExact",
+          "label": "上翻门 · 前向",
+          "officialSpec": null,
+          "reasons": [
+            "上翻门作为单个前脸配件安装，内部普通配件可按高度继续叠加。"
+          ],
+          "warnings": [],
+          "bomSize": {
+            "width": 350,
+            "height": 350,
+            "depth": 350
+          }
+        },
+        "glassDropDoor": {
+          "status": "officialExact",
+          "label": "玻璃门 · 前向",
+          "officialSpec": null,
+          "reasons": [
+            "玻璃门作为单个前脸配件，默认按左右侧开玻璃门处理。"
+          ],
+          "warnings": [],
+          "bomSize": {
+            "width": 350,
+            "height": 350,
+            "depth": 350
+          }
+        }
+      },
+      "interiorAccessories": {
+        "mobileTray": {
+          "status": "needsHardwareCheck",
+          "label": "移动托盘",
+          "officialSpec": null,
+          "reasons": [
+            "移动托盘逻辑成立，但自定义宽深需要导轨确认。"
+          ],
+          "warnings": [
+            "导轨长度、承重和防倾需要工厂确认。"
+          ],
+          "bomSize": {
+            "width": 350,
+            "height": 350,
+            "depth": 350
+          }
+        },
+        "shelf": {
+          "status": "officialLogicCustomSize",
+          "label": "固定层板",
+          "officialSpec": null,
+          "reasons": [
+            "固定层板 不需要抽拉导轨，可按工厂自定义尺寸输出 BOM。"
+          ],
+          "warnings": [],
+          "bomSize": {
+            "width": 350,
+            "height": 350,
+            "depth": 350
+          }
+        },
+        "displayTray": {
+          "status": "officialLogicCustomSize",
+          "label": "固定托盘",
+          "officialSpec": null,
+          "reasons": [
+            "固定托盘 不需要抽拉导轨，可按工厂自定义尺寸输出 BOM。"
+          ],
+          "warnings": [],
+          "bomSize": {
+            "width": 350,
+            "height": 350,
+            "depth": 350
+          }
+        },
+        "glassShelf": {
+          "status": "needsHardwareCheck",
+          "label": "玻璃搁板",
+          "officialSpec": null,
+          "reasons": [
+            "玻璃搁板可装在玻璃侧板或金属侧板之间，生产需确认夹件、支撑和承重。"
+          ],
+          "warnings": [
+            "玻璃搁板不能只按一块玻璃生产，需要确认玻璃夹、支撑点和承重。"
+          ],
+          "bomSize": {
+            "width": 350,
+            "height": 350,
+            "depth": 350
+          }
+        }
+      },
+      "fittings": {
+        "none": {
+          "status": "officialExact",
+          "label": "无内部配件",
+          "officialSpec": null,
+          "reasons": [
+            "不安装额外内部配件。"
+          ],
+          "warnings": [],
+          "bomSize": {
+            "width": 350,
+            "height": 350,
+            "depth": 350
+          }
+        },
+        "rimmedDrawer": {
+          "status": "officialLogicCustomSize",
+          "label": "带围边抽屉",
+          "officialSpec": null,
+          "reasons": [
+            "带围边抽屉会独占前脸，并自带导轨和移动托盘逻辑。"
+          ],
+          "warnings": [
+            "按工厂自定义抽屉尺寸输出 BOM。"
+          ],
+          "bomSize": {
+            "width": 350,
+            "height": 350,
+            "depth": 350
+          }
+        }
+      },
+      "bomHighlights": [
+        {
+          "name": "深度钢管",
+          "spec": "350 mm",
+          "baseSpec": "350 mm",
+          "qty": 8,
+          "unit": "根",
+          "unitPrice": 193
+        },
+        {
+          "name": "洞洞板",
+          "spec": "350 x 350 mm / 绿色 C类",
+          "baseSpec": "350 x 350 mm",
+          "color": "#2da845",
+          "qty": 1,
+          "unit": "块",
+          "unitPrice": 430
         }
       ]
     },
@@ -1244,6 +1583,10 @@
       "selectedCell": {
         "kind": "metalBackModule",
         "frontAccessory": "none",
+        "accessoryMountSide": null,
+        "structurePanels": {},
+        "doorOpen": null,
+        "doorState": null,
         "interiorAccessories": [],
         "fitting": "none",
         "depth": 350,
@@ -1376,7 +1719,7 @@
       "frontAccessories": {
         "none": {
           "status": "officialExact",
-          "label": "无门类前脸",
+          "label": "无门类前脸 · 前向",
           "officialSpec": null,
           "reasons": [
             "该格不安装门类前脸。"
@@ -1390,7 +1733,7 @@
         },
         "dropDoor": {
           "status": "officialExact",
-          "label": "下翻门",
+          "label": "下翻门 · 前向",
           "officialSpec": "14 x 20 inch",
           "reasons": [
             "命中官方公开 metal drop-down door 尺寸。"
@@ -1404,7 +1747,7 @@
         },
         "flipUpDoor": {
           "status": "officialExact",
-          "label": "上翻门",
+          "label": "上翻门 · 前向",
           "officialSpec": null,
           "reasons": [
             "上翻门作为单个前脸配件安装，内部普通配件可按高度继续叠加。"
@@ -1418,7 +1761,7 @@
         },
         "glassDropDoor": {
           "status": "officialExact",
-          "label": "玻璃门",
+          "label": "玻璃门 · 前向",
           "officialSpec": null,
           "reasons": [
             "玻璃门作为单个前脸配件，默认按左右侧开玻璃门处理。"
@@ -1525,6 +1868,7 @@
         {
           "name": "深度钢管",
           "spec": "350 mm",
+          "baseSpec": "350 mm",
           "qty": 4,
           "unit": "根",
           "unitPrice": 193
@@ -1542,6 +1886,13 @@
       "selectedCell": {
         "kind": "metalBackModule",
         "frontAccessory": "none",
+        "accessoryMountSide": null,
+        "structurePanels": {
+          "left": "glass",
+          "right": "glass"
+        },
+        "doorOpen": null,
+        "doorState": null,
         "interiorAccessories": [],
         "fitting": "none",
         "depth": 350,
@@ -1674,7 +2025,7 @@
       "frontAccessories": {
         "none": {
           "status": "officialExact",
-          "label": "无门类前脸",
+          "label": "无门类前脸 · 前向",
           "officialSpec": null,
           "reasons": [
             "该格不安装门类前脸。"
@@ -1688,7 +2039,7 @@
         },
         "dropDoor": {
           "status": "officialExact",
-          "label": "下翻门",
+          "label": "下翻门 · 前向",
           "officialSpec": "14 x 20 inch",
           "reasons": [
             "命中官方公开 metal drop-down door 尺寸。"
@@ -1702,7 +2053,7 @@
         },
         "flipUpDoor": {
           "status": "officialExact",
-          "label": "上翻门",
+          "label": "上翻门 · 前向",
           "officialSpec": null,
           "reasons": [
             "上翻门作为单个前脸配件安装，内部普通配件可按高度继续叠加。"
@@ -1716,7 +2067,7 @@
         },
         "glassDropDoor": {
           "status": "officialExact",
-          "label": "玻璃门",
+          "label": "玻璃门 · 前向",
           "officialSpec": null,
           "reasons": [
             "玻璃门作为单个前脸配件，默认按左右侧开玻璃门处理。"
@@ -1823,6 +2174,7 @@
         {
           "name": "深度钢管",
           "spec": "350 mm",
+          "baseSpec": "350 mm",
           "qty": 4,
           "unit": "根",
           "unitPrice": 193
@@ -1840,6 +2192,12 @@
       "selectedCell": {
         "kind": "metalBackModule",
         "frontAccessory": "none",
+        "accessoryMountSide": null,
+        "structurePanels": {
+          "left": "none"
+        },
+        "doorOpen": null,
+        "doorState": null,
         "interiorAccessories": [],
         "fitting": "none",
         "depth": 350,
@@ -1970,7 +2328,7 @@
       "frontAccessories": {
         "none": {
           "status": "officialExact",
-          "label": "无门类前脸",
+          "label": "无门类前脸 · 前向",
           "officialSpec": null,
           "reasons": [
             "该格不安装门类前脸。"
@@ -1984,7 +2342,7 @@
         },
         "dropDoor": {
           "status": "officialExact",
-          "label": "下翻门",
+          "label": "下翻门 · 前向",
           "officialSpec": "14 x 20 inch",
           "reasons": [
             "命中官方公开 metal drop-down door 尺寸。"
@@ -1998,7 +2356,7 @@
         },
         "flipUpDoor": {
           "status": "officialExact",
-          "label": "上翻门",
+          "label": "上翻门 · 前向",
           "officialSpec": null,
           "reasons": [
             "上翻门作为单个前脸配件安装，内部普通配件可按高度继续叠加。"
@@ -2012,7 +2370,7 @@
         },
         "glassDropDoor": {
           "status": "officialExact",
-          "label": "玻璃门",
+          "label": "玻璃门 · 前向",
           "officialSpec": null,
           "reasons": [
             "玻璃门作为单个前脸配件，默认按左右侧开玻璃门处理。"
@@ -2117,667 +2475,10 @@
         {
           "name": "深度钢管",
           "spec": "350 mm",
+          "baseSpec": "350 mm",
           "qty": 4,
           "unit": "根",
           "unitPrice": 193
-        }
-      ]
-    },
-    {
-      "id": "desk-under-top",
-      "label": "书桌台面下方左格",
-      "description": "下翻门允许但提示限位；上翻门撞台面禁用；移动托盘需五金确认。",
-      "selection": {
-        "row": 0,
-        "column": 0
-      },
-      "selectedCell": {
-        "kind": "metalBackModule",
-        "frontAccessory": "dropDoor",
-        "interiorAccessories": [],
-        "fitting": "none",
-        "depth": 500,
-        "enabled": true
-      },
-      "dimensions": {
-        "innerWidth": 2500,
-        "innerHeight": 450,
-        "innerDepth": 500,
-        "outerWidth": 2523,
-        "outerHeight": 522,
-        "outerDepth": 640
-      },
-      "cellKinds": {
-        "open": {
-          "status": "officialExact",
-          "label": "开放格",
-          "officialSpec": null,
-          "reasons": [
-            "命中官方公开尺寸体系或本地标准模数。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "metalBackModule": {
-          "status": "officialExact",
-          "label": "含金属背板模块",
-          "officialSpec": null,
-          "reasons": [
-            "命中官方公开尺寸体系或本地标准模数。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "noBackModule": {
-          "status": "officialExact",
-          "label": "不含背板模块",
-          "officialSpec": null,
-          "reasons": [
-            "命中官方公开尺寸体系或本地标准模数。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "glassPanelModule": {
-          "status": "officialExact",
-          "label": "含玻璃板模块",
-          "officialSpec": null,
-          "reasons": [
-            "玻璃箱体适合展示格，默认不承载抽屉导轨。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "sideOpenDoor": {
-          "status": "officialExact",
-          "label": "不含侧板模块",
-          "officialSpec": null,
-          "reasons": [
-            "官方 buhanceban 结构：保留顶板和底板，左右侧面与背面开放。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "shelf": {
-          "status": "officialExact",
-          "label": "固定层板",
-          "officialSpec": "20 x 20 inch",
-          "reasons": [
-            "固定层板 命中官方公开层板/托盘尺寸逻辑。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "displayTray": {
-          "status": "officialExact",
-          "label": "固定托盘",
-          "officialSpec": "20 x 20 inch",
-          "reasons": [
-            "固定托盘 命中官方公开层板/托盘尺寸逻辑。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "glassShelf": {
-          "status": "needsHardwareCheck",
-          "label": "玻璃搁板",
-          "officialSpec": "20 x 20 inch",
-          "reasons": [
-            "玻璃搁板可装在玻璃侧板或金属侧板之间，生产需确认夹件、支撑和承重。"
-          ],
-          "warnings": [
-            "玻璃搁板不能只按一块玻璃生产，需要确认玻璃夹、支撑点和承重。"
-          ],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        }
-      },
-      "frontAccessories": {
-        "none": {
-          "status": "officialExact",
-          "label": "无门类前脸",
-          "officialSpec": null,
-          "reasons": [
-            "该格不安装门类前脸。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "dropDoor": {
-          "status": "officialExact",
-          "label": "下翻门",
-          "officialSpec": "14 x 20 inch",
-          "reasons": [
-            "命中官方公开 metal drop-down door 尺寸。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "flipUpDoor": {
-          "status": "officialExact",
-          "label": "上翻门",
-          "officialSpec": null,
-          "reasons": [
-            "上翻门作为单个前脸配件安装，内部普通配件可按高度继续叠加。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "glassDropDoor": {
-          "status": "officialExact",
-          "label": "玻璃门",
-          "officialSpec": null,
-          "reasons": [
-            "玻璃门作为单个前脸配件，默认按左右侧开玻璃门处理。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        }
-      },
-      "interiorAccessories": {
-        "mobileTray": {
-          "status": "officialExact",
-          "label": "移动托盘",
-          "officialSpec": "20 x 20 inch",
-          "reasons": [
-            "命中官方公开 metal extension shelf 尺寸，需保留导轨逻辑。"
-          ],
-          "warnings": [
-            "官方 DWG 已确认门类前脸存在时可新增移动托盘；生产时仍需确认门板全开和托盘拉出路径互不干涉。"
-          ],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "shelf": {
-          "status": "officialExact",
-          "label": "固定层板",
-          "officialSpec": "20 x 20 inch",
-          "reasons": [
-            "固定层板 命中官方公开层板/托盘尺寸逻辑。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "displayTray": {
-          "status": "officialExact",
-          "label": "固定托盘",
-          "officialSpec": "20 x 20 inch",
-          "reasons": [
-            "固定托盘 命中官方公开层板/托盘尺寸逻辑。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "glassShelf": {
-          "status": "needsHardwareCheck",
-          "label": "玻璃搁板",
-          "officialSpec": "20 x 20 inch",
-          "reasons": [
-            "玻璃搁板可装在玻璃侧板或金属侧板之间，生产需确认夹件、支撑和承重。"
-          ],
-          "warnings": [
-            "玻璃搁板不能只按一块玻璃生产，需要确认玻璃夹、支撑点和承重。"
-          ],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        }
-      },
-      "fittings": {
-        "none": {
-          "status": "officialExact",
-          "label": "无内部配件",
-          "officialSpec": null,
-          "reasons": [
-            "不安装额外内部配件。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "rimmedDrawer": {
-          "status": "officialExact",
-          "label": "带围边抽屉",
-          "officialSpec": "350 x 500 x 500 mm",
-          "reasons": [
-            "带围边抽屉会独占前脸，并自带导轨和移动托盘逻辑。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        }
-      },
-      "bomHighlights": [
-        {
-          "name": "深度钢管",
-          "spec": "500 mm",
-          "qty": 14,
-          "unit": "根",
-          "unitPrice": 244
-        },
-        {
-          "name": "移动托盘",
-          "spec": "500 x 500 mm",
-          "qty": 1,
-          "unit": "件",
-          "unitPrice": 0
-        },
-        {
-          "name": "围边",
-          "spec": "500 x 500 x 320 mm",
-          "qty": 1,
-          "unit": "件",
-          "unitPrice": 0
-        },
-        {
-          "name": "抽屉导轨",
-          "spec": "500 mm",
-          "qty": 2,
-          "unit": "条",
-          "unitPrice": 0
-        },
-        {
-          "name": "跨格桌面",
-          "spec": "2500 x 640 x 32 mm",
-          "qty": 1,
-          "unit": "块",
-          "unitPrice": 1280
-        }
-      ]
-    },
-    {
-      "id": "desk-rimmed-drawer",
-      "label": "书桌台面下方右格",
-      "description": "带围边抽屉在台面下方需要抽拉余量和导轨确认。",
-      "selection": {
-        "row": 0,
-        "column": 3
-      },
-      "selectedCell": {
-        "kind": "metalBackModule",
-        "frontAccessory": "none",
-        "interiorAccessories": [],
-        "fitting": "rimmedDrawer",
-        "depth": 500,
-        "enabled": true
-      },
-      "dimensions": {
-        "innerWidth": 2500,
-        "innerHeight": 450,
-        "innerDepth": 500,
-        "outerWidth": 2523,
-        "outerHeight": 522,
-        "outerDepth": 640
-      },
-      "cellKinds": {
-        "open": {
-          "status": "officialExact",
-          "label": "开放格",
-          "officialSpec": null,
-          "reasons": [
-            "命中官方公开尺寸体系或本地标准模数。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "metalBackModule": {
-          "status": "officialExact",
-          "label": "含金属背板模块",
-          "officialSpec": null,
-          "reasons": [
-            "命中官方公开尺寸体系或本地标准模数。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "noBackModule": {
-          "status": "officialExact",
-          "label": "不含背板模块",
-          "officialSpec": null,
-          "reasons": [
-            "命中官方公开尺寸体系或本地标准模数。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "glassPanelModule": {
-          "status": "officialExact",
-          "label": "含玻璃板模块",
-          "officialSpec": null,
-          "reasons": [
-            "玻璃箱体适合展示格，默认不承载抽屉导轨。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "sideOpenDoor": {
-          "status": "officialExact",
-          "label": "不含侧板模块",
-          "officialSpec": null,
-          "reasons": [
-            "官方 buhanceban 结构：保留顶板和底板，左右侧面与背面开放。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "shelf": {
-          "status": "officialExact",
-          "label": "固定层板",
-          "officialSpec": "20 x 20 inch",
-          "reasons": [
-            "固定层板 命中官方公开层板/托盘尺寸逻辑。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "displayTray": {
-          "status": "officialExact",
-          "label": "固定托盘",
-          "officialSpec": "20 x 20 inch",
-          "reasons": [
-            "固定托盘 命中官方公开层板/托盘尺寸逻辑。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "glassShelf": {
-          "status": "needsHardwareCheck",
-          "label": "玻璃搁板",
-          "officialSpec": "20 x 20 inch",
-          "reasons": [
-            "玻璃搁板可装在玻璃侧板或金属侧板之间，生产需确认夹件、支撑和承重。"
-          ],
-          "warnings": [
-            "玻璃搁板不能只按一块玻璃生产，需要确认玻璃夹、支撑点和承重。"
-          ],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        }
-      },
-      "frontAccessories": {
-        "none": {
-          "status": "officialExact",
-          "label": "无门类前脸",
-          "officialSpec": null,
-          "reasons": [
-            "该格不安装门类前脸。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "dropDoor": {
-          "status": "officialExact",
-          "label": "下翻门",
-          "officialSpec": "14 x 20 inch",
-          "reasons": [
-            "命中官方公开 metal drop-down door 尺寸。"
-          ],
-          "warnings": [
-            "选择门类前脸会清除带围边抽屉。普通内部配件会保留。"
-          ],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "flipUpDoor": {
-          "status": "officialExact",
-          "label": "上翻门",
-          "officialSpec": null,
-          "reasons": [
-            "上翻门作为单个前脸配件安装，内部普通配件可按高度继续叠加。"
-          ],
-          "warnings": [
-            "选择门类前脸会清除带围边抽屉。普通内部配件会保留。"
-          ],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "glassDropDoor": {
-          "status": "officialExact",
-          "label": "玻璃门",
-          "officialSpec": null,
-          "reasons": [
-            "玻璃门作为单个前脸配件，默认按左右侧开玻璃门处理。"
-          ],
-          "warnings": [
-            "选择门类前脸会清除带围边抽屉。普通内部配件会保留。"
-          ],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        }
-      },
-      "interiorAccessories": {
-        "mobileTray": {
-          "status": "blocked",
-          "label": "移动托盘",
-          "officialSpec": null,
-          "reasons": [
-            "带围边抽屉独占该格，不能同时叠加普通内部配件。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "shelf": {
-          "status": "blocked",
-          "label": "固定层板",
-          "officialSpec": null,
-          "reasons": [
-            "带围边抽屉独占该格，不能同时叠加普通内部配件。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "displayTray": {
-          "status": "blocked",
-          "label": "固定托盘",
-          "officialSpec": null,
-          "reasons": [
-            "带围边抽屉独占该格，不能同时叠加普通内部配件。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "glassShelf": {
-          "status": "blocked",
-          "label": "玻璃搁板",
-          "officialSpec": null,
-          "reasons": [
-            "带围边抽屉独占该格，不能同时叠加普通内部配件。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        }
-      },
-      "fittings": {
-        "none": {
-          "status": "officialExact",
-          "label": "无内部配件",
-          "officialSpec": null,
-          "reasons": [
-            "不安装额外内部配件。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        },
-        "rimmedDrawer": {
-          "status": "officialExact",
-          "label": "带围边抽屉",
-          "officialSpec": "350 x 500 x 500 mm",
-          "reasons": [
-            "带围边抽屉会独占前脸，并自带导轨和移动托盘逻辑。"
-          ],
-          "warnings": [],
-          "bomSize": {
-            "width": 500,
-            "height": 350,
-            "depth": 500
-          }
-        }
-      },
-      "bomHighlights": [
-        {
-          "name": "深度钢管",
-          "spec": "500 mm",
-          "qty": 14,
-          "unit": "根",
-          "unitPrice": 244
-        },
-        {
-          "name": "移动托盘",
-          "spec": "500 x 500 mm",
-          "qty": 1,
-          "unit": "件",
-          "unitPrice": 0
-        },
-        {
-          "name": "围边",
-          "spec": "500 x 500 x 320 mm",
-          "qty": 1,
-          "unit": "件",
-          "unitPrice": 0
-        },
-        {
-          "name": "抽屉导轨",
-          "spec": "500 mm",
-          "qty": 2,
-          "unit": "条",
-          "unitPrice": 0
-        },
-        {
-          "name": "跨格桌面",
-          "spec": "2500 x 640 x 32 mm",
-          "qty": 1,
-          "unit": "块",
-          "unitPrice": 1280
         }
       ]
     },
@@ -2792,6 +2493,14 @@
       "selectedCell": {
         "kind": "metalBackModule",
         "frontAccessory": "none",
+        "accessoryMountSide": null,
+        "structurePanels": {
+          "left": "metal",
+          "right": "metal",
+          "bottom": "metal"
+        },
+        "doorOpen": null,
+        "doorState": null,
         "interiorAccessories": [
           {
             "id": "mobileTray-1",
@@ -2931,7 +2640,7 @@
       "frontAccessories": {
         "none": {
           "status": "officialExact",
-          "label": "无门类前脸",
+          "label": "无门类前脸 · 前向",
           "officialSpec": null,
           "reasons": [
             "该格不安装门类前脸。"
@@ -2945,7 +2654,7 @@
         },
         "dropDoor": {
           "status": "officialExact",
-          "label": "下翻门",
+          "label": "下翻门 · 前向",
           "officialSpec": "14 x 20 inch",
           "reasons": [
             "命中官方公开 metal drop-down door 尺寸。"
@@ -2959,7 +2668,7 @@
         },
         "flipUpDoor": {
           "status": "officialExact",
-          "label": "上翻门",
+          "label": "上翻门 · 前向",
           "officialSpec": null,
           "reasons": [
             "上翻门作为单个前脸配件安装，内部普通配件可按高度继续叠加。"
@@ -2973,7 +2682,7 @@
         },
         "glassDropDoor": {
           "status": "officialExact",
-          "label": "玻璃门",
+          "label": "玻璃门 · 前向",
           "officialSpec": null,
           "reasons": [
             "玻璃门作为单个前脸配件，默认按左右侧开玻璃门处理。"
@@ -3080,6 +2789,7 @@
         {
           "name": "深度钢管",
           "spec": "350 mm",
+          "baseSpec": "350 mm",
           "qty": 4,
           "unit": "根",
           "unitPrice": 193
@@ -3087,13 +2797,16 @@
         {
           "name": "深度钢管",
           "spec": "500 mm",
-          "qty": 2,
+          "baseSpec": "500 mm",
+          "qty": 4,
           "unit": "根",
           "unitPrice": 244
         },
         {
           "name": "移动托盘",
-          "spec": "500 x 500 mm / 安装高 175 mm",
+          "spec": "500 x 500 mm / 安装高 175 mm / 白色 A类",
+          "baseSpec": "500 x 500 mm / 安装高 175 mm",
+          "color": "#fffef0",
           "qty": 1,
           "unit": "件",
           "unitPrice": 0
@@ -3101,6 +2814,7 @@
         {
           "name": "移动托盘导轨",
           "spec": "500 mm / 安装高 175 mm",
+          "baseSpec": "500 mm / 安装高 175 mm",
           "qty": 2,
           "unit": "根",
           "unitPrice": 120

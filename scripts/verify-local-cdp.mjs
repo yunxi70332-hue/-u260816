@@ -21,6 +21,7 @@ const initialScreenshotPath = path.join(outputDir, "local-initial-desktop.png");
 const kitchenIslandScreenshotPath = path.join(outputDir, "local-kitchen-island-desktop.png");
 const kitchenIslandExpandedScreenshotPath = path.join(outputDir, "local-kitchen-island-expanded-desktop.png");
 const mobileTrayScreenshotPath = path.join(outputDir, "local-mobile-tray-desktop.png");
+const frameTopSelectionScreenshotPath = path.join(outputDir, "local-frame-top-selection-desktop.png");
 const dropDoorTwoTrayScreenshotPath = path.join(outputDir, "local-drop-door-two-mobile-trays-desktop.png");
 const glassScreenshotPath = path.join(outputDir, "local-glass-shell-desktop.png");
 const mobileScreenshotPath = path.join(outputDir, "local-glass-shell-mobile.png");
@@ -198,6 +199,34 @@ try {
     assert.equal(doorDragState.storedConfig.planCells[0][1][0].doorOpen ?? 0, 0, `drop door drag from ${target} must not move the rear depth cell`);
   }
 
+  await installInteractionConfig(cdp, createSideBySideDoorInteractionConfig());
+  await waitForPageState(
+    cdp,
+    (state) => state.canvasInfo?.dataUrlLength > 1000
+      && state.storedConfig?.planCells?.[0]?.[0]?.[1]?.frontAccessory === "dropDoor",
+    "side-by-side drop door interaction setup",
+    12000,
+    events
+  );
+  await delay(800);
+  await dragCellControl(cdp, { row: 0, column: 1, depthIndex: 0 }, "dropDoorLock");
+  const selectedRightCellText = "2 \u5217 / 1 \u6df1\u5ea6 / 1 \u5c42";
+  const sideBySideDoorDragState = await waitForPageState(
+    cdp,
+    (state) => (
+      state.canvasInfo?.dataUrlLength > 1000
+      && (state.storedConfig?.planCells?.[0]?.[0]?.[1]?.doorOpen ?? 0) > 0.08
+      && (state.storedConfig?.planCells?.[0]?.[0]?.[0]?.doorOpen ?? 0) === 0
+      && state.bodyText.includes(selectedRightCellText)
+    ),
+    "right drop door does not activate left cell",
+    8000,
+    events
+  );
+  assert.ok((sideBySideDoorDragState.storedConfig.planCells[0][0][1].doorOpen ?? 0) > 0.08, "right drop door should open");
+  assert.equal(sideBySideDoorDragState.storedConfig.planCells[0][0][0].doorOpen ?? 0, 0, "right drop door drag must not move the left cell");
+  assert.ok(sideBySideDoorDragState.bodyText.includes(selectedRightCellText), "right drop door interaction should select the right cell");
+
   for (const target of ["rimmedDrawerLock", "rimmedDrawerLeft", "rimmedDrawerRight"]) {
     await installInteractionConfig(cdp, createInteractionConfig(
       { kind: "metalBackModule", enabled: true, fitting: "rimmedDrawer", drawerPull: 0 },
@@ -252,6 +281,32 @@ try {
   assert.equal(baseState.kindButtons.displayTray, null, "fixed tray must not appear as a module type");
   assert.equal(baseState.kindButtons.fixedShelf, null, "fixed shelf must not appear as a module type");
   assert.equal(baseState.kindButtons.glassShelf, null, "glass shelf must not appear as a module type");
+
+  await clickButtonContaining(cdp, "框架");
+  const frameBeforeSelection = await waitForPageState(
+    cdp,
+    (state) => state.bodyText.includes("当前零件") && state.canvasInfo?.dataUrlLength > 1000,
+    "single-cell frame tab",
+    12000,
+    events
+  );
+  await clickCellTopPanel(cdp, { row: 0, column: 0, depthIndex: 0 });
+  const frameTopSelectionState = await waitForPageState(
+    cdp,
+    (state) => (
+      state.selectedFramePart === "panel:0:0:0:top"
+      && state.selectedPanel === "0:0:0:top"
+      && state.bodyText.includes("第 1 列 · 第 1 深度 · 第 1 层 · 顶面")
+      && state.bodyText.includes("零件类型")
+      && state.bodyText.includes("面板")
+      && state.canvasInfo?.dataUrlLength > 1000
+    ),
+    "top panel frame selection",
+    12000,
+    events
+  );
+  assert.notEqual(frameTopSelectionState.canvasInfo.dataUrlHash, frameBeforeSelection.canvasInfo.dataUrlHash, "top panel selection changes rendered canvas pixels");
+  await captureScreenshot(cdp, frameTopSelectionScreenshotPath);
 
   await clickButtonContaining(cdp, "配件");
   const fittingsState = await waitForPageState(
@@ -693,6 +748,7 @@ async function connectCdp(webSocketDebuggerUrl) {
 async function getPageState(cdp) {
   return await cdp.evaluate(`(() => {
     const canvas = document.querySelector("canvas");
+    const scene = document.querySelector(".scene-canvas");
     let canvasInfo = null;
     if (canvas) {
       const gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
@@ -738,9 +794,11 @@ async function getPageState(cdp) {
       canvasCount: document.querySelectorAll("canvas").length,
       canvasInfo,
       selectedAccessory: {
-        id: canvas?.dataset?.selectedAccessory ?? "",
-        cell: canvas?.dataset?.selectedAccessoryCell ?? ""
+        id: scene?.dataset?.selectedAccessory ?? "",
+        cell: scene?.dataset?.selectedAccessoryCell ?? ""
       },
+      selectedFramePart: scene?.dataset?.selectedFramePart ?? "",
+      selectedPanel: scene?.dataset?.selectedPanel ?? "",
       storedConfig: (() => {
         try {
           return JSON.parse(window.localStorage.getItem("usm-local-builder-config") || "null");
@@ -808,6 +866,26 @@ function createInteractionConfig(frontCell, backCell) {
     showDimensions: true,
     cells: [[{ ...front }]],
     planCells: [[[front], [back]]],
+    workSurfaces: []
+  };
+}
+
+function createSideBySideDoorInteractionConfig() {
+  const left = { kind: "metalBackModule", enabled: true, frontAccessory: "dropDoor", doorOpen: 0, doorState: "closed", fitting: "none" };
+  const right = { ...left };
+  return {
+    depth: 500,
+    depthSegments: [500],
+    columnWidths: [500, 500],
+    rowHeights: [350],
+    panelColor: "#f4f2eb",
+    colorScope: "all",
+    frameFinish: "chrome",
+    feet: "glides",
+    structureMode: "complete",
+    showDimensions: true,
+    cells: [[{ ...left }, { ...right }]],
+    planCells: [[[left, right]]],
     workSurfaces: []
   };
 }
@@ -1045,6 +1123,10 @@ async function clickCellFrontFaceLower(cdp, selection) {
   return clickCellPoint(cdp, selection, "frontFaceLower");
 }
 
+async function clickCellTopPanel(cdp, selection) {
+  return clickCellPoint(cdp, selection, "topPanel");
+}
+
 async function clickCanvasBlank(cdp) {
   const result = await cdp.evaluate(`(() => {
     const canvas = document.querySelector("canvas");
@@ -1111,7 +1193,9 @@ async function clickCellPoint(cdp, selection, target) {
     };
     const point = clickTargetKind === "frontExpandHint"
       ? [cell.x, cell.y, cell.z + cell.depth / 2 + EXPAND_HINT_FRONT_OFFSET]
-      : [cell.x + cell.width * 0.2, cell.y + cell.height * 0.4, cell.z + cell.depth / 2 + 0.006];
+      : clickTargetKind === "topPanel"
+        ? [cell.x, cell.y + cell.height / 2 + 0.018, cell.z]
+        : [cell.x + cell.width * 0.2, cell.y + cell.height * 0.4, cell.z + cell.depth / 2 + 0.006];
     const rect = canvas.getBoundingClientRect();
     const aspect = Math.max(0.42, rect.width / Math.max(1, rect.height));
     const target = [0, totalHeight / 2, 0];

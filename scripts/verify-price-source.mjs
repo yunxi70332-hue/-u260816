@@ -1,39 +1,10 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import vm from "node:vm";
-import ts from "typescript";
+import { priceBomItems, summarizePriceMatches } from "../src/pricing.ts";
 
 const root = process.cwd();
 const priceSourcePath = path.join(root, "src", "data", "simple-home-price-source.json");
-
-function loadTs(relativePath) {
-  const sourcePath = path.join(root, relativePath);
-  const source = fs.readFileSync(sourcePath, "utf8");
-  const compiled = ts.transpileModule(source, {
-    compilerOptions: {
-      esModuleInterop: true,
-      module: ts.ModuleKind.CommonJS,
-      resolveJsonModule: true,
-      target: ts.ScriptTarget.ES2020
-    }
-  }).outputText;
-
-  const sandbox = {
-    console,
-    exports: {},
-    module: { exports: {} },
-    require(id) {
-      if (id === "./data/simple-home-price-source.json") {
-        return JSON.parse(fs.readFileSync(priceSourcePath, "utf8"));
-      }
-      return require(id);
-    }
-  };
-  sandbox.exports = sandbox.module.exports;
-  vm.runInNewContext(compiled, sandbox, { filename: sourcePath });
-  return sandbox.module.exports;
-}
 
 const source = JSON.parse(fs.readFileSync(priceSourcePath, "utf8"));
 assert.equal(source.dealerName, "零件单配", "price source dealer name");
@@ -65,8 +36,7 @@ assert.deepEqual(
   "row 126 glass term"
 );
 
-const pricing = loadTs("src/pricing.ts");
-const priced = pricing.priceBomItems([
+const priced = priceBomItems([
   { name: "球节点", spec: "标准连接球", qty: 8, unit: "个", unitPrice: 88 },
   { name: "横向钢管", spec: "500 mm", qty: 4, unit: "根", unitPrice: 74 },
   { name: "金属扣板", spec: "500 x 350 mm", qty: 5, unit: "块", unitPrice: 210 },
@@ -94,7 +64,7 @@ console.log("Price source verification passed.");
 console.log(JSON.stringify({
   dealerName: source.dealerName,
   rows: source.items.length,
-  summary: pricing.summarizePriceMatches(priced),
+  summary: summarizePriceMatches(priced),
   priced
 }, null, 2));
 

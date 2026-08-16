@@ -149,6 +149,10 @@ function matchBomItem(item: BomItem, source: DealerPriceSource): PriceMatch {
     return exact(source, "tube304", `19*${tubeDimension(first)}`, item);
   }
 
+  if (item.name === "洞洞板" && Number.isFinite(first) && Number.isFinite(second)) {
+    return exact(source, "panel", `${panelSpec(first, second)}（洞洞板）`, item);
+  }
+
   if (["金属扣板", "扣板", "金属背板", "顶板", "底板", "外板", "内板"].includes(item.name) && Number.isFinite(first) && Number.isFinite(second)) {
     return exact(source, "panel", panelSpec(first, second), item);
   }

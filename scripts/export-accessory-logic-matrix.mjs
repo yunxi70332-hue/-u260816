@@ -1,13 +1,29 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import vm from "node:vm";
 import { fileURLToPath } from "node:url";
-import ts from "typescript";
 
 const root = process.cwd();
 const outputPath = path.join(root, "docs", "USM_ACCESSORY_LOGIC_MATRIX.json");
 const currentFile = fileURLToPath(import.meta.url);
+const nodeRequire = createRequire(import.meta.url);
+const ts = await loadTypeScriptCompiler();
+
+async function loadTypeScriptCompiler() {
+  const imported = await import("typescript");
+  const installed = imported.default ?? imported;
+  if (typeof installed.transpileModule === "function") return installed;
+
+  const pnpmDir = path.join(root, "node_modules", ".pnpm");
+  const legacyCompiler = fs.readdirSync(pnpmDir)
+    .filter((name) => name.startsWith("typescript@"))
+    .map((name) => path.join(pnpmDir, name, "node_modules", "typescript", "lib", "typescript.js"))
+    .find((candidate) => fs.existsSync(candidate));
+  if (!legacyCompiler) throw new Error("No TypeScript compiler API with transpileModule is installed.");
+  return nodeRequire(legacyCompiler);
+}
 
 function loadTs(relativePath, deps = {}) {
   const sourcePath = path.join(root, relativePath);
@@ -26,7 +42,7 @@ function loadTs(relativePath, deps = {}) {
     module: { exports: {} },
     require(id) {
       if (id === "./accessoryCatalog" || id === "./accessoryCatalog.ts") return deps.accessoryCatalog;
-      return require(id);
+      return nodeRequire(id);
     }
   };
   sandbox.exports = sandbox.module.exports;
@@ -117,6 +133,31 @@ const scenarios = [
     }
   ),
   scenario(
+    "perforated-panel-back",
+    "背向框架洞洞板",
+    "旧的背向前脸洞洞板应迁移为框架背板材质，且不产生门板开合状态。",
+    {
+      ...model.DEFAULT_CONFIG,
+      depth: 700,
+      depthSegments: [350, 350],
+      columnWidths: [350],
+      rowHeights: [350],
+      planCells: [[
+        [{
+          kind: "metalBackModule",
+          enabled: true,
+          frontAccessory: "perforatedPanel",
+          accessoryMountSide: "back",
+          accessoryColors: { front: "#2da845" },
+          doorOpen: 1,
+          doorState: "open"
+        }],
+        [{ kind: "metalBackModule", enabled: true }]
+      ]]
+    },
+    { row: 0, column: 0, depthIndex: 0 }
+  ),
+  scenario(
     "metal-side-panels",
     "金属左右侧板",
     "左右侧板为金属时，普通固定层板、固定托盘和玻璃搁板均可进入生产逻辑。",
@@ -161,20 +202,6 @@ const scenarios = [
     }
   ),
   scenario(
-    "desk-under-top",
-    "书桌台面下方左格",
-    "下翻门允许但提示限位；上翻门撞台面禁用；移动托盘需五金确认。",
-    model.createDeskPreset(),
-    { row: 0, column: 0 }
-  ),
-  scenario(
-    "desk-rimmed-drawer",
-    "书桌台面下方右格",
-    "带围边抽屉在台面下方需要抽拉余量和导轨确认。",
-    model.createDeskPreset(),
-    { row: 0, column: 3 }
-  ),
-  scenario(
     "mixed-depth-local-500",
     "混深局部 500",
     "全柜默认 350，选中格局部 500，用于验证局部深度参与规则和 BOM。",
@@ -216,6 +243,10 @@ export function createAccessoryLogicMatrix() {
         selectedCell: {
           kind: selectedCell?.kind,
           frontAccessory: selectedCell?.frontAccessory ?? "none",
+          accessoryMountSide: selectedCell?.accessoryMountSide ?? null,
+          structurePanels: selectedCell?.structure?.panels ?? {},
+          doorOpen: selectedCell?.doorOpen ?? null,
+          doorState: selectedCell?.doorState ?? null,
           interiorAccessories: selectedCell?.interiorAccessories ?? [],
           fitting: selectedCell?.fitting ?? "none",
           depth: model.getCellDepth(config, selection.row, selection.column),
@@ -243,7 +274,7 @@ export function createAccessoryLogicMatrix() {
           fittingKinds.map((kind) => [kind, toPlainEvaluation(model.evaluateCellFitting(config, selection, kind))])
         ),
         bomHighlights: bom.filter((item) => (
-          ["跨格桌面", "深度钢管", "移动托盘", "移动托盘导轨", "围边", "抽屉导轨"].includes(item.name)
+          ["跨格桌面", "钢管", "移动托盘", "移动托盘导轨", "围边", "抽屉导轨", "洞洞板"].includes(item.name)
         ))
       };
     })
@@ -297,6 +328,15 @@ export function assertAccessoryLogicMatrix(matrix) {
   expectStatus(matrix, "glass-shell", "fittings", "rimmedDrawer", "blocked");
   expectStatus(matrix, "glass-shell", "cellKinds", "glassShelf", "needsHardwareCheck");
 
+  const perforated = findScenario(matrix, "perforated-panel-back");
+  assert.equal(perforated.selectedCell.frontAccessory, "none", "perforated scenario clears the legacy front accessory");
+  assert.equal(perforated.selectedCell.accessoryMountSide, null, "perforated scenario clears the legacy mount field");
+  assert.equal(perforated.selectedCell.structurePanels.back, "perforated", "perforated scenario migrates to the frame back panel");
+  assert.equal(perforated.selectedCell.doorOpen, null, "perforated scenario clears door progress");
+  assert.equal(perforated.selectedCell.doorState, null, "perforated scenario clears door state");
+  expectStatus(matrix, "perforated-panel-back", "frontAccessories", "dropDoor", "officialExact");
+  expectBomHighlight(matrix, "perforated-panel-back", "洞洞板", "350 x 350 mm");
+
   expectStatus(matrix, "metal-side-panels", "cellKinds", "shelf", "officialExact");
   expectStatus(matrix, "metal-side-panels", "cellKinds", "displayTray", "officialExact");
   expectStatus(matrix, "metal-side-panels", "cellKinds", "glassShelf", "needsHardwareCheck");
@@ -314,19 +354,13 @@ export function assertAccessoryLogicMatrix(matrix) {
   expectStatus(matrix, "missing-side-panel", "cellKinds", "displayTray", "blocked");
   expectStatus(matrix, "missing-side-panel", "cellKinds", "glassShelf", "blocked");
 
-  // Desk-specific BOM amount and tabletop-path assertions are intentionally
-  // skipped until the desk model is rebuilt. Keep the scenarios in the matrix
-  // for product discussion, but do not use them as the current verification gate.
-  findScenario(matrix, "desk-under-top");
-  findScenario(matrix, "desk-rimmed-drawer");
-
   const mixedDepth = findScenario(matrix, "mixed-depth-local-500");
   assert.equal(mixedDepth.selectedCell.depth, 500, "mixed-depth selected cell depth");
   assert.equal(mixedDepth.selectedCell.fitting, "none", "mixed-depth selected cell fitting");
   assert.equal(mixedDepth.selectedCell.interiorAccessories[0]?.kind, "mobileTray", "mixed-depth selected cell interior mobile tray");
   assert.equal(mixedDepth.dimensions.innerDepth, 500, "mixed-depth dimensions use local max depth");
   expectStatus(matrix, "mixed-depth-local-500", "interiorAccessories", "mobileTray", "officialExact");
-  expectBomHighlight(matrix, "mixed-depth-local-500", "深度钢管", "500 mm");
+  expectBomHighlight(matrix, "mixed-depth-local-500", "钢管", "482 mm");
   expectBomHighlight(matrix, "mixed-depth-local-500", "移动托盘", "500 x 500 mm");
   expectBomHighlight(matrix, "mixed-depth-local-500", "移动托盘导轨", "500 mm");
 }

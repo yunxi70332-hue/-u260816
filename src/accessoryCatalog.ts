@@ -1,4 +1,4 @@
-export type AccessoryCategoryId = "modules" | "doors" | "frontAccessories" | "softPanels" | "shelvesDrawers" | "support";
+export type AccessoryCategoryId = "modules" | "doors" | "frontAccessories" | "framePanels" | "softPanels" | "shelvesDrawers" | "support";
 
 export type AccessoryModelKind =
   | "metalBackModule"
@@ -8,6 +8,7 @@ export type AccessoryModelKind =
   | "flipUpDoor"
   | "sideOpenDoor"
   | "glassDropDoor"
+  | "perforatedPanel"
   | "openBackPanel"
   | "sidePanel"
   | "softPanelLow"
@@ -49,6 +50,7 @@ export const ACCESSORY_CATEGORIES: Array<{ id: AccessoryCategoryId; label: strin
   { id: "modules", label: "结构模块" },
   { id: "doors", label: "门" },
   { id: "frontAccessories", label: "前脸配件" },
+  { id: "framePanels", label: "框架面板" },
   { id: "softPanels", label: "USM Soft Panel" },
   { id: "shelvesDrawers", label: "搁板和抽屉" },
   { id: "support", label: "底部支撑" }
@@ -159,6 +161,21 @@ export const ACCESSORY_CATALOG: AccessoryCatalogItem[] = [
     bomName: "玻璃门组件",
     unit: "套",
     unitPrice: 890
+  },
+  {
+    id: "perforatedPanel",
+    category: "framePanels",
+    name: "洞洞板",
+    shortName: "洞洞板",
+    installTarget: "frame",
+    observedFrom: "零件单配报价表：335*335（洞洞板）框架面板。",
+    parameters: ["width", "height", "panelColor", "panelPosition"],
+    localModel: "安装在框架平面内的金属洞洞板，保留规则圆孔阵列和黑色孔描边。",
+    iconHint: "perforated metal frame panel with a regular round hole grid",
+    finalEffect: "选中的普通钣金面可在框架编辑中替换为洞洞板，并保留原面板位置。",
+    bomName: "洞洞板",
+    unit: "块",
+    unitPrice: 430
   },
   {
     id: "openBackPanel",
@@ -342,7 +359,9 @@ export const ACCESSORY_CATALOG: AccessoryCatalogItem[] = [
   }
 ];
 
-export const ACCESSORY_REQUIREMENTS: AccessoryRequirementRecord[] = ACCESSORY_CATALOG.map((item) => ({
+export const ACCESSORY_REQUIREMENTS: AccessoryRequirementRecord[] = ACCESSORY_CATALOG
+  .filter((item) => item.id !== "openBackPanel" && item.id !== "sidePanel")
+  .map((item) => ({
   ...item,
   icon: `#${item.id}`,
   iconSprite: "public/accessory-icons/usm-accessory-icons.svg",

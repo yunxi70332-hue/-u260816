@@ -1,7 +1,16 @@
 node_modules/
 dist/
+apps/*/dist/
 output/
 .playwright-cli/
+.env
+.env.local
+deploy/backups/*.dump
+.venv/
+artifacts/
+scripts/__pycache__/
+*.log
+.codex-*.log
 
 *.tsbuildinfo
 
