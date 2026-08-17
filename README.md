@@ -15,6 +15,11 @@
 
 ```bash
 sh deploy/repair-platform-admin.sh <platform-admin-email>
+```
+
+随后使用该账号登录并完成强制改密，再执行：
+
+```bash
 sh deploy/disable-bootstrap-admin.sh
 ```
 
