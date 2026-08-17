@@ -5,6 +5,7 @@ import { PageHeader } from "../components/ui";
 import { useAuth } from "../context/auth";
 import { api, ApiError } from "../lib/api";
 import { AUTHORIZATION_MODULES, PERMISSION_LABELS, SCOPE_OPTIONS, scopeResourceForPermission } from "../lib/authorization-catalog";
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "../types";
 import type { AccountAuthorization, AccountSummary, AuthorizationDataScope, EmployeeFollowUpSummary, EmployeeOrderSummary, PermissionGrant, Role } from "../types";
 
 const money = new Intl.NumberFormat("zh-CN", { style: "currency", currency: "CNY", maximumFractionDigits: 0 });
@@ -47,6 +48,25 @@ const RESOURCE_LABELS: Record<string, string> = {
   audit: "审计"
 };
 
+const ACCOUNT_ROLE_RANK: Partial<Record<Role, number>> = {
+  owner: 4,
+  headquarters_admin: 3,
+  dealer_admin: 3,
+  admin: 3,
+  headquarters_sales: 2,
+  headquarters_reviewer: 2,
+  dealer_designer_sales: 2,
+  sales: 2,
+  designer: 2,
+  finance: 2,
+  production: 2,
+  production_shipping: 2,
+  dealer: 2,
+  factory_employee: 1,
+  member: 1,
+  viewer: 0
+};
+
 function applyGrantChange(current: AccountAuthorization, permission: string, checked: boolean): AccountAuthorization {
   const existing = current.grants.find((grant) => grant.permission === permission);
   if (checked) {
@@ -87,6 +107,11 @@ export function EmployeesPage() {
   const [authorizationError, setAuthorizationError] = useState<string | null>(null);
   const [authorizationPreviewError, setAuthorizationPreviewError] = useState<string | null>(null);
   const [authorizationMessage, setAuthorizationMessage] = useState<string | null>(null);
+  const [resetAccount, setResetAccount] = useState<AccountSummary | null>(null);
+  const [resetSaving, setResetSaving] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [passwordResetMessage, setPasswordResetMessage] = useState<string | null>(null);
+  const [resetForm] = Form.useForm<{ newPassword: string; confirmPassword: string }>();
   const [copySourceAccountId, setCopySourceAccountId] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
   const [form] = Form.useForm();
@@ -95,6 +120,9 @@ export function EmployeesPage() {
   const canDelegate = can("permission.delegate");
   const canViewReports = can("reports.personal.view") || can("reports.assigned.view") || can("reports.organization.view");
   const canViewOrders = can("orders.view");
+  const canResetPassword = (account: AccountSummary) => session?.principalType === "platform_admin"
+    || (account.userId !== session?.user.id
+      && (ACCOUNT_ROLE_RANK[session?.user.role ?? "viewer"] ?? 0) > (ACCOUNT_ROLE_RANK[account.role] ?? 0));
 
   const refresh = useCallback(async () => {
     if (!session) return;
@@ -183,6 +211,26 @@ export function EmployeesPage() {
     } catch (reason) {
       setError(reason instanceof ApiError ? reason.message : "账号状态更新失败，请稍后重试。");
       setLoading(false);
+    }
+  }
+
+  async function resetPassword(values: { newPassword: string; confirmPassword: string }) {
+    if (!session || !canManageAccounts || !resetAccount) return;
+    if (values.newPassword !== values.confirmPassword) {
+      setResetError("两次输入的新密码不一致。");
+      return;
+    }
+    setResetSaving(true);
+    setResetError(null);
+    try {
+      await api.resetAccountPassword(resetAccount.id, values.newPassword, session.activeTenantId);
+      resetForm.resetFields();
+      setResetAccount(null);
+      setPasswordResetMessage(`已重置 ${resetAccount.name} 的密码，并要求其下次登录后修改。`);
+    } catch (reason) {
+      setResetError(reason instanceof ApiError ? reason.message : "密码重置失败，请稍后重试。");
+    } finally {
+      setResetSaving(false);
     }
   }
 
@@ -305,9 +353,10 @@ export function EmployeesPage() {
       title: "操作",
       key: "action",
       fixed: "right",
-      width: canManageAccounts && canDelegate ? 190 : 110,
+      width: canManageAccounts && canDelegate ? 290 : canManageAccounts ? 190 : 110,
       render: (_, account) => <Space size={6}>
         {canDelegate && <Button size="small" icon={<KeyRound size={14} />} onClick={() => void openAuthorization(account)}>权限</Button>}
+        {canManageAccounts && canResetPassword(account) && <Button size="small" icon={<KeyRound size={14} />} onClick={() => { setResetError(null); setPasswordResetMessage(null); setResetAccount(account); }}>重置密码</Button>}
         {canManageAccounts && <Button size="small" loading={loading} icon={account.status === "active" ? <UserRoundX size={14} /> : <UserRoundCheck size={14} />} onClick={() => void toggleStatus(account)}>{account.status === "active" ? "停用" : "启用"}</Button>}
       </Space>
     }
@@ -320,6 +369,7 @@ export function EmployeesPage() {
       actions={<Space wrap><Button icon={<RefreshCw className={loading ? "spin" : ""} size={15} />} onClick={() => void refresh()} loading={loading}>刷新</Button>{canManageAccounts && <Button type="primary" icon={<Plus size={15} />} onClick={() => setOpen(true)}>新增员工</Button>}</Space>}
     />
     {error && <div className="form-notice"><Tag color="error">{error}</Tag></div>}
+    {passwordResetMessage && <div className="form-notice"><Tag color="success">{passwordResetMessage}</Tag></div>}
     <section className="erp-stat-grid three-columns" aria-label="账号概览">
       <article><span>可管理账号</span><Statistic value={accounts.length} prefix={<UserRound size={17} />} /></article>
       <article><span>已启用账号</span><Statistic value={activeCount} prefix={<UserRoundCheck size={17} />} /></article>
@@ -334,9 +384,17 @@ export function EmployeesPage() {
           <Form.Item label="姓名" name="name" rules={[{ required: true, message: "请输入员工姓名" }]}><Input /></Form.Item>
           <Form.Item label="登录手机号" name="phone" rules={[{ required: true, message: "请输入登录手机号" }]}><Input inputMode="tel" autoComplete="tel" /></Form.Item>
           <Form.Item label="邮箱（选填）" name="email" rules={[{ type: "email", message: "邮箱格式不正确" }]}><Input autoComplete="email" /></Form.Item>
-          <Form.Item label="初始密码" name="password" rules={[{ required: true, min: 12, message: "密码至少 12 位" }]}><Input.Password /></Form.Item>
+          <Form.Item label="初始密码" name="password" rules={[{ required: true }, { min: PASSWORD_MIN_LENGTH, max: PASSWORD_MAX_LENGTH, message: `密码需为 ${PASSWORD_MIN_LENGTH}-${PASSWORD_MAX_LENGTH} 位` }]}><Input.Password maxLength={PASSWORD_MAX_LENGTH} autoComplete="new-password" /></Form.Item>
         </div>
         <div className="form-actions"><Button onClick={() => setOpen(false)}>取消</Button><Button type="primary" htmlType="submit" loading={creating}>创建账号</Button></div>
+      </Form>
+    </Modal>
+    <Modal open={Boolean(resetAccount)} title={`重置密码${resetAccount ? ` · ${resetAccount.name}` : ""}`} onCancel={() => { if (!resetSaving) { resetForm.resetFields(); setResetAccount(null); } }} footer={null} destroyOnClose>
+      <Form form={resetForm} layout="vertical" onFinish={(values) => void resetPassword(values)}>
+        <Form.Item label="新临时密码" name="newPassword" rules={[{ required: true }, { min: PASSWORD_MIN_LENGTH, max: PASSWORD_MAX_LENGTH, message: `密码需为 ${PASSWORD_MIN_LENGTH}-${PASSWORD_MAX_LENGTH} 位` }]}><Input.Password maxLength={PASSWORD_MAX_LENGTH} autoComplete="new-password" /></Form.Item>
+        <Form.Item label="确认新密码" name="confirmPassword" dependencies={["newPassword"]} rules={[{ required: true }, ({ getFieldValue }) => ({ validator(_, value) { return !value || value === getFieldValue("newPassword") ? Promise.resolve() : Promise.reject(new Error("两次输入的新密码不一致")); } })]}><Input.Password maxLength={PASSWORD_MAX_LENGTH} autoComplete="new-password" /></Form.Item>
+        {resetError && <div className="form-notice"><Tag color="error">{resetError}</Tag></div>}
+        <div className="form-actions"><Button onClick={() => { resetForm.resetFields(); setResetAccount(null); }} disabled={resetSaving}>取消</Button><Button type="primary" htmlType="submit" loading={resetSaving}>重置并要求改密</Button></div>
       </Form>
     </Modal>
     <Modal

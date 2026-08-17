@@ -3,6 +3,7 @@ import { KeyRound, MoreHorizontal, Plus, ShieldCheck, UserRoundCheck } from "luc
 import { useMemo, useState } from "react";
 import { PageHeader, StatusBadge } from "../components/ui";
 import { useWorkspace } from "../context/workspace";
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "../types";
 import type { Dealer } from "../types";
 
 interface DealerFormValues {
@@ -92,7 +93,7 @@ export function DealersPage() {
             <Form.Item label="城市（选填）" name="city"><Input placeholder="例如：杭州" /></Form.Item>
             <Form.Item label="采购折扣" name="discount"><InputNumber min={60} max={100} suffix="%" style={{ width: "100%" }} /></Form.Item>
             <Form.Item label="登录手机号" name="phone" rules={[{ required: true, message: "请输入登录手机号" }]}><Input inputMode="tel" autoComplete="tel" /></Form.Item>
-            <Form.Item label="初始密码" name="password" rules={[{ required: true, min: 12, message: "密码至少 12 位" }]}><Input.Password autoComplete="new-password" /></Form.Item>
+            <Form.Item label="初始密码" name="password" rules={[{ required: true }, { min: PASSWORD_MIN_LENGTH, max: PASSWORD_MAX_LENGTH, message: `密码需为 ${PASSWORD_MIN_LENGTH}-${PASSWORD_MAX_LENGTH} 位` }]}><Input.Password autoComplete="new-password" maxLength={PASSWORD_MAX_LENGTH} /></Form.Item>
             <Form.Item label="邮箱（选填）" name="email" rules={[{ type: "email", message: "邮箱格式不正确" }]}><Input autoComplete="email" /></Form.Item>
           </div>
         </Form>

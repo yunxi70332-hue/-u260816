@@ -28,7 +28,7 @@ fi
 postgres_password=$(openssl rand -hex 24)
 auth_secret=$(openssl rand -hex 32)
 object_secret=$(openssl rand -hex 24)
-admin_password=$(openssl rand -hex 16)
+admin_password=$(openssl rand -hex 6)
 
 cat > .env <<EOF
 NODE_ENV=production

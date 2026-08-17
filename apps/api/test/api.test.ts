@@ -51,7 +51,7 @@ test("project responses include the linked customer name and latest quote total"
   assert.equal(listItem.customerId, "customer-demo");
   assert.equal(listItem.customerName, "林女士");
   assert.equal(listItem.ownerUserId, "user-demo");
-  assert.equal(listItem.ownerName, "开发用户");
+  assert.equal(listItem.ownerName, "本地管理员");
   assert.equal(listItem.quoteTotalMinor, seededQuoteTotal);
   assert.equal(listItem.quoteCurrency, "CNY");
 
@@ -59,7 +59,7 @@ test("project responses include the linked customer name and latest quote total"
   assert.equal(project.statusCode, 200);
   const projectItem = body<{ item: { customerName: string | null; ownerName: string | null; quoteTotalMinor: number | null; quoteCurrency: string | null } }>(project).item;
   assert.equal(projectItem.customerName, "林女士");
-  assert.equal(projectItem.ownerName, "开发用户");
+  assert.equal(projectItem.ownerName, "本地管理员");
   assert.equal(projectItem.quoteTotalMinor, seededQuoteTotal);
   assert.equal(projectItem.quoteCurrency, "CNY");
 });
@@ -75,7 +75,7 @@ test("quote and order responses include their linked customer and project names"
   assert.ok(quote);
   assert.equal(quote.customerName, "林女士");
   assert.equal(quote.projectName, "静安客厅组合柜");
-  assert.equal(quote.ownerName, "开发用户");
+  assert.equal(quote.ownerName, null);
 
   const quoteDetail = await app.inject({ method: "GET", url: "/api/quotes/quote-demo" });
   assert.equal(quoteDetail.statusCode, 200);
@@ -104,7 +104,7 @@ test("employees and dealer administrators use phone number and password sign-in"
 
   const employee = await app.inject({
     method: "POST", url: "/api/employees", headers: { "idempotency-key": "phone-employee-test" },
-    payload: { name: "手机号员工", phone: "138 1234 5678", password: "phone-password-123" }
+    payload: { name: "手机号员工", phone: "138 1234 5678", password: "Phone123!" }
   });
   assert.equal(employee.statusCode, 201);
   assert.equal(body<{ item: { phone: string; email: string | null } }>(employee).item.phone, "+8613812345678");
@@ -112,16 +112,28 @@ test("employees and dealer administrators use phone number and password sign-in"
 
   const employeeSignIn = await app.inject({
     method: "POST", url: "/api/auth/sign-in/phone-number",
-    payload: { phoneNumber: "+8613812345678", password: "phone-password-123" }
+    payload: { phoneNumber: "+8613812345678", password: "Phone123!" }
   });
   assert.equal(employeeSignIn.statusCode, 200);
   assert.equal(body<{ user: { name: string } }>(employeeSignIn).user.name, "手机号员工");
+  const employeeCookie = employeeSignIn.headers["set-cookie"];
+  assert.ok(employeeCookie);
+  const employeeHeaders = { cookie: Array.isArray(employeeCookie) ? employeeCookie[0] : employeeCookie };
+  const employeeSession = await app.inject({ method: "GET", url: "/api/session", headers: employeeHeaders });
+  assert.equal(body<{ mustChangePassword: boolean }>(employeeSession).mustChangePassword, true);
+  const employeePasswordChange = await app.inject({
+    method: "POST",
+    url: "/api/me/change-password",
+    headers: employeeHeaders,
+    payload: { currentPassword: "Phone123!", newPassword: "Changed6!" }
+  });
+  assert.equal(employeePasswordChange.statusCode, 200);
 
   const dealer = await app.inject({
     method: "POST", url: "/api/dealers", headers: { "idempotency-key": "phone-dealer-test" },
     payload: {
       name: "手机号经销商", contact: "渠道管理员",
-      phone: "139 1234 5678", password: "dealer-password-123", discountRate: 90
+      phone: "139 1234 5678", password: "Dealer123!", discountRate: 90
     }
   });
   assert.equal(dealer.statusCode, 201);
@@ -132,7 +144,7 @@ test("employees and dealer administrators use phone number and password sign-in"
 
   const dealerSignIn = await app.inject({
     method: "POST", url: "/api/auth/sign-in/phone-number",
-    payload: { phoneNumber: "+8613912345678", password: "dealer-password-123" }
+    payload: { phoneNumber: "+8613912345678", password: "Dealer123!" }
   });
   assert.equal(dealerSignIn.statusCode, 200);
   const dealerCookie = dealerSignIn.headers["set-cookie"];
@@ -142,13 +154,23 @@ test("employees and dealer administrators use phone number and password sign-in"
     headers: { cookie: Array.isArray(dealerCookie) ? dealerCookie[0] : dealerCookie }
   });
   assert.equal(dealerSession.statusCode, 200);
+  assert.equal(body<{ mustChangePassword: boolean }>(dealerSession).mustChangePassword, true);
+  const dealerHeaders = { cookie: Array.isArray(dealerCookie) ? dealerCookie[0] : dealerCookie };
+  const dealerPasswordChange = await app.inject({
+    method: "POST",
+    url: "/api/me/change-password",
+    headers: dealerHeaders,
+    payload: { currentPassword: "Dealer123!", newPassword: "Changed6!" }
+  });
+  assert.equal(dealerPasswordChange.statusCode, 200);
+  const activeDealerSession = await app.inject({ method: "GET", url: "/api/session", headers: dealerHeaders });
   const dealerSessionBody = body<{
     tenant: { id: string };
     membership: { role: string };
     enabledModules: string[];
     effectivePermissions: string[];
     fieldPolicy: { price: string; inventory: string };
-  }>(dealerSession);
+  }>(activeDealerSession);
   assert.equal(dealerSessionBody.tenant.id, body<{ item: { organizationId: string } }>(dealer).item.organizationId);
   assert.equal(dealerSessionBody.membership.role, "dealer_admin");
   assert.equal(dealerSessionBody.fieldPolicy.price, "dealer_only");
@@ -158,7 +180,6 @@ test("employees and dealer administrators use phone number and password sign-in"
   assert.equal(dealerSessionBody.effectivePermissions.includes("prices.cost.view"), false);
   assert.equal(dealerSessionBody.effectivePermissions.includes("inventory.quantity.view"), false);
 
-  const dealerHeaders = { cookie: Array.isArray(dealerCookie) ? dealerCookie[0] : dealerCookie };
   const dealerPriceLists = await app.inject({ method: "GET", url: "/api/price-lists", headers: dealerHeaders });
   assert.equal(dealerPriceLists.statusCode, 403);
   const factoryOrderFromDealer = await app.inject({ method: "GET", url: "/api/orders/order-demo", headers: dealerHeaders });
@@ -195,7 +216,7 @@ test("dealer creation defaults an omitted contact to the dealer name", async (co
     payload: {
       name: "Dealer Contact Default",
       phone: "139 8765 4321",
-      password: "dealer-password-123",
+      password: "Dealer123!",
       discountRate: 90
     }
   });

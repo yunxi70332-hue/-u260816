@@ -9,6 +9,7 @@ import {
   dataScopeAllowsDelegation,
   getScope,
   hasPermission,
+  platformAuthorization,
   scopeAllowsRecord,
   scopeAllowsUser
 } from "../src/authorization.js";
@@ -144,6 +145,15 @@ test("missing organization entitlements deny all enterprise business permissions
   assert.equal(authorization.fieldPolicy.inventory, "none");
 });
 
+test("platform authorization retains every permission regardless of organization entitlements", () => {
+  const authorization = platformAuthorization();
+
+  assert.equal(authorization.enabledModules.length > 0, true);
+  assert.equal(hasPermission(authorization, "platform.entitlements.manage"), true);
+  assert.equal(hasPermission(authorization, "inventory.quantity.view"), true);
+  assert.equal(hasPermission(authorization, "orders.view"), true);
+});
+
 test("an organization owner cannot delegate platform-only authority", async () => {
   const repository = new MemoryRepository();
 
@@ -180,7 +190,7 @@ test("platform operations can create an enterprise admin without delegating plat
       name: "Enterprise Administrator",
       phone: "13800000987",
       email: "enterprise-admin@example.test",
-      password: "enterprise-admin-password-123"
+      password: "EntAdm123!"
     }
   });
   assert.equal(created.statusCode, 201);
@@ -197,7 +207,7 @@ test("platform operations can create an enterprise admin without delegating plat
   const signIn = await app.inject({
     method: "POST",
     url: "/api/auth/sign-in/phone-number",
-    payload: { phoneNumber: "+8613800000987", password: "enterprise-admin-password-123" }
+    payload: { phoneNumber: "+8613800000987", password: "EntAdm123!" }
   });
   assert.equal(signIn.statusCode, 200);
   const cookieHeader = signIn.headers["set-cookie"];
@@ -206,14 +216,25 @@ test("platform operations can create an enterprise admin without delegating plat
 
   const session = await app.inject({ method: "GET", url: "/api/session", headers });
   assert.equal(session.statusCode, 200);
-  const sessionBody = JSON.parse(session.body) as { effectivePermissions: string[] };
-  assert.equal(sessionBody.effectivePermissions.includes("platform.entitlements.manage"), false);
+  const sessionBody = JSON.parse(session.body) as { effectivePermissions: string[]; mustChangePassword: boolean };
+  assert.equal(sessionBody.mustChangePassword, true);
+  const changed = await app.inject({
+    method: "POST",
+    url: "/api/me/change-password",
+    headers,
+    payload: { currentPassword: "EntAdm123!", newPassword: "Changed6!" }
+  });
+  assert.equal(changed.statusCode, 200);
+  const activeSession = await app.inject({ method: "GET", url: "/api/session", headers });
+  const activeSessionBody = JSON.parse(activeSession.body) as { effectivePermissions: string[]; mustChangePassword: boolean };
+  assert.equal(activeSessionBody.mustChangePassword, false);
+  assert.equal(activeSessionBody.effectivePermissions.includes("platform.entitlements.manage"), false);
   assert.equal((await app.inject({ method: "GET", url: "/api/organization/entitlements", headers })).statusCode, 403);
   assert.equal((await app.inject({
     method: "POST",
     url: "/api/organization/admins",
     headers: { ...headers, "idempotency-key": "enterprise-admin-cannot-create-peer" },
-    payload: { name: "Blocked", phone: "13800000986", password: "blocked-admin-password-123" }
+    payload: { name: "Blocked", phone: "13800000986", password: "Block123!" }
   })).statusCode, 403);
 });
 
@@ -227,12 +248,20 @@ test("disabling warehouse entitlement preserves grants but removes warehouse acc
   );
   assert.equal(updated.find((item) => item.module === "warehouse")?.enabled, false);
 
-  const authorization = await repository.getAuthorization("user-demo", "tenant-demo", "owner");
+  const authorization = calculateAuthorization({
+    role: "owner",
+    organizationType: "hq",
+    grants: [
+      { permission: "inventory.quantity.view", scope: "organization", assignedUserIds: [] },
+      { permission: "orders.view", scope: "organization", assignedUserIds: [] }
+    ],
+    entitlements: updated
+  });
   assert.equal(authorization.enabledModules.includes("warehouse"), false);
   assert.equal(authorization.effectivePermissions.includes("inventory.quantity.view"), false);
 });
 
-test("disabling warehouse entitlement removes session module and rejects direct inventory APIs", async (context) => {
+test("disabling a tenant warehouse entitlement does not reduce platform administrator access", async (context) => {
   const repository = new MemoryRepository();
   const app = await buildApp(
     { ...loadConfig(), erpDevServerUrl: undefined, erpStaticDir: "missing" },
@@ -252,11 +281,11 @@ test("disabling warehouse entitlement removes session module and rejects direct 
 
   const session = await app.inject({ method: "GET", url: "/api/session" });
   const sessionBody = JSON.parse(session.body) as { enabledModules: string[]; effectivePermissions: string[] };
-  assert.equal(sessionBody.enabledModules.includes("warehouse"), false);
-  assert.equal(sessionBody.effectivePermissions.some((permission) => permission.startsWith("inventory.")), false);
+  assert.equal(sessionBody.enabledModules.includes("warehouse"), true);
+  assert.equal(sessionBody.effectivePermissions.some((permission) => permission.startsWith("inventory.")), true);
 
   for (const url of ["/api/inventory/balances", "/api/inventory/ledger", "/api/warehouses"]) {
-    assert.equal((await app.inject({ method: "GET", url })).statusCode, 403, `${url} remained accessible`);
+    assert.equal((await app.inject({ method: "GET", url })).statusCode, 200, `${url} was unexpectedly blocked`);
   }
 });
 
@@ -272,7 +301,7 @@ test("unchanged grants from a disabled module survive unrelated authorization ed
     method: "POST",
     url: "/api/employees",
     headers: { "idempotency-key": "disabled-module-grant-target" },
-    payload: { name: "Disabled Module Target", phone: "13800000896", password: "disabled-module-target-password-123" }
+    payload: { name: "Disabled Module Target", phone: "13800000896", password: "Module123!" }
   });
   assert.equal(created.statusCode, 201);
   const accountId = (JSON.parse(created.body) as { item: { id: string } }).item.id;
@@ -336,9 +365,9 @@ test("assigned report permission only exposes explicitly selected accounts", asy
     return (JSON.parse(response.body) as { item: { id: string; userId: string } }).item;
   };
 
-  const viewer = await createEmployee("Report Viewer", "13800000881", "report-viewer-password-123");
-  const allowed = await createEmployee("Allowed Report", "13800000882", "allowed-report-password-123");
-  const denied = await createEmployee("Denied Report", "13800000883", "denied-report-password-123");
+  const viewer = await createEmployee("Report Viewer", "13800000881", "Report123!");
+  const allowed = await createEmployee("Allowed Report", "13800000882", "Allow123!");
+  const denied = await createEmployee("Denied Report", "13800000883", "Deny123!");
 
   const authorization = await app.inject({
     method: "PUT",
@@ -353,12 +382,19 @@ test("assigned report permission only exposes explicitly selected accounts", asy
   const signIn = await app.inject({
     method: "POST",
     url: "/api/auth/sign-in/phone-number",
-    payload: { phoneNumber: "+8613800000881", password: "report-viewer-password-123" }
+    payload: { phoneNumber: "+8613800000881", password: "Report123!" }
   });
   assert.equal(signIn.statusCode, 200);
   const cookieHeader = signIn.headers["set-cookie"];
   assert.ok(cookieHeader);
   const headers = { cookie: Array.isArray(cookieHeader) ? cookieHeader[0] : cookieHeader };
+  const changed = await app.inject({
+    method: "POST",
+    url: "/api/me/change-password",
+    headers,
+    payload: { currentPassword: "Report123!", newPassword: "Changed6!" }
+  });
+  assert.equal(changed.statusCode, 200);
 
   const scopedSummary = await app.inject({ method: "GET", url: "/api/employees/order-summary", headers });
   assert.equal(scopedSummary.statusCode, 200);
@@ -392,7 +428,7 @@ test("authorization preview is non-persistent and copy applies the source accoun
       method: "POST",
       url: "/api/employees",
       headers: { "idempotency-key": `authorization-copy-${phone}` },
-      payload: { name, phone, password: "authorization-copy-password-123" }
+      payload: { name, phone, password: "Copy123!" }
     });
     assert.equal(response.statusCode, 201);
     return (JSON.parse(response.body) as { item: { id: string } }).item;
@@ -461,9 +497,9 @@ test("account-scoped permission delegation cannot read or copy outside its accou
     return (JSON.parse(response.body) as { item: { id: string; userId: string } }).item;
   };
 
-  const actor = await createEmployee("Scoped Delegate", "13800000893", "scoped-delegate-password-123");
-  const allowed = await createEmployee("Allowed Account", "13800000894", "allowed-account-password-123");
-  const denied = await createEmployee("Denied Account", "13800000895", "denied-account-password-123");
+  const actor = await createEmployee("Scoped Delegate", "13800000893", "Scope123!");
+  const allowed = await createEmployee("Allowed Account", "13800000894", "AllowAcct!");
+  const denied = await createEmployee("Denied Account", "13800000895", "DenyAcct!");
 
   for (const account of [allowed, denied]) {
     const response = await app.inject({
@@ -486,12 +522,19 @@ test("account-scoped permission delegation cannot read or copy outside its accou
   const signIn = await app.inject({
     method: "POST",
     url: "/api/auth/sign-in/phone-number",
-    payload: { phoneNumber: "+8613800000893", password: "scoped-delegate-password-123" }
+    payload: { phoneNumber: "+8613800000893", password: "Scope123!" }
   });
   assert.equal(signIn.statusCode, 200);
   const cookieHeader = signIn.headers["set-cookie"];
   assert.ok(cookieHeader);
   const headers = { cookie: Array.isArray(cookieHeader) ? cookieHeader[0] : cookieHeader };
+  const changed = await app.inject({
+    method: "POST",
+    url: "/api/me/change-password",
+    headers,
+    payload: { currentPassword: "Scope123!", newPassword: "Changed6!" }
+  });
+  assert.equal(changed.statusCode, 200);
 
   const accountList = await app.inject({ method: "GET", url: "/api/accounts", headers });
   assert.equal(accountList.statusCode, 200);
@@ -555,7 +598,7 @@ test("attachment lists inherit the parent resource data scope", async (context) 
     method: "POST",
     url: "/api/employees",
     headers: { "idempotency-key": "scoped-attachment-employee" },
-    payload: { name: "Scoped Attachment User", phone: "13800000992", password: "attachment-password-123" }
+    payload: { name: "Scoped Attachment User", phone: "13800000992", password: "Attach123!" }
   });
   assert.equal(employee.statusCode, 201);
   const accountId = (JSON.parse(employee.body) as { item: { id: string } }).item.id;
@@ -578,12 +621,19 @@ test("attachment lists inherit the parent resource data scope", async (context) 
   const signIn = await app.inject({
     method: "POST",
     url: "/api/auth/sign-in/phone-number",
-    payload: { phoneNumber: "+8613800000992", password: "attachment-password-123" }
+    payload: { phoneNumber: "+8613800000992", password: "Attach123!" }
   });
   assert.equal(signIn.statusCode, 200);
   const cookieHeader = signIn.headers["set-cookie"];
   assert.ok(cookieHeader);
   const headers = { cookie: Array.isArray(cookieHeader) ? cookieHeader[0] : cookieHeader };
+  const changed = await app.inject({
+    method: "POST",
+    url: "/api/me/change-password",
+    headers,
+    payload: { currentPassword: "Attach123!", newPassword: "Changed6!" }
+  });
+  assert.equal(changed.statusCode, 200);
 
   for (const url of ["/api/attachments", "/api/attachments?entityType=order"]) {
     const response = await app.inject({ method: "GET", url, headers });

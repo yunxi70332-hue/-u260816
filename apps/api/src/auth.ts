@@ -16,12 +16,16 @@ import { AppError } from "./errors.js";
 export interface AuthIdentity {
   user: { id: string; name: string; email: string };
   activeTenantId?: string;
+  globalRole?: string;
+  mustChangePassword?: boolean;
 }
 
 export interface AuthService {
   readonly mode: "development" | "better-auth";
   handle(request: FastifyRequest, reply: FastifyReply): Promise<void>;
   getIdentity(headers: IncomingHttpHeaders): Promise<AuthIdentity | null>;
+  changePassword?(input: { headers: IncomingHttpHeaders; currentPassword: string; newPassword: string }): Promise<{ headers: Headers; response: unknown }>;
+  resetPassword?(input: { userId: string; newPassword: string }): Promise<void>;
   createEmployee?(input: { organizationId: string; name: string; phone: string; email?: string; password: string }): Promise<{ userId: string }>;
   createOrganizationAdmin?(input: { organizationId: string; name: string; phone: string; email?: string; password: string; role: "headquarters_admin" | "dealer_admin" }): Promise<{ userId: string }>;
   createDealerAdmin?(input: { organizationId: string; name: string; phone: string; email?: string; password: string }): Promise<{ userId: string }>;
@@ -71,7 +75,8 @@ export function createBetterAuth(
     emailAndPassword: {
       enabled: true,
       disableSignUp: true,
-      minPasswordLength: 12
+      minPasswordLength: 6,
+      maxPasswordLength: 12
     },
     advanced: {
       cookiePrefix: "usm-erp",
@@ -144,8 +149,25 @@ export function createAuthService(
           name: session.user.name,
           email: session.user.email
         },
-        activeTenantId: rawSession.activeOrganizationId ?? undefined
+        activeTenantId: rawSession.activeOrganizationId ?? undefined,
+        globalRole: String((session.user as { role?: string }).role ?? "user"),
+        mustChangePassword: Boolean((session.user as { mustChangePassword?: boolean }).mustChangePassword)
       };
+    },
+    async changePassword(input) {
+      return auth.api.changePassword({
+        headers: webHeaders(input.headers),
+        body: { currentPassword: input.currentPassword, newPassword: input.newPassword, revokeOtherSessions: true },
+        returnHeaders: true
+      });
+    },
+    async resetPassword(input) {
+      const context = await auth.$context;
+      const account = (await context.internalAdapter.findAccounts(input.userId)).find((item) => item.providerId === "credential");
+      const password = await context.password.hash(input.newPassword);
+      if (account) await context.internalAdapter.updatePassword(input.userId, password);
+      else await context.internalAdapter.createAccount({ userId: input.userId, providerId: "credential", accountId: input.userId, password });
+      await context.internalAdapter.deleteUserSessions(input.userId);
     },
     async createEmployee(input) {
       const created = await auth.api.createUser({
@@ -240,6 +262,20 @@ function createDevelopmentAuth(config: AppConfig): AuthService {
       const cookies = headers.cookie ?? "";
       const sessionUserId = cookies.split(";").map((part) => part.trim().split("=", 2)).find(([name]) => name === cookieName)?.[1];
       return (sessionUserId ? identities.get(sessionUserId) : null) ?? (config.devAuthAutoLogin ? identity : null);
+    },
+    async changePassword(input) {
+      const current = await this.getIdentity(input.headers);
+      if (!current) throw new AppError(401, "UNAUTHORIZED", "Authentication is required");
+      const records = [...accounts.values()].filter((item) => item.identity.user.id === current.user.id);
+      const account = records[0] ?? accounts.get(current.user.email.toLowerCase());
+      if (!account || account.password !== input.currentPassword) throw new AppError(401, "UNAUTHORIZED", "Current password is incorrect");
+      for (const record of records) record.password = input.newPassword;
+      return { headers: new Headers(), response: { status: true } };
+    },
+    async resetPassword(input) {
+      for (const record of accounts.values()) {
+        if (record.identity.user.id === input.userId) record.password = input.newPassword;
+      }
     },
     async createEmployee(input) {
       const userId = `employee-${crypto.randomUUID()}`;

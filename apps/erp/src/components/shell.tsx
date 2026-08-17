@@ -11,6 +11,7 @@ import { useWorkspace } from "../context/workspace";
 import { api, ApiError } from "../lib/api";
 import { getDesignerBaseUrl } from "../lib/designer";
 import { ERP_LAYOUT_TOKEN } from "../theme";
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "../types";
 import type { Permission } from "../types";
 import { FormActions, Modal, Notice } from "./ui";
 
@@ -81,6 +82,21 @@ const NAV_PERMISSION_OVERRIDES: Partial<Record<string, Permission>> = {
   "/pricing": "prices.master.view"
 };
 
+function getActiveMenuKey(pathname: string) {
+  const paths: string[] = [];
+  const collectPaths = (items: NavItem[]) => {
+    for (const item of items) {
+      if (item.path) paths.push(item.path);
+      if (item.children) collectPaths(item.children);
+    }
+  };
+  collectPaths(NAV_GROUPS.flatMap((group) => group.children));
+
+  return paths
+    .filter((path) => path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(`${path}/`))
+    .sort((left, right) => right.length - left.length)[0];
+}
+
 const ROLE_LABELS: Record<string, string> = {
   owner: "所有者", admin: "管理员", finance: "财务", sales: "销售", designer: "设计", production: "生产", member: "成员", viewer: "只读",
   headquarters_admin: "总部管理员", headquarters_sales: "总部销售", headquarters_reviewer: "总部审核", production_shipping: "生产发运",
@@ -92,7 +108,7 @@ function BrandMark() {
 }
 
 export function AppShell() {
-  const { session, logout, can } = useAuth();
+  const { session, logout, refreshSession, switchTenant, can } = useAuth();
   const workspace = useWorkspace();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
@@ -101,16 +117,25 @@ export function AppShell() {
   const [passwordBusy, setPasswordBusy] = useState(false);
   const [passwordError, setPasswordError] = useState("");
   const [passwordChanged, setPasswordChanged] = useState(false);
+  const forcedPasswordChange = session?.mode === "live" && Boolean(session.mustChangePassword || session.passwordChangeRequired);
 
   const routeOpenKeys = location.pathname.startsWith("/inventory/")
     ? ["inventory"]
     : ["/projects", "/quotes", "/orders", "/production"].some((path) => location.pathname.startsWith(path))
       ? ["dashboard"]
       : openMenuKeys;
+  const selectedMenuKey = getActiveMenuKey(location.pathname);
 
   useEffect(() => {
     if (collapsed) setOpenMenuKeys([]);
   }, [collapsed, location.pathname]);
+
+  useEffect(() => {
+    if (!forcedPasswordChange) return;
+    setPasswordError("");
+    setPasswordChanged(false);
+    setPasswordOpen(true);
+  }, [forcedPasswordChange]);
 
   const routes = useMemo<MenuDataItem[]>(() => {
     const buildMenuItem = (item: NavItem, group?: string): MenuDataItem | null => {
@@ -149,8 +174,8 @@ export function AppShell() {
     const confirmPassword = String(form.get("confirmPassword") ?? "");
     setPasswordError("");
     setPasswordChanged(false);
-    if (newPassword.length < 12) {
-      setPasswordError("新密码至少需要 12 个字符。");
+    if (newPassword.length < PASSWORD_MIN_LENGTH || newPassword.length > PASSWORD_MAX_LENGTH) {
+      setPasswordError(`新密码需为 ${PASSWORD_MIN_LENGTH}-${PASSWORD_MAX_LENGTH} 位。`);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -160,6 +185,7 @@ export function AppShell() {
     setPasswordBusy(true);
     try {
       await api.changePassword(currentPassword, newPassword);
+      await refreshSession();
       formElement.reset();
       setPasswordChanged(true);
     } catch (error) {
@@ -182,6 +208,15 @@ export function AppShell() {
     }
   };
 
+  const tenantMenu = {
+    items: (session?.tenants ?? []).map((tenant) => ({
+      key: tenant.id,
+      label: tenant.name,
+      disabled: tenant.id === session?.activeTenantId
+    })),
+    onClick: ({ key }: { key: string }) => void switchTenant(key)
+  };
+
   return (
     <>
       <ProLayout
@@ -200,6 +235,7 @@ export function AppShell() {
         menuProps={{
           // A collapsed sider renders submenu items in a floating menu. Do not
           // open that menu solely because the current route belongs to it.
+          selectedKeys: selectedMenuKey ? [selectedMenuKey] : [],
           openKeys: collapsed ? openMenuKeys : routeOpenKeys,
           onOpenChange: (keys) => setOpenMenuKeys(keys.map(String))
         }}
@@ -218,6 +254,11 @@ export function AppShell() {
       >
         <main className="content-area">
           <div className="workspace-account-bar">
+            {session && session.tenants.length > 1 && <Dropdown menu={tenantMenu} trigger={["click"]} placement="bottomRight">
+              <Button type="text" icon={<Building2 size={16} />} title="切换企业工作区">
+                {session.tenants.find((tenant) => tenant.id === session.activeTenantId)?.name ?? "当前企业"}
+              </Button>
+            </Dropdown>}
             <Dropdown menu={profileMenu} trigger={["click"]} placement="bottomRight">
               <Button type="text" className="pro-profile-button"><span className="pro-avatar">{session?.user.name.slice(-2) || "US"}</span><span><strong>{session?.user.name}</strong><small>{session ? ROLE_LABELS[session.user.role] : ""}</small></span></Button>
             </Dropdown>
@@ -230,16 +271,16 @@ export function AppShell() {
         </main>
       </ProLayout>
 
-      <Modal open={passwordOpen} title="修改密码" description="更新后，其他设备上的登录会话将退出。" onClose={() => setPasswordOpen(false)}>
+      <Modal open={passwordOpen} title={forcedPasswordChange ? "首次登录请修改密码" : "修改密码"} description={forcedPasswordChange ? `这是临时密码，请设置 ${PASSWORD_MIN_LENGTH}-${PASSWORD_MAX_LENGTH} 位的新密码后继续使用。` : "更新后，其他设备上的登录会话将退出。"} onClose={() => { if (!forcedPasswordChange) setPasswordOpen(false); }}>
         <form className="modal-form" onSubmit={(event) => void changePassword(event)}>
           <div className="form-grid">
             <label className="span-2"><span>当前密码</span><input name="currentPassword" type="password" autoComplete="current-password" required /></label>
-            <label className="span-2"><span>新密码</span><input name="newPassword" type="password" autoComplete="new-password" minLength={12} required /></label>
-            <label className="span-2"><span>确认新密码</span><input name="confirmPassword" type="password" autoComplete="new-password" minLength={12} required /></label>
+            <label className="span-2"><span>新密码</span><input name="newPassword" type="password" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={PASSWORD_MAX_LENGTH} required /></label>
+            <label className="span-2"><span>确认新密码</span><input name="confirmPassword" type="password" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={PASSWORD_MAX_LENGTH} required /></label>
           </div>
           {passwordError && <div className="form-notice"><Notice tone="danger">{passwordError}</Notice></div>}
           {passwordChanged && <div className="form-notice"><Notice tone="info">密码已更新，其他设备上的会话已退出。</Notice></div>}
-          <FormActions onCancel={() => setPasswordOpen(false)} submitting={passwordBusy} submitLabel="更新密码" />
+          <FormActions onCancel={() => { if (!forcedPasswordChange) setPasswordOpen(false); }} submitting={passwordBusy} submitLabel={forcedPasswordChange ? "设置新密码" : "更新密码"} />
         </form>
       </Modal>
     </>

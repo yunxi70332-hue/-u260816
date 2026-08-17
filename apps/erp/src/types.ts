@@ -15,6 +15,9 @@ export type Role =
   | "dealer_designer_sales"
   | "dealer"
   | "factory_employee";
+
+export const PASSWORD_MIN_LENGTH = 6;
+export const PASSWORD_MAX_LENGTH = 12;
 export type Permission =
   | "dashboard.view"
   | "project.manage"
@@ -93,6 +96,7 @@ export interface User {
 
 export interface Session {
   user: User;
+  principalType?: "platform_admin" | "organization_member";
   tenants: Tenant[];
   activeTenantId: string;
   authorizationOrganizationId?: string;
@@ -103,6 +107,8 @@ export interface Session {
   delegablePermissions?: string[];
   dataScopes?: Record<string, { resource: string; scope: "own" | "assigned" | "specified" | "organization"; assignedUserIds: string[] }>;
   fieldPolicy?: { price: string; inventory: InventoryFieldPolicy };
+  mustChangePassword?: boolean;
+  passwordChangeRequired?: boolean;
   mode: "live" | "demo";
 }
 

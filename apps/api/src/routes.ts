@@ -21,8 +21,12 @@ import {
   OrderTransitionSchema,
   QuoteTransitionSchema,
   PublishPriceListSchema,
+  PriceListImportCommitSchema,
+  PriceListImportPreviewSchema,
   SavePriceListItemsSchema,
   UpdateAccountStatusSchema,
+  ResetAccountPasswordSchema,
+  ChangeOwnPasswordSchema,
   UpdateEmployeeStatusSchema,
   UpdateCustomerSchema,
   UpdateDesignDraftSchema,
@@ -41,10 +45,12 @@ import {
   type Design,
   type DesignVersion,
   type AccountAuthorization,
+  type AuditLog,
   type Order,
   type Project,
   type Quote,
-  type UpdateAccountAuthorizationInput
+  type UpdateAccountAuthorizationInput,
+  type PriceListImportRow
 } from "@usm/contracts";
 import {
   InvalidTransitionError,
@@ -190,6 +196,33 @@ function assertAccountAuthorizationAccess(request: FastifyRequest, account: { us
   if (!scopeAllowsUser(getScope(authorization, "accounts"), user.id, account.userId)) {
     throw new AppError(404, "NOT_FOUND", `${label} not found`);
   }
+}
+
+const ACCOUNT_ROLE_RANK: Record<string, number> = {
+  owner: 80,
+  admin: 80,
+  headquarters_admin: 80,
+  dealer_admin: 60,
+  headquarters_sales: 40,
+  headquarters_reviewer: 40,
+  production_shipping: 30,
+  dealer_designer_sales: 30,
+  factory_employee: 20,
+  production: 20,
+  finance: 20,
+  sales: 20,
+  designer: 20,
+  member: 10,
+  viewer: 10
+};
+
+function assertPasswordResetAccess(request: FastifyRequest, target: { userId: string; role: string }): void {
+  const context = authContext(request);
+  if (target.userId === context.user.id) throw new AppError(403, "FORBIDDEN", "Use self-service password change for your own account");
+  if (context.principalType === "platform_admin") return;
+  const actorRank = ACCOUNT_ROLE_RANK[context.role] ?? 0;
+  const targetRank = ACCOUNT_ROLE_RANK[target.role] ?? 0;
+  if (actorRank <= targetRank) throw new AppError(403, "FORBIDDEN", "Only a higher-level administrator can reset this password");
 }
 
 interface ReportSelection {
@@ -684,6 +717,62 @@ async function accountNames(repository: Repository, tenantId: string): Promise<M
   return new Map((await repository.listAccounts(tenantId)).map((account) => [account.userId, account.name]));
 }
 
+async function withVisibleAuditActors(
+  repository: Repository,
+  context: ReturnType<typeof authContext>,
+  items: AuditLog[],
+  names: Map<string, string>
+): Promise<Array<AuditLog & { actorName: string | null }>> {
+  return Promise.all(items.map(async (item) => {
+    const platformActor = item.actorUserId
+      ? (await repository.getUserSecurityState(item.actorUserId)).globalRole === "admin"
+      : false;
+    const visiblePlatformActor = context.principalType === "platform_admin";
+    return {
+      ...withoutInlinePreviewData(item),
+      actorUserId: platformActor && !visiblePlatformActor ? null : item.actorUserId,
+      actorName: platformActor
+        ? visiblePlatformActor ? "平台管理员" : "系统操作"
+        : item.actorUserId ? names.get(item.actorUserId) ?? null : null
+    };
+  }));
+}
+
+const PLATFORM_USER_REFERENCE_FIELDS = ["createdByUserId", "ownerUserId", "assignedByUserId", "adjustedByUserId"];
+
+async function redactPlatformUserReferences<T extends object>(
+  repository: Repository,
+  context: ReturnType<typeof authContext>,
+  item: T
+): Promise<T> {
+  if (context.principalType === "platform_admin") return item;
+  const visible = { ...item } as Record<string, unknown>;
+  const referencedUserIds = [...new Set(PLATFORM_USER_REFERENCE_FIELDS
+    .map((field) => visible[field])
+    .filter((value): value is string => typeof value === "string" && value.length > 0))];
+  const securityStates = await Promise.all(referencedUserIds.map(async (userId) => [
+    userId,
+    await repository.getUserSecurityState(userId)
+  ] as const));
+  const platformUserIds = new Set(securityStates
+    .filter(([, state]) => state.globalRole === "admin")
+    .map(([userId]) => userId));
+  for (const field of PLATFORM_USER_REFERENCE_FIELDS) {
+    if (typeof visible[field] === "string" && platformUserIds.has(visible[field])) visible[field] = null;
+  }
+  return visible as T;
+}
+
+function withPlatformOwnerName<T extends { ownerUserId?: string | null; ownerName?: string | null }>(
+  context: ReturnType<typeof authContext>,
+  item: T
+): T {
+  if (context.principalType === "platform_admin" && item.ownerUserId === context.user.id) {
+    return { ...item, ownerName: context.user.name };
+  }
+  return item;
+}
+
 interface OrderDisplayRelations {
   customerNames: Map<string, string>;
   projects: Map<string, Project>;
@@ -869,6 +958,128 @@ function canonicalJson(value: unknown): string {
   return JSON.stringify(value);
 }
 
+type NormalizedPriceImportRow = {
+  materialKey: string;
+  specKey: string;
+  price: number | undefined;
+  materialCode?: string;
+  name?: string;
+  specification?: string;
+  unit?: string;
+  pricingMethod?: import("@usm/contracts").PriceListItem["pricingMethod"];
+  pricingRule?: Record<string, unknown> | string | null;
+  note?: string;
+  rowNumber: number;
+};
+
+function normalizePriceImportRow(row: PriceListImportRow, rowNumber: number): NormalizedPriceImportRow {
+  const materialKey = String(row.materialKey ?? row.canonicalName ?? "").trim();
+  const specKey = normalizePriceImportSpecKey(row.specKey ?? row.spec ?? "");
+  const rawPrice = row.retailUnitPrice ?? row.unitPrice;
+  const price = rawPrice === undefined || rawPrice === null || rawPrice === "" ? undefined : Number(rawPrice);
+  return {
+    materialKey,
+    specKey,
+    price,
+    materialCode: row.materialCode,
+    name: row.name,
+    specification: row.specification ?? row.spec,
+    unit: row.unit,
+    pricingMethod: row.pricingMethod,
+    pricingRule: row.pricingRule,
+    note: row.note,
+    rowNumber
+  };
+}
+
+function priceImportIdentity(materialKey: string, specKey: string): string {
+  return `${materialKey.trim().toLocaleLowerCase()}|${normalizePriceImportSpecKey(specKey)}`;
+}
+
+function normalizePriceImportSpecKey(value: unknown): string {
+  const text = String(value ?? "").normalize("NFKC").trim().toLocaleLowerCase();
+  if (!text || ["standard", "通用", "标准", "无规格"].includes(text)) return "standard";
+  return text
+    .replace(/毫米/g, "mm")
+    .replace(/\s*[x×*]\s*/g, "x")
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9.\-\u4e00-\u9fff]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .replace(/-?mm$/, "") || "standard";
+}
+
+function priceImportPreviewToken(priceListId: string, revision: number, rows: PriceListImportRow[]): string {
+  return createHash("sha256").update(canonicalJson({ priceListId, revision, rows })).digest("hex");
+}
+
+function priceImportRule(value: Record<string, unknown> | string | null | undefined): Record<string, unknown> | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  return typeof value === "string" ? { expression: value } : value;
+}
+
+function hasPriceImportRule(value: Record<string, unknown> | string | null | undefined): boolean {
+  if (value === null || value === undefined) return false;
+  if (typeof value === "string") return value.trim().length > 0;
+  return Object.keys(value).length > 0;
+}
+
+function samePriceImportRule(current: Record<string, unknown> | null | undefined, incoming: Record<string, unknown> | string | null | undefined): boolean {
+  if (incoming === undefined) return true;
+  return JSON.stringify(current ?? null) === JSON.stringify(priceImportRule(incoming) ?? null);
+}
+
+function buildPriceImportPreview(
+  rows: PriceListImportRow[],
+  existing: import("@usm/contracts").PriceListItem[]
+): {
+  rows: Array<{ rowNumber: number; identity: string; outcome: "new" | "updated" | "skipped" | "conflict" | "error"; message: string; input: PriceListImportRow }>;
+  counts: { new: number; updated: number; skipped: number; conflict: number; error: number };
+  errors: string[];
+} {
+  const counts = { new: 0, updated: 0, skipped: 0, conflict: 0, error: 0 };
+  const seen = new Set<string>();
+  const existingByKey = new Map(existing.map((item) => [priceImportIdentity(item.materialKey, item.specKey), item]));
+  const previewRows = rows.map((input, index) => {
+    const normalized = normalizePriceImportRow(input, input.sourceRow ?? index + 2);
+    const identity = priceImportIdentity(normalized.materialKey, normalized.specKey);
+    let outcome: "new" | "updated" | "skipped" | "conflict" | "error";
+    let message: string;
+    const current = existingByKey.get(identity);
+    if (!normalized.materialKey || !normalized.specKey) {
+      outcome = "error";
+      message = "materialKey/canonicalName and specKey/spec are required";
+    } else if ((normalized.price === undefined && !hasPriceImportRule(normalized.pricingRule)) || (normalized.price !== undefined && (!Number.isFinite(normalized.price) || normalized.price < 0))) {
+      outcome = "error";
+      message = "unitPrice/retailUnitPrice must be a non-negative number";
+    } else if (seen.has(identity)) {
+      outcome = "conflict";
+      message = "Duplicate materialKey/specKey in import";
+    } else if (!current) {
+      outcome = "error";
+      message = "Unknown material/spec; import does not create new price items";
+    } else if (["included", "composite"].includes(current.pricingMethod)) {
+      outcome = "skipped";
+      message = "Included/composite items are not directly priced";
+    } else if ((normalized.price === undefined || current.retailUnitPriceMinor === Math.round(normalized.price * 100)) && samePriceImportRule(current.pricingRule, normalized.pricingRule)) {
+      outcome = "skipped";
+      message = "No effective change";
+    } else {
+      outcome = "updated";
+      message = "Existing item will be updated";
+    }
+    seen.add(identity);
+    counts[outcome] += 1;
+    return { rowNumber: normalized.rowNumber, identity, outcome, message, input };
+  });
+  return {
+    rows: previewRows,
+    counts,
+    errors: previewRows.filter((row) => row.outcome === "error" || row.outcome === "conflict").map((row) => `Row ${row.rowNumber}: ${row.message}`)
+  };
+}
+
 function withoutInlinePreviewData<T>(value: T): T {
   const cloned = structuredClone(value);
   const visit = (node: unknown): void => {
@@ -954,11 +1165,16 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
     }
     const tenantHeader = request.headers["x-tenant-id"];
     const requestedTenantId = (Array.isArray(tenantHeader) ? tenantHeader[0] : tenantHeader) ?? identity.activeTenantId;
+    const securityState = await repository.getUserSecurityState(identity.user.id);
     const membership = await repository.resolveMembership(identity.user.id, requestedTenantId);
     if (!membership) throw new AppError(403, "FORBIDDEN", "No organization membership is available");
+    const principalType = securityState.globalRole === "admin" || identity.globalRole === "admin" ? "platform_admin" as const : "organization_member" as const;
+    const mustChangePassword = securityState.mustChangePassword || identity.mustChangePassword === true;
+    const passwordExempt = path === "/api/session" || path === "/api/me/change-password";
+    if (mustChangePassword && !passwordExempt) throw new AppError(409, "PASSWORD_CHANGE_REQUIRED", "Password change is required before continuing");
     let authorizationTenantId = membership.tenant.id;
     let authorization = await repository.getAuthorization(identity.user.id, membership.tenant.id, membership.role);
-    if (membership.delegatedFromTenantId) {
+    if (membership.delegatedFromTenantId && principalType !== "platform_admin") {
       authorizationTenantId = membership.delegatedFromTenantId;
       const sourceAuthorization = await repository.getAuthorization(identity.user.id, authorizationTenantId, membership.role);
       const dealerScope = sourceAuthorization.dataScopes.dealers;
@@ -982,9 +1198,11 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
     }
     request.authContext = {
       user: identity.user, tenant: membership.tenant, role: membership.role,
+      principalType,
       organizationType: membership.organizationType ?? "hq",
       authorizationTenantId,
-      authorization
+      authorization,
+      mustChangePassword
     };
   });
 
@@ -1008,14 +1226,18 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
       fieldPolicy: { price: "none", inventory: "none" }
     };
     const context = request.authContext;
+    const tenants = await repository.listAvailableTenants(context.user.id, context.principalType === "platform_admin");
     return {
       authenticated: true,
       user: context.user,
+      principalType: context.principalType,
+      mustChangePassword: context.mustChangePassword,
+      passwordChangeRequired: context.mustChangePassword,
       tenant: context.tenant,
       membership: { role: context.role },
       organization: context.tenant,
-      organizations: [context.tenant],
-      tenants: [context.tenant],
+      organizations: tenants,
+      tenants,
       activeOrganizationId: context.tenant.id,
       activeTenantId: context.tenant.id,
       authorizationOrganizationId: context.authorizationTenantId,
@@ -1026,6 +1248,19 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
       permissions: legacyPermissionsForAuthorization(context.authorization.effectivePermissions),
       ...context.authorization
     };
+  });
+
+  app.post("/api/me/change-password", async (request, reply) => {
+    const context = authContext(request);
+    const input = parse(ChangeOwnPasswordSchema, request.body);
+    if (!auth.changePassword) throw new AppError(501, "INTERNAL_ERROR", "Password change is not configured");
+    const changed = await auth.changePassword({ headers: request.headers, ...input });
+    changed.headers.forEach((value, name) => {
+      if (name !== "set-cookie") reply.header(name, value);
+    });
+    for (const value of changed.headers.getSetCookie()) reply.raw.appendHeader("set-cookie", value);
+    await repository.setPasswordChangeRequired(context.user.id, false);
+    return changed.response;
   });
 
   app.get("/api/me/sales-pricing-preferences", async (request) => {
@@ -1203,6 +1438,23 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
     await auditMutation(repository, request, "account.status_changed", "account", item.id, before, item);
     return { item };
   });
+  app.post<{ Params: { id: string } }>("/api/accounts/:id/reset-password", async (request) => {
+    requirePermission(request, "account.manage");
+    const input = parse(ResetAccountPasswordSchema, request.body);
+    const { tenant, user, authorization } = authContext(request);
+    const scope = getScope(authorization, "accounts");
+    const target = (await repository.listAccounts(tenant.id)).find((account) => account.id === request.params.id);
+    if (!target || !scopeAllowsUser(scope, user.id, target.userId)) throw new AppError(404, "NOT_FOUND", "Account not found");
+    assertPasswordResetAccess(request, target);
+    if (!auth.resetPassword) throw new AppError(501, "INTERNAL_ERROR", "Password reset is not configured");
+    await auth.resetPassword({ userId: target.userId, newPassword: input.newPassword });
+    await repository.setPasswordChangeRequired(target.userId, true);
+    await auditMutation(repository, request, "account.password_reset", "account", target.id, null, {
+      userId: target.userId,
+      mustChangePassword: true
+    });
+    return { success: true };
+  });
 
   app.get("/api/employees", async (request) => {
     requirePermission(request, "account.manage");
@@ -1330,6 +1582,66 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
       const item = await found(repository.getPriceList(tenant.id, request.params.id), "Price list");
       await auditMutation(repository, request, "price_list.items_saved", "price_list", item.id, before, item, { itemCount: items.length });
       return { item, items };
+    });
+    if (response) return response;
+  });
+  app.post<{ Params: { id: string } }>("/api/price-lists/:id/import/preview", async (request) => {
+    requirePermission(request, "prices.manage");
+    const input = parse(PriceListImportPreviewSchema, request.body);
+    const { tenant } = authContext(request);
+    const item = await found(repository.getPriceList(tenant.id, request.params.id), "Price list");
+    const existing = await repository.listPriceListItems(tenant.id, item.id);
+    const preview = buildPriceImportPreview(input.rows, existing);
+    return {
+      previewToken: priceImportPreviewToken(item.id, item.revision, input.rows),
+      ...preview
+    };
+  });
+  app.post<{ Params: { id: string } }>("/api/price-lists/:id/import/commit", async (request, reply) => {
+    requirePermission(request, "prices.manage");
+    const input = parse(PriceListImportCommitSchema, request.body);
+    const response = await idempotent(request, reply, repository, 200, async () => {
+      const { tenant } = authContext(request);
+      const before = await found(repository.getPriceList(tenant.id, request.params.id), "Price list");
+      const existing = await repository.listPriceListItems(tenant.id, before.id);
+      const preview = buildPriceImportPreview(input.rows, existing);
+      const expectedToken = priceImportPreviewToken(before.id, before.revision, input.rows);
+      if (input.previewToken && input.previewToken !== expectedToken) {
+        throw new AppError(409, "VALIDATION_ERROR", "Import preview is stale; preview the file again", { expectedToken });
+      }
+      if (preview.errors.length || preview.counts.conflict > 0 || preview.counts.error > 0) {
+        throw new AppError(409, "VALIDATION_ERROR", "Price import contains invalid, unknown, or conflicting rows", preview);
+      }
+      const existingByKey = new Map(existing.map((candidate) => [priceImportIdentity(candidate.materialKey, candidate.specKey), candidate]));
+      const updates = input.rows.flatMap((raw, index) => {
+        const normalized = normalizePriceImportRow(raw, raw.sourceRow ?? index + 2);
+        const current = existingByKey.get(priceImportIdentity(normalized.materialKey, normalized.specKey));
+        if (!current || ["included", "composite"].includes(current.pricingMethod)) return [];
+        const pricingRule = normalized.pricingRule === undefined ? current.pricingRule : priceImportRule(normalized.pricingRule);
+        return [{
+          id: current.id,
+          materialKey: current.materialKey,
+          specKey: current.specKey,
+          category: current.category,
+          name: normalized.name ?? current.name,
+          specification: normalized.specification ?? current.specification,
+          unit: normalized.unit ?? current.unit,
+          pricingMethod: normalized.pricingMethod ?? (normalized.price === undefined ? "formula" : current.pricingMethod),
+          retailUnitPriceMinor: normalized.price === undefined ? current.retailUnitPriceMinor : Math.round(normalized.price * 100),
+          pricingRule: pricingRule ?? null,
+          note: normalized.note ?? current.note,
+          sourceRef: normalized.materialCode ?? current.sourceRef
+        }];
+      });
+      const items = updates.length ? await repository.savePriceListItems(tenant.id, before.id, updates) : existing;
+      const item = await found(repository.getPriceList(tenant.id, before.id), "Price list");
+      await auditMutation(repository, request, "price_list.import_committed", "price_list", item.id, before, item, {
+        updated: preview.counts.updated,
+        skipped: preview.counts.skipped,
+        rows: input.rows.length,
+        previewToken: expectedToken
+      });
+      return { item, items, previewToken: expectedToken, import: preview.counts };
     });
     if (response) return response;
   });
@@ -1619,7 +1931,10 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
       assignedUserId: project.ownerUserId
     }));
     const policy = authContext(request).authorization.fieldPolicy;
-    return { items: (await withProjectCustomerNames(repository, tenant.id, projects)).map((item) => maskProjectForAuthorization(item, policy)), nextCursor: null };
+    const context = authContext(request);
+    const items = await Promise.all((await withProjectCustomerNames(repository, tenant.id, projects))
+      .map((item) => redactPlatformUserReferences(repository, context, withPlatformOwnerName(context, maskProjectForAuthorization(item, policy)))));
+    return { items, nextCursor: null };
   });
   app.get<{ Params: { id: string } }>("/api/projects/:id", async (request, reply) => {
     requirePermission(request, "projects.view");
@@ -1627,7 +1942,7 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
     const item = await foundProject(repository, request, request.params.id);
     const [displayItem] = await withProjectCustomerNames(repository, tenant.id, [item]);
     reply.header("ETag", revisionEtag(displayItem.revision));
-    return { item: maskProjectForAuthorization(displayItem, authContext(request).authorization.fieldPolicy) };
+    return { item: await redactPlatformUserReferences(repository, authContext(request), withPlatformOwnerName(authContext(request), maskProjectForAuthorization(displayItem, authContext(request).authorization.fieldPolicy))) };
   });
   app.post("/api/projects", async (request, reply) => {
     requirePermission(request, "projects.create");
@@ -1732,12 +2047,8 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
     ]);
     const items = auditLists.flat()
       .filter((item) => item.action === "quote.created" || item.action === "quote.updated")
-      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
-      .map((item) => ({
-        ...withoutInlinePreviewData(item),
-        actorName: item.actorUserId ? names.get(item.actorUserId) ?? null : null
-      }));
-    return { items, nextCursor: null };
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    return { items: await withVisibleAuditActors(repository, authContext(request), items, names), nextCursor: null };
   });
 
   app.get<{ Querystring: { projectId?: string } }>("/api/designs", async (request) => {
@@ -1747,10 +2058,12 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
     const projects = await repository.listProjects(tenant.id);
     const owners = new Map(projects.map((project) => [project.id, project.ownerUserId]));
     const policy = authContext(request).authorization.fieldPolicy;
-    return { items: scopedItems(request, "designs", designs, (design) => ({
+    const context = authContext(request);
+    const items = scopedItems(request, "designs", designs, (design) => ({
       createdByUserId: design.createdByUserId,
       assignedUserId: owners.get(design.projectId)
-    })).map((item) => maskDesignForAuthorization(item, policy)), nextCursor: null };
+    }));
+    return { items: await Promise.all(items.map((item) => redactPlatformUserReferences(repository, context, maskDesignForAuthorization(item, policy)))), nextCursor: null };
   });
   app.post("/api/designs", async (request, reply) => {
     requirePermission(request, "designs.create");
@@ -1770,7 +2083,7 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
     requirePermission(request, "designs.view");
     const item = await foundDesign(repository, request, request.params.id);
     reply.header("ETag", revisionEtag(item.draftRevision));
-    return { item: maskDesignForAuthorization(item, authContext(request).authorization.fieldPolicy) };
+    return { item: await redactPlatformUserReferences(repository, authContext(request), maskDesignForAuthorization(item, authContext(request).authorization.fieldPolicy)) };
   }
   app.put<{ Params: { id: string } }>("/api/designs/:id/draft", async (request, reply) => {
     requirePermission(request, "designs.update");
@@ -1812,17 +2125,24 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
     const { authorization } = authContext(request);
     const projects = await repository.listProjects(tenant.id);
     const owners = new Map(projects.map((project) => [project.id, project.ownerUserId]));
-    return { items: scopedItems(request, "quotes", items, (quote) => ({
+    const context = authContext(request);
+    const visibleQuotes = scopedItems(request, "quotes", items, (quote) => ({
       createdByUserId: quote.createdByUserId,
       assignedUserId: owners.get(quote.projectId)
-    })).map((item) => withoutInlinePreviewData(maskQuoteForAuthorization(withQuoteDisplayNames(item, relations), authorization.fieldPolicy))), nextCursor: null };
+    }));
+    const visibleItems = await Promise.all(visibleQuotes.map((item) => redactPlatformUserReferences(
+      repository,
+      context,
+      withPlatformOwnerName(context, withoutInlinePreviewData(maskQuoteForAuthorization(withQuoteDisplayNames(item, relations), authorization.fieldPolicy)))
+    )));
+    return { items: visibleItems, nextCursor: null };
   });
   app.get<{ Params: { id: string } }>("/api/quotes/:id", async (request, reply) => {
     requirePermission(request, "quotes.view");
     const { tenant } = authContext(request);
     const item = await foundQuote(repository, request, request.params.id);
     reply.header("ETag", revisionEtag(item.revision));
-    return { item: maskQuoteForAuthorization(withQuoteDisplayNames(item, await orderDisplayRelations(repository, tenant.id)), authContext(request).authorization.fieldPolicy) };
+    return { item: await redactPlatformUserReferences(repository, authContext(request), withPlatformOwnerName(authContext(request), maskQuoteForAuthorization(withQuoteDisplayNames(item, await orderDisplayRelations(repository, tenant.id)), authContext(request).authorization.fieldPolicy))) };
   });
   app.post("/api/quotes", async (request, reply) => {
     requirePermission(request, "quotes.create");
@@ -2080,7 +2400,13 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
       createdByUserId: order.createdByUserId,
       assignedUserId: order.ownerUserId
     }));
-    return { items: visible.map((item) => withoutInlinePreviewData(maskOrderForAuthorization(withOrderDisplayNames(item, relations), authorization.fieldPolicy))), nextCursor: null };
+    const context = authContext(request);
+    const visibleItems = await Promise.all(visible.map((item) => redactPlatformUserReferences(
+      repository,
+      context,
+      withPlatformOwnerName(context, withoutInlinePreviewData(maskOrderForAuthorization(withOrderDisplayNames(item, relations), authorization.fieldPolicy)))
+    )));
+    return { items: visibleItems, nextCursor: null };
   });
   app.get<{ Params: { id: string } }>("/api/orders/:id", async (request, reply) => {
     requirePermission(request, "orders.view");
@@ -2088,7 +2414,7 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
     const item = await foundOrder(repository, request, request.params.id);
     const [shipments, relations] = await Promise.all([repository.listShipments(tenant.id, item.id), orderDisplayRelations(repository, tenant.id)]);
     reply.header("ETag", revisionEtag(item.revision));
-    return { item: { ...maskOrderForAuthorization(withOrderDisplayNames(item, relations), authContext(request).authorization.fieldPolicy), shipments } };
+    return { item: await redactPlatformUserReferences(repository, authContext(request), withPlatformOwnerName(authContext(request), { ...maskOrderForAuthorization(withOrderDisplayNames(item, relations), authContext(request).authorization.fieldPolicy), shipments })) };
   });
   app.post("/api/orders", async (request, reply) => {
     requirePermission(request, "orders.create");
@@ -2233,18 +2559,13 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
 
   app.get<{ Querystring: { entityType?: string; entityId?: string } }>("/api/audit-logs", async (request) => {
     requirePermission(request, "audit.view");
-    const { tenant } = authContext(request);
+    const context = authContext(request);
+    const { tenant } = context;
     const [items, names] = await Promise.all([
       repository.listAudit(tenant.id, request.query.entityType, request.query.entityId),
       accountNames(repository, tenant.id)
     ]);
-    return {
-      items: items.map((item) => ({
-        ...withoutInlinePreviewData(item),
-        actorName: item.actorUserId ? names.get(item.actorUserId) ?? null : null
-      })),
-      nextCursor: null
-    };
+    return { items: await withVisibleAuditActors(repository, context, items, names), nextCursor: null };
   });
 
   app.get("/api/warehouses", async (request) => {
@@ -2299,7 +2620,7 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
       const color = String(line.color ?? "");
       const finish = String(line.finish ?? "");
       const material = materialKey && specKey ? await repository.getMaterialByKey(tenant.id, { materialKey, specKey, color, finish }) : null;
-      return { lineId: String(line.id ?? `line-${index + 1}`), materialCode: materialKey || undefined, materialId: material?.id ?? null, name: String(line.name ?? material?.name ?? ""), spec: specKey, color: color || undefined, finish: finish || undefined, qty: Number(line.qty ?? 0), unit: String(line.unit ?? material?.unit ?? "pcs"), mappingStatus: material ? "matched" : "unmatched" };
+      return { lineId: String(line.id ?? `line-${index + 1}`), materialCode: material?.materialCode ?? (materialKey || undefined), materialId: material?.id ?? null, name: String(line.name ?? material?.name ?? ""), spec: specKey, color: color || undefined, finish: finish || undefined, qty: Number(line.qty ?? 0), unit: String(line.unit ?? material?.unit ?? "pcs"), mappingStatus: material ? "matched" : "unmatched" };
     }));
     return { status: "success", source: "erp", updatedAt: new Date().toISOString(), data };
   });

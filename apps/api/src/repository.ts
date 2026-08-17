@@ -90,6 +90,9 @@ export interface IdempotencyRecord {
 export interface Repository {
   readonly mode: "memory" | "postgres";
   resolveMembership(userId: string, preferredTenantId?: string): Promise<AuthMembership | null>;
+  listAvailableTenants(userId: string, includeAllOrganizations?: boolean): Promise<Array<{ id: string; name: string; slug: string }>>;
+  getUserSecurityState(userId: string): Promise<{ globalRole: string; mustChangePassword: boolean }>;
+  setPasswordChangeRequired(userId: string, required: boolean): Promise<void>;
   getAuthorization(userId: string, tenantId: string, role?: Role): Promise<AuthorizationSnapshot>;
   getAccountAuthorization(tenantId: string, accountId: string): Promise<AccountAuthorization | null>;
   previewAccountAuthorization(tenantId: string, accountId: string, input: UpdateAccountAuthorizationInput): Promise<AccountAuthorization | null>;

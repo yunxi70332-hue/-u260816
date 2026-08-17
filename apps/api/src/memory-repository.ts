@@ -63,7 +63,7 @@ import { AppError, VersionConflictError } from "./errors.js";
 import type { AuditInput, AuthMembership, IdempotencyRecord, Repository } from "./repository.js";
 import { recalculateDesignSnapshot } from "./services/configurator.js";
 import { buildLegacyPriceCatalog } from "./services/price-calculator.js";
-import { calculateAuthorization, dataScopeAllowsDelegation, DEALER_MODULES, ERP_MODULES, defaultEnabledModules, isPermissionAllowedForOrganization, legacyPermissionsForRole } from "./authorization.js";
+import { calculateAuthorization, dataScopeAllowsDelegation, DEALER_MODULES, ERP_MODULES, defaultEnabledModules, isPermissionAllowedForOrganization, legacyPermissionsForRole, platformAuthorization } from "./authorization.js";
 
 const now = () => new Date().toISOString();
 const clone = <T>(value: T): T => structuredClone(value);
@@ -118,6 +118,7 @@ export class MemoryRepository implements Repository {
   private shipments = new Map<string, Shipment>();
   private attachments = new Map<string, Attachment>();
   private audit: AuditLog[] = [];
+  private passwordChangeRequired = new Set<string>();
   private permissionGrants = new Map<string, PermissionGrant[]>();
   private dataScopes = new Map<string, Array<{ resource: string; scope: "own" | "assigned" | "specified" | "organization"; assignedUserIds: string[] }>>();
   private entitlements = new Map<string, OrganizationEntitlement[]>();
@@ -162,6 +163,9 @@ export class MemoryRepository implements Repository {
   }
 
   async resolveMembership(userId: string, preferredTenantId?: string): Promise<AuthMembership | null> {
+    if (userId === "user-demo" && (!preferredTenantId || preferredTenantId === this.tenant.id)) {
+      return { tenant: clone(this.tenant), role: "headquarters_admin", organizationType: "hq" };
+    }
     const account = [...this.accounts.values()].find((item) => item.userId === userId && (!preferredTenantId || item.tenantId === preferredTenantId));
     if (!account || account.status === "disabled") return null;
     if (account.tenantId === this.tenant.id) return { tenant: clone(this.tenant), role: account.role, organizationType: "hq" };
@@ -170,21 +174,42 @@ export class MemoryRepository implements Repository {
     return { tenant: { id: dealer.organizationId, name: dealer.name, slug: dealer.code.toLowerCase() }, role: account.role, organizationType: "dealer" };
   }
 
+  async listAvailableTenants(userId: string, includeAllOrganizations = false): Promise<Array<{ id: string; name: string; slug: string }>> {
+    if (includeAllOrganizations && userId === "user-demo") {
+      return [clone(this.tenant), ...[...this.dealers.values()].map((dealer) => ({
+        id: dealer.organizationId,
+        name: dealer.name,
+        slug: dealer.code.toLowerCase()
+      }))];
+    }
+    const tenantIds = new Set([...this.accounts.values()]
+      .filter((account) => account.userId === userId && account.status === "active")
+      .map((account) => account.tenantId));
+    if (userId === "user-demo") tenantIds.add(this.tenant.id);
+    return [...tenantIds].flatMap((tenantId) => {
+      if (tenantId === this.tenant.id) return [clone(this.tenant)];
+      const dealer = [...this.dealers.values()].find((item) => item.organizationId === tenantId);
+      return dealer ? [{ id: dealer.organizationId, name: dealer.name, slug: dealer.code.toLowerCase() }] : [];
+    });
+  }
+
   async getAuthorization(userId: string, tenantId: string, role?: import("@usm/contracts").Role): Promise<AuthorizationSnapshot> {
+    if (userId === "user-demo") return platformAuthorization();
     const account = [...this.accounts.values()].find((item) => item.userId === userId && item.tenantId === tenantId);
     const resolvedRole = role ?? account?.role ?? "member";
     const organizationType = tenantId === this.tenant.id ? "hq" : "dealer";
     const grants = this.permissionGrants.get(`${tenantId}:${userId}`);
     const authorization = calculateAuthorization({ role: resolvedRole, organizationType, grants, dataScopes: this.dataScopes.get(`${tenantId}:${userId}`), entitlements: this.entitlements.get(tenantId)?.map((item) => ({ ...item, permissionAllowlist: item.permissionAllowlist })) });
-    // The development account stands in for the platform operator. Production uses
-    // the Better Auth global admin flag in PostgresRepository instead.
-    if (userId === "user-demo" && !authorization.effectivePermissions.includes("platform.entitlements.manage")) {
-      return {
-        ...authorization,
-        effectivePermissions: [...authorization.effectivePermissions, "platform.entitlements.manage"]
-      };
-    }
     return authorization;
+  }
+
+  async getUserSecurityState(userId: string): Promise<{ globalRole: string; mustChangePassword: boolean }> {
+    return { globalRole: userId === "user-demo" ? "admin" : "user", mustChangePassword: this.passwordChangeRequired.has(userId) };
+  }
+
+  async setPasswordChangeRequired(userId: string, required: boolean): Promise<void> {
+    if (required) this.passwordChangeRequired.add(userId);
+    else this.passwordChangeRequired.delete(userId);
   }
 
   async getAccountAuthorization(tenantId: string, accountId: string): Promise<AccountAuthorization | null> {
@@ -784,6 +809,7 @@ export class MemoryRepository implements Repository {
       lastActiveAt: null, createdAt: stamp, updatedAt: stamp
     });
     this.permissionGrants.set(`${organizationId}:${userId}`, legacyPermissionsForRole("dealer_admin", "dealer").map((permission) => ({ permission, scope: "organization", assignedUserIds: [] })));
+    this.passwordChangeRequired.add(userId);
   }
 
   async updateDealerSettlementRate(tenantId: string, id: string, settlementRatePercent: number): Promise<Dealer> {
@@ -793,7 +819,9 @@ export class MemoryRepository implements Repository {
     return clone(updated);
   }
 
-  async listAccounts(tenantId: string) { return this.values(this.accounts, tenantId); }
+  async listAccounts(tenantId: string) {
+    return this.values(this.accounts, tenantId).filter((account) => account.userId !== "user-demo");
+  }
 
   async createOrganizationAdmin(tenantId: string, userId: string, input: CreateOrganizationAdminInput): Promise<AccountSummary> {
     const entitlements = this.entitlements.get(tenantId) ?? [];
@@ -815,6 +843,7 @@ export class MemoryRepository implements Repository {
       permission, scope: "organization", assignedUserIds: []
     })));
     this.dataScopes.set(`${tenantId}:${userId}`, []);
+    this.passwordChangeRequired.add(userId);
     return clone(item);
   }
 
@@ -863,6 +892,7 @@ export class MemoryRepository implements Repository {
     // Administrators grant the required capabilities after account creation.
     this.permissionGrants.set(`${tenantId}:${userId}`, []);
     this.dataScopes.set(`${tenantId}:${userId}`, []);
+    this.passwordChangeRequired.add(userId);
     return clone(item);
   }
 

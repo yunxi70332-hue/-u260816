@@ -132,9 +132,22 @@ function matchBomItem(item: BomItem, source: DealerPriceSource): PriceMatch {
   const numbers = extractNumbers(item.baseSpec ?? item.spec);
   const first = numbers[0];
   const second = numbers[1];
+  const normalizedName = normalizeMaterialLabel(item.name);
 
-  if (item.name === "球节点" || item.name === "黄铜球") {
+  if (item.materialKey === "brassBall" || item.name === "球节点" || item.name === "黄铜球") {
     return exact(source, "brassBall", undefined, item);
+  }
+
+  if (item.materialKey === "expansionSet" || item.name === "膨胀螺丝") {
+    const found = findSourceItem(source, "expansionSet");
+    const kitPrice = found ? numericPrice(found) : null;
+    if (!found || kitPrice == null) return fallback(item, "报价表缺少膨胀套件单价。");
+    return {
+      unitPrice: Math.round((kitPrice / 2) * 100) / 100,
+      status: "sourceFormula",
+      sourceRows: [found.sourceRow],
+      note: "生产 BOM 按每根钢管 2 颗螺丝统计；报价按 2 颗螺丝 = 1 套膨胀套件折算。"
+    };
   }
 
   if (item.name === "脚垫" || item.name === "调平脚垫") {
@@ -149,8 +162,16 @@ function matchBomItem(item: BomItem, source: DealerPriceSource): PriceMatch {
     return exact(source, "tube304", `19*${tubeDimension(first)}`, item);
   }
 
-  if (item.name === "洞洞板" && Number.isFinite(first) && Number.isFinite(second)) {
-    return exact(source, "panel", `${panelSpec(first, second)}（洞洞板）`, item);
+  if ((item.materialKey === "panel.perforated" || item.name === "洞洞板") && Number.isFinite(first) && Number.isFinite(second)) {
+    return exact(source, "panel.perforated", `${panelSpec(first, second)}（洞洞板）`, item);
+  }
+
+  if (
+    (item.materialKey === "panel.fourRowHole" || normalizedName === "扣板(四排孔)" || normalizedName === "扣板(四边孔)")
+    && Number.isFinite(first)
+    && Number.isFinite(second)
+  ) {
+    return exact(source, "panel.fourRowHole", `${panelSpec(first, second)}（四排孔）`, item);
   }
 
   if (["金属扣板", "扣板", "金属背板", "顶板", "底板", "外板", "内板"].includes(item.name) && Number.isFinite(first) && Number.isFinite(second)) {
@@ -204,14 +225,27 @@ function matchBomItem(item: BomItem, source: DealerPriceSource): PriceMatch {
   }
 
   if ((item.name === "玻璃板" || item.name === "玻璃搁板") && Number.isFinite(first) && Number.isFinite(second)) {
+    const directSpecs = [dimensionSpec(first, second), panelSpec(first, second)];
+    for (const spec of [...new Set(directSpecs)]) {
+      const found = findSourceItem(source, "glass", spec);
+      const price = found ? numericPrice(found) : null;
+      if (found && price != null) {
+        return {
+          unitPrice: price,
+          status: "sourceExact",
+          sourceRows: [found.sourceRow],
+          note: `${found.name}${found.spec ? ` ${found.spec}` : ""}`
+        };
+      }
+    }
     return formula(source, "glass", squareMeters(first, second), item, "玻璃按平方米计价。");
   }
 
-  if (item.name === "固定搁板") {
+  if (item.materialKey === "shelfPanel" || ["固定搁板", "固定托盘", "固定层板", "层板"].includes(item.name)) {
     return exact(source, "shelfPanel", undefined, item);
   }
 
-  if (item.name === "展示托盘" || item.name === "移动托盘") {
+  if (item.materialKey === "tray" || ["托盘", "展示托盘", "移动托盘"].includes(item.name)) {
     return exact(source, "tray", undefined, item);
   }
 
@@ -290,10 +324,59 @@ function fallback(item: BomItem, note: string): PriceMatch {
 }
 
 function findSourceItem(source: DealerPriceSource, canonicalName: string, spec?: string) {
-  return source.items.find((item) => (
-    item.canonicalName === canonicalName
-    && (spec === undefined || item.spec === spec)
-  ));
+  const candidates = source.items.filter((item) => sourceCanonicalMatches(item, canonicalName));
+  if (spec === undefined) {
+    return candidates.find((item) => normalizeSourceSpec(item.spec) === "") ?? candidates[0];
+  }
+
+  const normalizedSpec = normalizeSourceSpec(spec);
+  const exactMatch = candidates.find((item) => normalizeSourceSpec(item.spec) === normalizedSpec);
+  if (exactMatch) return exactMatch;
+
+  if (canonicalName === "panel.fourRowHole" || canonicalName === "panel.perforated") {
+    const baseSpec = stripPanelVariant(normalizedSpec);
+    return candidates.find((item) => stripPanelVariant(normalizeSourceSpec(item.spec)) === baseSpec);
+  }
+
+  return undefined;
+}
+
+function sourceCanonicalMatches(item: DealerPriceItem, canonicalName: string): boolean {
+  if (item.canonicalName === canonicalName) return true;
+  const normalizedSpec = normalizeSourceSpec(item.spec);
+  if (canonicalName === "panel.fourRowHole") {
+    return item.canonicalName === "panel" && normalizedSpec.includes("(四排孔)");
+  }
+  if (canonicalName === "panel.perforated") {
+    return item.canonicalName === "panel" && normalizedSpec.includes("(洞洞板)");
+  }
+  return false;
+}
+
+function normalizeSourceSpec(value: string): string {
+  const normalized = value
+    .normalize("NFKC")
+    .trim()
+    .toLowerCase()
+    .replace(/四边孔/g, "四排孔")
+    .replace(/毫米/g, "mm")
+    .replace(/\s+/g, "")
+    .replace(/[x×]/g, "*")
+    .replace(/mm/g, "")
+    .replace(/\(四排孔\)/g, "(四排孔)")
+    .replace(/\(洞洞板\)/g, "(洞洞板)");
+  const dimensions = normalized.match(/^(\d+(?:\.\d+)?)\*(\d+(?:\.\d+)?)(.*)$/);
+  if (!dimensions) return normalized;
+  const values = [Number(dimensions[1]), Number(dimensions[2])].sort((left, right) => right - left);
+  return `${values[0]}*${values[1]}${dimensions[3]}`;
+}
+
+function stripPanelVariant(value: string): string {
+  return value.replace(/\((?:四排孔|洞洞板)\)/g, "");
+}
+
+function normalizeMaterialLabel(value: string): string {
+  return value.normalize("NFKC").replace(/\s+/g, "");
 }
 
 function numericPrice(item: DealerPriceItem): number | null {
@@ -306,6 +389,10 @@ function extractNumbers(value: string): number[] {
 
 function panelSpec(a: number, b: number): string {
   return [panelDimension(a), panelDimension(b)].sort((left, right) => right - left).join("*");
+}
+
+function dimensionSpec(a: number, b: number): string {
+  return [Math.round(a), Math.round(b)].sort((left, right) => right - left).join("*");
 }
 
 function panelDimension(value: number): number {

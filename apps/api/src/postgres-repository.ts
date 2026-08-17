@@ -62,7 +62,7 @@ import type {
   TemplateVersion
 } from "@usm/contracts";
 import { snapshotDesignDraft } from "@usm/domain";
-import { and, desc, eq, gte, inArray, isNull, lte, max, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lte, max, ne, or, sql } from "drizzle-orm";
 import type { Database } from "./db/index.js";
 import {
   attachments, auditLogs, authorizationAuditLogs, customers, dealerOrganizations, designVersions, designs, idempotencyKeys, members,
@@ -74,7 +74,7 @@ import { AppError, VersionConflictError } from "./errors.js";
 import { isSystemLoginEmail } from "./phone.js";
 import type { AuditInput, AuthMembership, IdempotencyRecord, Repository } from "./repository.js";
 import { recalculateDesignSnapshot } from "./services/configurator.js";
-import { ALL_PERMISSIONS, DEALER_MODULES, ERP_MODULES, calculateAuthorization, dataScopeAllowsDelegation, defaultEnabledModules, isPermissionAllowedForOrganization, legacyPermissionsForRole } from "./authorization.js";
+import { ALL_PERMISSIONS, DEALER_MODULES, ERP_MODULES, calculateAuthorization, dataScopeAllowsDelegation, defaultEnabledModules, isPermissionAllowedForOrganization, legacyPermissionsForRole, platformAuthorization } from "./authorization.js";
 
 const iso = (value: Date | string): string => value instanceof Date ? value.toISOString() : value;
 const code = (prefix: string): string => `${prefix}-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${randomUUID().slice(0, 8).toUpperCase()}`;
@@ -108,6 +108,17 @@ export function createRepository(database: Database): Repository {
 class PostgresRepository implements Repository {
   readonly mode = "postgres" as const;
   constructor(private readonly db: Database) {}
+
+  async listAvailableTenants(userId: string, includeAllOrganizations = false): Promise<Array<{ id: string; name: string; slug: string }>> {
+    if (includeAllOrganizations) {
+      return this.db.select({ id: organizations.id, name: organizations.name, slug: organizations.slug })
+        .from(organizations);
+    }
+    return this.db.select({ id: organizations.id, name: organizations.name, slug: organizations.slug })
+      .from(members)
+      .innerJoin(organizations, eq(organizations.id, members.organizationId))
+      .where(and(eq(members.userId, userId), eq(members.status, "active")));
+  }
 
   async resolveMembership(userId: string, preferredTenantId?: string): Promise<AuthMembership | null> {
     const predicates = [eq(members.userId, userId), eq(members.status, "active")];
@@ -147,6 +158,8 @@ class PostgresRepository implements Repository {
   }
 
   async getAuthorization(userId: string, tenantId: string, role?: Role): Promise<AuthorizationSnapshot> {
+    const [globalUser] = await this.db.select({ role: users.role }).from(users).where(eq(users.id, userId)).limit(1);
+    if (globalUser?.role === "admin") return platformAuthorization();
     const [membership] = await this.db.select({
       id: members.id, role: members.role, permissionConfigured: members.permissionConfigured,
       organizationType: organizations.organizationType, globalRole: users.role
@@ -185,6 +198,16 @@ class PostgresRepository implements Repository {
       : authorization;
   }
 
+  async getUserSecurityState(userId: string): Promise<{ globalRole: string; mustChangePassword: boolean }> {
+    const [user] = await this.db.select({ role: users.role, mustChangePassword: users.mustChangePassword })
+      .from(users).where(eq(users.id, userId)).limit(1);
+    return { globalRole: user?.role ?? "user", mustChangePassword: user?.mustChangePassword ?? false };
+  }
+
+  async setPasswordChangeRequired(userId: string, required: boolean): Promise<void> {
+    await this.db.update(users).set({ mustChangePassword: required, updatedAt: new Date() }).where(eq(users.id, userId));
+  }
+
   async getAccountAuthorization(tenantId: string, accountId: string): Promise<AccountAuthorization | null> {
     const [membership] = await this.db.select({
       id: members.id, userId: members.userId, role: members.role, permissionConfigured: members.permissionConfigured,
@@ -192,7 +215,7 @@ class PostgresRepository implements Repository {
     }).from(members).innerJoin(organizations, eq(members.organizationId, organizations.id))
       .innerJoin(users, eq(users.id, members.userId))
       .where(and(eq(members.organizationId, tenantId), eq(members.id, accountId))).limit(1);
-    if (!membership) return null;
+    if (!membership || membership.globalRole === "admin") return null;
     const [entitlements, grantRows, scopeRows] = await Promise.all([
       this.readEntitlements(tenantId),
       membership.permissionConfigured
@@ -221,7 +244,7 @@ class PostgresRepository implements Repository {
     }).from(members).innerJoin(organizations, eq(members.organizationId, organizations.id))
       .innerJoin(users, eq(users.id, members.userId))
       .where(and(eq(members.organizationId, tenantId), eq(members.id, accountId))).limit(1);
-    if (!membership) return null;
+    if (!membership || membership.globalRole === "admin") return null;
     const dataScopes = [...new Map(input.dataScopes.map((scope) => [scope.resource, scope])).values()];
     const grants = membership.globalRole === "admin" ? [] : input.grants;
     const authorization = calculateAuthorization({
@@ -242,10 +265,7 @@ class PostgresRepository implements Repository {
       .from(members).innerJoin(organizations, eq(members.organizationId, organizations.id))
       .innerJoin(users, eq(users.id, members.userId))
       .where(and(eq(members.organizationId, tenantId), eq(members.id, accountId))).limit(1);
-    if (!target) throw new AppError(404, "NOT_FOUND", "Account not found");
-    if (target.globalRole === "admin" && (input.grants.length || input.dataScopes.length)) {
-      throw new AppError(403, "FORBIDDEN", "Platform operators cannot receive persistent enterprise business permissions");
-    }
+    if (!target || target.globalRole === "admin") throw new AppError(404, "NOT_FOUND", "Account not found");
     const dataScopes = [...new Map(input.dataScopes.map((scope) => [scope.resource, scope])).values()];
     const actor = await this.getAuthorization(actorUserId, tenantId);
     if (!actor.effectivePermissions.includes("permission.delegate")) throw new AppError(403, "FORBIDDEN", "Permission delegation is not allowed");
@@ -902,6 +922,7 @@ class PostgresRepository implements Repository {
     if (!member) throw new AppError(500, "INTERNAL_ERROR", "Dealer administrator membership was not created");
     await this.db.update(members).set({ role: "dealer_admin", status: "active", updatedAt: new Date() }).where(eq(members.id, member.id));
     await this.configureNewMemberAuthorization(member.id, organizationId, "dealer_admin", "dealer");
+    await this.db.update(users).set({ mustChangePassword: true, updatedAt: new Date() }).where(eq(users.id, userId));
   }
 
   async updateDealerSettlementRate(tenantId: string, id: string, settlementRatePercent: number): Promise<Dealer> {
@@ -919,7 +940,7 @@ class PostgresRepository implements Repository {
       email: users.email, phone: users.phoneNumber, role: members.role, status: members.status,
       createdAt: members.createdAt, updatedAt: members.updatedAt
     }).from(members).innerJoin(users, eq(members.userId, users.id))
-      .where(eq(members.organizationId, tenantId)).orderBy(desc(members.updatedAt));
+      .where(and(eq(members.organizationId, tenantId), ne(users.role, "admin"))).orderBy(desc(members.updatedAt));
     return Promise.all(rows.map(async (row) => {
       const [active] = await this.db.select({ value: max(sessions.updatedAt) }).from(sessions)
         .where(eq(sessions.userId, row.userId));
@@ -949,15 +970,17 @@ class PostgresRepository implements Repository {
     const role: Role = organizationType === "dealer" ? "dealer_admin" : "headquarters_admin";
     await this.db.update(members).set({ role, status: "active", updatedAt: new Date() }).where(eq(members.id, member.id));
     await this.configureNewMemberAuthorization(member.id, tenantId, role, organizationType);
+    await this.db.update(users).set({ mustChangePassword: true, updatedAt: new Date() }).where(eq(users.id, userId));
     const created = (await this.listAccounts(tenantId)).find((account) => account.userId === userId);
     if (!created) throw new AppError(500, "INTERNAL_ERROR", "Organization administrator account was not created");
     return created;
   }
 
   async updateAccountStatus(tenantId: string, id: string, status: AccountStatus): Promise<AccountSummary> {
-    const [current] = await this.db.select({ status: members.status }).from(members)
+    const [current] = await this.db.select({ status: members.status, globalRole: users.role }).from(members)
+      .innerJoin(users, eq(users.id, members.userId))
       .where(and(eq(members.organizationId, tenantId), eq(members.id, id))).limit(1);
-    if (!current) throw new AppError(404, "NOT_FOUND", "Account not found");
+    if (!current || current.globalRole === "admin") throw new AppError(404, "NOT_FOUND", "Account not found");
     if (current.status === "active" && status !== "active") await this.ensureActivePermissionAdministratorAfterDisable(tenantId, id);
     const [updated] = await this.db.update(members).set({ status, updatedAt: new Date() })
       .where(and(eq(members.organizationId, tenantId), eq(members.id, id))).returning();
@@ -1021,6 +1044,7 @@ class PostgresRepository implements Repository {
     await this.db.update(members).set({ role: "factory_employee", status: "active", updatedAt: new Date() })
       .where(eq(members.id, member.id));
     await this.configureNewMemberAuthorization(member.id, tenantId, "factory_employee", "hq", false);
+    await this.db.update(users).set({ mustChangePassword: true, updatedAt: new Date() }).where(eq(users.id, userId));
     const created = (await this.listEmployees(tenantId)).find((employee) => employee.userId === userId);
     if (!created) throw new AppError(500, "INTERNAL_ERROR", "Employee account was not created");
     return created;

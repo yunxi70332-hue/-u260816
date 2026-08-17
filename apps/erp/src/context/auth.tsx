@@ -41,6 +41,7 @@ interface AuthContextValue {
   login: (account: string, password: string) => Promise<void>;
   enterDemo: () => void;
   logout: () => Promise<void>;
+  refreshSession: () => Promise<void>;
   switchTenant: (tenantId: string) => Promise<void>;
   can: (permission: Permission) => boolean;
 }
@@ -116,6 +117,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [session?.mode]);
 
+  const refreshSession = useCallback(async () => {
+    if (session?.mode === "demo") return;
+    setSession(await api.getSession(session?.activeTenantId));
+  }, [session?.activeTenantId, session?.mode]);
+
   const switchTenant = useCallback(async (tenantId: string) => {
     if (!session || !session.tenants.some((tenant) => tenant.id === tenantId) || session.activeTenantId === tenantId) return;
     if (session.mode === "demo") {
@@ -141,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return (permissionAliases[permission] ?? []).some((candidate) => granted.has(candidate));
   }, [session]);
 
-  const value = useMemo(() => ({ session, initializing, loginError, login, enterDemo, logout, switchTenant, can }), [session, initializing, loginError, login, enterDemo, logout, switchTenant, can]);
+  const value = useMemo(() => ({ session, initializing, loginError, login, enterDemo, logout, refreshSession, switchTenant, can }), [session, initializing, loginError, login, enterDemo, logout, refreshSession, switchTenant, can]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

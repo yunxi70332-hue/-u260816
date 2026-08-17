@@ -43,10 +43,15 @@ https://<DOMAIN>/erp/login
 https://<DOMAIN>/api/health
 ```
 
-## 初始化管理员
+## 平台所有者与企业管理员
 
-`BOOTSTRAP_ADMIN_EMAIL` 与 `BOOTSTRAP_ADMIN_PASSWORD` 只在账号首次创建时生效，
-后续重启不会覆盖已有密码。首次登录并完成密码轮换后，从 `.env` 删除以下字段：
+部署时生成的 `BOOTSTRAP_ADMIN_EMAIL` 是隐藏的平台所有者账号。它拥有当前部署企业及下属工作区的完整运维、监察和授权能力，
+不作为企业侧“账号与权限”中的普通成员展示。企业管理员由平台所有者在 ERP 内创建，是企业侧可见的最高账号。
+
+`BOOTSTRAP_ADMIN_PASSWORD` 只在账号首次创建时用于设置密码；启动过程仍会校正该账号的平台角色和总部成员关系，
+因此首次轮换密码后必须删除引导配置，避免后续重启再次启用引导逻辑。为兼容历史部署，已有的引导配置最多可保留 128 位；
+新建账号和管理员重置账号使用 6–12 位临时密码，并在首次登录时强制改密。
+完成平台密码轮换后，从 `.env` 删除以下字段：
 
 - `BOOTSTRAP_ADMIN_EMAIL`
 - `BOOTSTRAP_ADMIN_PASSWORD`
@@ -58,6 +63,15 @@ https://<DOMAIN>/api/health
 ```bash
 sh deploy/disable-bootstrap-admin.sh
 ```
+
+如果历史部署曾把平台账号改成普通企业账号，可先备份数据库，再执行：
+
+```bash
+sh deploy/repair-platform-admin.sh admin@example.com
+```
+
+该命令会恢复全局平台角色、清除平台成员上的持久化业务授权、注销旧会话并要求下一次登录改密。
+企业侧审计会将平台操作显示为“系统操作”，并隐藏平台用户 ID；平台账号可通过顶部企业切换器进入各企业工作区监察操作记录。
 
 ## 更新与回滚
 

@@ -190,6 +190,39 @@ test("opening stock, reservation, partial issue, negative-stock blocking, and re
   assert.deepEqual(directions.map((item) => item.deltaQty), [0, 4, -4, 0, 10]);
 });
 
+test("material resolution returns the official SKU while inventory keeps color variants separate", async (context) => {
+  const repository = new MemoryRepository();
+  const app = await buildApp(
+    { ...loadConfig(), erpDevServerUrl: undefined, erpStaticDir: "missing" },
+    { repository }
+  );
+  context.after(() => app.close());
+
+  const imported = await app.inject({
+    method: "POST",
+    url: "/api/materials/import/commit",
+    payload: {
+      warehouseId: "warehouse-main",
+      source: "resolve-sku-test",
+      rows: [{ materialKey: "TUBE", specKey: "750", color: "black", finish: "matte", name: "Tube black matte", openingQty: 3 }]
+    }
+  });
+  assert.equal(imported.statusCode, 201);
+  const material = body<{ materials: Array<{ id: string; materialCode: string; materialKey: string; specKey: string; color: string; finish: string }> }>(imported).materials[0];
+  assert.ok(material);
+
+  const resolved = await app.inject({
+    method: "POST",
+    url: "/api/materials/resolve",
+    payload: { bom: [{ id: "line-1", materialKey: material.materialKey, specKey: material.specKey, color: material.color, finish: material.finish, qty: 1 }] }
+  });
+  assert.equal(resolved.statusCode, 200);
+  const line = body<{ data: Array<{ materialCode: string; materialId: string | null; mappingStatus: string }> }>(resolved).data[0];
+  assert.equal(line.materialId, material.id);
+  assert.equal(line.materialCode, material.materialCode);
+  assert.equal(line.mappingStatus, "matched");
+});
+
 test("partial order material issue consumes only issued reservation quantity and cancellation releases the remainder", async (context) => {
   const repository = new MemoryRepository();
   const app = await buildApp(
@@ -505,7 +538,7 @@ test("availability-only accounts never receive inventory quantities or warehouse
     method: "POST",
     url: "/api/employees",
     headers: { "idempotency-key": "availability-only-employee" },
-    payload: { name: "Availability Only", phone: "13800000991", password: "availability-password-123" }
+    payload: { name: "Availability Only", phone: "13800000991", password: "Avail123!" }
   });
   assert.equal(employee.statusCode, 201);
   const accountId = body<{ item: { id: string } }>(employee).item.id;
@@ -527,12 +560,19 @@ test("availability-only accounts never receive inventory quantities or warehouse
   const signIn = await app.inject({
     method: "POST",
     url: "/api/auth/sign-in/phone-number",
-    payload: { phoneNumber: "+8613800000991", password: "availability-password-123" }
+    payload: { phoneNumber: "+8613800000991", password: "Avail123!" }
   });
   assert.equal(signIn.statusCode, 200);
   const cookieHeader = signIn.headers["set-cookie"];
   assert.ok(cookieHeader);
   const headers = { cookie: Array.isArray(cookieHeader) ? cookieHeader[0] : cookieHeader };
+  const changed = await app.inject({
+    method: "POST",
+    url: "/api/me/change-password",
+    headers,
+    payload: { currentPassword: "Avail123!", newPassword: "Changed6!" }
+  });
+  assert.equal(changed.statusCode, 200);
   await repository.createMaterial("tenant-demo", {
     materialKey: "COST-TEST", specKey: "standard", name: "Cost protected material", referenceCostMinor: 987_654
   });

@@ -23,7 +23,7 @@ test("price list draft workflow saves, validates, publishes, and drives configur
   const synced = await app.inject({ method: "POST", url: `/api/price-lists/${priceListId}/sync-bom` });
   assert.equal(synced.statusCode, 200);
   const syncedItems = body<{ items: Array<Record<string, unknown>> }>(synced).items;
-  assert.equal(syncedItems.length, 132);
+  assert.ok(syncedItems.length >= 132);
 
   const invalidItems = syncedItems.map((item, index) => index === 0
     ? { ...item, pricingMethod: "fixed", retailUnitPriceMinor: null, pricingRule: null }

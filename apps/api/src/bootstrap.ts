@@ -120,6 +120,7 @@ export async function bootstrapProductionDatabase(config: AppConfig, database: D
       }
     });
     user = { id: created.user.id, role: created.user.role ?? "admin" };
+    await database.update(users).set({ mustChangePassword: true, updatedAt: new Date() }).where(eq(users.id, user.id));
     console.info(`Created bootstrap administrator ${email}`);
   } else if (user.role !== "admin") {
     await database.update(users).set({ role: "admin", updatedAt: new Date() }).where(eq(users.id, user.id));

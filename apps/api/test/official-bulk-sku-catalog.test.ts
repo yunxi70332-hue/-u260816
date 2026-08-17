@@ -47,6 +47,15 @@ test("matches shelves, trays, glass panels, and glass doors against explicit set
   assert.equal(matchOfficialBulkSku({ materialKey: "door.glass.composite", baseSpec: "420 x 310 mm" }), null);
 });
 
+test("recognizes factory-facing material aliases for inventory intake", () => {
+  assert.equal(matchOfficialBulkSku({ name: "层板", baseSpec: "750 x 350 mm", color: "#0c0c0c" })?.skuCode, "固定层板|固定层板|735 × 335 mm|黑色");
+  assert.equal(matchOfficialBulkSku({ name: "固定托盘", baseSpec: "750 x 350 mm", color: "#0c0c0c" })?.skuCode, "固定层板|固定层板|735 × 335 mm|黑色");
+  assert.equal(matchOfficialBulkSku({ name: "外板", baseSpec: "750 x 350 mm", color: "#fffef0" })?.skuCode, "扣板|扣板|735 × 335 mm|白色");
+  assert.equal(matchOfficialBulkSku({ name: "膨胀套件" })?.skuCode, "零件|膨胀螺丝|膨胀螺丝|零件");
+  assert.equal(matchOfficialBulkSku({ name: "玻璃层板", baseSpec: "350 x 250 mm" })?.subcategory, "固定玻璃层板");
+  assert.equal(matchOfficialBulkSku({ name: "下翻门外板", baseSpec: "750 x 350 mm", color: "#fffef0" })?.category, "门板");
+});
+
 test("matches the workbook's fixed hardware rows and rejects unknown BOM rows", () => {
   assert.equal(matchOfficialBulkSku({ materialKey: "brassBall", spec: "标准连接球" })?.skuCode, "零件|珠子|珠子|零件");
   assert.equal(matchOfficialBulkSku({ name: "脚垫", materialKey: "glide" })?.skuCode, "零件|脚垫|脚垫|黑色");

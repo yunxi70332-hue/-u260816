@@ -162,6 +162,21 @@ export function calculateAuthorization(input: {
   };
 }
 
+export function platformAuthorization(): AuthorizationSnapshot {
+  const dataScopes: Record<string, ResourceDataScope> = {};
+  for (const permission of ALL_PERMISSIONS) {
+    const resource = permissionScopeResource(permission);
+    dataScopes[resource] ??= { resource, scope: "organization", assignedUserIds: [] };
+  }
+  return {
+    enabledModules: [...ERP_MODULES],
+    effectivePermissions: [...ALL_PERMISSIONS],
+    delegablePermissions: ALL_PERMISSIONS.filter((permission) => permission !== "platform.entitlements.manage"),
+    dataScopes,
+    fieldPolicy: buildFieldPolicy(ALL_PERMISSIONS, "hq")
+  };
+}
+
 export function hasPermission(authorization: AuthorizationSnapshot, permission: Permission): boolean {
   return authorization.effectivePermissions.includes(permission);
 }

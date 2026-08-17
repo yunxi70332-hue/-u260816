@@ -227,7 +227,7 @@ async function createRestrictedUser(
   phone: string,
   grants: Array<{ permission: "inventory.availability.view"; scope: "organization"; assignedUserIds: string[] }>
 ): Promise<Record<string, string>> {
-  const password = "shortage-viewer-password-123";
+  const password = "Short123!";
   const employee = await app.inject({
     method: "POST",
     url: "/api/employees",
@@ -250,7 +250,15 @@ async function createRestrictedUser(
   assert.equal(signIn.statusCode, 200);
   const cookie = signIn.headers["set-cookie"];
   assert.ok(cookie);
-  return { cookie: Array.isArray(cookie) ? cookie[0]! : cookie };
+  const headers = { cookie: Array.isArray(cookie) ? cookie[0]! : cookie };
+  const changed = await app.inject({
+    method: "POST",
+    url: "/api/me/change-password",
+    headers,
+    payload: { currentPassword: password, newPassword: "Changed6!" }
+  });
+  assert.equal(changed.statusCode, 200);
+  return headers;
 }
 
 function sharedStockFixtures(repository: ShortageRepository): void {
@@ -324,7 +332,10 @@ test("shortage API requires availability permission and the warehouse module", a
   );
   const disabledApp = await appFor(disabledRepository);
   context.after(() => disabledApp.close());
-  const disabled = await disabledApp.inject({ method: "GET", url: "/api/inventory/shortages" });
+  const disabledHeaders = await createRestrictedUser(disabledApp, "13800000983", [
+    { permission: "inventory.availability.view", scope: "organization", assignedUserIds: [] }
+  ]);
+  const disabled = await disabledApp.inject({ method: "GET", url: "/api/inventory/shortages", headers: disabledHeaders });
   assert.equal(disabled.statusCode, 403);
 });
 

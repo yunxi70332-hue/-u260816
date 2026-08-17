@@ -238,18 +238,20 @@ function inferMaterialKey(input: OfficialBulkSkuInput): string {
       .find((candidate) => candidate.toLowerCase() === supplied.toLowerCase());
     if (knownKey || catalogKey) return knownKey ?? catalogKey ?? supplied;
   }
-  const name = text(input.name);
+  // Factory files may place the friendly material name in canonicalName/key instead of name.
+  const name = text(input.name || supplied);
   const token = compact(name);
   if (token.includes("球节点") || token.includes("黄铜球") || token === "珠子") return "brassBall";
   if (token.includes("钢管") || token.includes("电镀管") || token === "管") return "tube304";
   if (token.includes("四排孔") || token.includes("四边孔")) return "panel.fourRowHole";
   if (token.includes("洞洞")) return token.includes("门") || token.includes("上翻") ? "door.flip.composite" : "panel.perforated";
+  if (["扣板", "外板", "金属扣板", "金属背板", "顶板", "底板", "内板"].includes(token)) return "panel";
   if (token.includes("玻璃门")) return "door.glass.composite";
   if (token.includes("上翻")) return "door.flip.composite";
   if (token.includes("下翻") || token.includes("门板")) return "doorPanel";
-  if (token.includes("固定搁板") || token.includes("固定层板")) return "shelfPanel";
-  if (token.includes("托盘")) return "tray";
-  if (token.includes("玻璃")) return "glass";
+  if (token.includes("玻璃")) return token.includes("层板") || token.includes("搁板") ? "glassShelf" : "glass";
+  if (token === "层板" || token.includes("固定托盘") || token.includes("固定搁板") || token.includes("固定层板")) return "shelfPanel";
+  if (token === "托盘" || token.includes("移动托盘") || token.includes("展示托盘")) return "tray";
   const hardware: Readonly<Record<string, string>> = {
     "脚轮": "caster",
     "玻璃锁套": "glassLockSet",
@@ -262,6 +264,7 @@ function inferMaterialKey(input: OfficialBulkSkuInput): string {
     "下翻门铰链": "dropDoorHinge",
     "铰链螺丝": "hingeScrew",
     "膨胀螺丝": "expansionSet",
+    "膨胀套件": "expansionSet",
     "上翻锁盒套装": "panelDoorPivotSet",
     "一元锁": "coinLockBox",
     "锁头": "coinLockBox",
@@ -340,7 +343,8 @@ function matchGlass(key: string, input: OfficialBulkSkuInput): OfficialBulkSkuMa
     if (!GLASS_DOOR_DIMENSIONS.includes(first as (typeof GLASS_DOOR_DIMENSIONS)[number]) || !GLASS_DOOR_DIMENSIONS.includes(second as (typeof GLASS_DOOR_DIMENSIONS)[number])) return null;
     return matchFixed("玻璃门", { subcategory: "玻璃门", name: "玻璃门", specification: directionalSpec(dimensions[0], dimensions[1], delta), color: "透明玻璃", unit: "块" });
   }
-  const shelf = compact(text(input.name)).includes("搁板") || key === "glassShelf";
+  const glassName = compact(text(input.name));
+  const shelf = glassName.includes("搁板") || glassName.includes("层板") || key === "glassShelf";
   const matrix = shelf ? GLASS_SHELF_MATRIX : GLASS_PANEL_MATRIX;
   if (!matrixHasEitherOrientation(matrix, first, second)) return null;
   const category = shelf ? "固定玻璃层板" : "玻璃板";

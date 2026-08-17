@@ -7,8 +7,8 @@ import { useAuth } from "../context/auth";
 import { useWorkspace } from "../context/workspace";
 import { api } from "../lib/api";
 import { createClientId } from "../lib/id";
-import { buildPriceImportPreview, downloadPriceImportTemplate, parsePriceImportWorkbook, toPriceListItems, type PriceImportPreview, type PriceImportRow } from "../lib/price-import";
-import type { PriceList, PriceListItem } from "../types";
+import { buildPriceImportPreview, downloadPriceImportTemplate, parsePriceImportWorkbook, type PriceImportPreview, type PriceImportRow } from "../lib/price-import";
+import type { PriceList } from "../types";
 
 interface PriceListFormValues {
   name: string;
@@ -48,32 +48,6 @@ function normalizeRemotePreview(raw: Record<string, unknown>, fallback: PriceImp
     },
     errors: Array.isArray(raw.errors) ? raw.errors.map(String) : fallback.errors
   };
-}
-
-function parseDelimitedRows(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = "";
-  let quoted = false;
-  for (let index = 0; index < text.length; index += 1) {
-    const char = text[index];
-    const next = text[index + 1];
-    if (char === '"' && quoted && next === '"') { cell += '"'; index += 1; continue; }
-    if (char === '"') { quoted = !quoted; continue; }
-    if (!quoted && (char === "," || char === "\t")) { row.push(cell.trim()); cell = ""; continue; }
-    if (!quoted && (char === "\n" || char === "\r")) {
-      if (char === "\r" && next === "\n") index += 1;
-      row.push(cell.trim());
-      if (row.some(Boolean)) rows.push(row);
-      row = [];
-      cell = "";
-      continue;
-    }
-    cell += char;
-  }
-  row.push(cell.trim());
-  if (row.some(Boolean)) rows.push(row);
-  return rows;
 }
 
 function downloadText(text: string, filename: string) {
@@ -161,40 +135,6 @@ export function PricingPage() {
     }
   }
 
-  async function importPriceListRows(text: string) {
-    if (!session || !importTarget || session.mode === "demo") throw new Error("请选择服务端草稿价格表后导入");
-    const rows = parseDelimitedRows(text.replace(/^\ufeff/, ""));
-    if (!rows.length) throw new Error("CSV 文件没有可导入内容");
-    const first = rows[0].map((cell) => cell.toLocaleLowerCase());
-    const hasHeader = first.some((cell) => ["materialcode", "material_code", "sku", "物料编码"].includes(cell));
-    const codeIndex = hasHeader ? Math.max(first.findIndex((cell) => ["materialcode", "material_code", "sku", "物料编码"].includes(cell)), 0) : 0;
-    const priceIndex = hasHeader ? Math.max(first.findIndex((cell) => ["retailprice", "retail_price", "retailunitprice", "retail_unit_price", "price", "零售单价", "1.0基准单价", "1.0 基准单价", "价格"].includes(cell)), 1) : 1;
-    const remarkIndex = hasHeader ? first.findIndex((cell) => ["remark", "note", "备注"].includes(cell)) : 2;
-    const target = await api.getPriceList(importTarget, session.activeTenantId);
-    const updates = new Map<string, { priceMinor: number; remark?: string }>();
-    let invalid = 0;
-    for (const row of (hasHeader ? rows.slice(1) : rows)) {
-      const code = row[codeIndex]?.trim();
-      const rawPrice = row[priceIndex]?.replace(/[¥￥,\s]/g, "");
-      const price = Number(rawPrice);
-      if (!code || rawPrice === "" || !Number.isFinite(price) || price < 0) { invalid += 1; continue; }
-      updates.set(code.toLocaleLowerCase(), { priceMinor: Math.round(price * 100), remark: remarkIndex >= 0 ? row[remarkIndex]?.trim() : undefined });
-    }
-    let matched = 0;
-    const items: PriceListItem[] = target.items.map((item) => {
-      const update = updates.get(item.materialCode.toLocaleLowerCase()) ?? updates.get(item.materialKey.toLocaleLowerCase());
-      if (!update || ["included", "composite"].includes(item.pricingMethod)) return item;
-      matched += 1;
-      return { ...item, retailPriceMinor: update.priceMinor, remark: update.remark || item.remark };
-    });
-    if (!matched) throw new Error("没有匹配到现有 BOM 物料编码");
-    await api.savePriceListItems(target.id, items, session.activeTenantId);
-    await refresh();
-    setImportOpen(false);
-    messageApi.success(`已导入并保存 ${matched} 条价格${invalid ? `，忽略 ${invalid} 条无效数据` : ""}`);
-    navigate(`/pricing/${target.id}`);
-  }
-
   async function previewPriceListFile(file: File) {
     if (!session || !importTarget || session.mode === "demo") throw new Error("Select a live draft price list before importing.");
     const workbook = await parsePriceImportWorkbook(file);
@@ -223,12 +163,7 @@ export function PricingPage() {
     }
     setImporting(true);
     try {
-      const target = await api.getPriceList(importTarget, session.activeTenantId);
-      try {
-        await api.commitPriceListImport(importTarget, { rows: importRows, previewToken: importPreviewToken }, session.activeTenantId);
-      } catch {
-        await api.savePriceListItems(importTarget, toPriceListItems(importRows, target.items, importTarget), session.activeTenantId);
-      }
+      await api.commitPriceListImport(importTarget, { rows: importRows, previewToken: importPreviewToken }, session.activeTenantId);
       await refresh();
       setImportOpen(false);
       setImportPreview(null);
@@ -243,30 +178,41 @@ export function PricingPage() {
   }
 
   const uploadProps: UploadProps = {
-    accept: ".csv,text/csv",
+    accept: ".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     showUploadList: false,
     beforeUpload: async (file) => {
       setImporting(true);
-      try { await importPriceListRows(await file.text()); }
+      try { await previewPriceListFile(file as unknown as File); }
       catch (reason) { messageApi.error(reason instanceof Error ? reason.message : "CSV 导入失败"); }
       finally { setImporting(false); }
       return AntUpload.LIST_IGNORE;
     }
   };
-  uploadProps.accept = ".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-  uploadProps.beforeUpload = async (file) => {
-    setImporting(true);
-    try { await previewPriceListFile(file as unknown as File); }
-    catch (reason) { messageApi.error(reason instanceof Error ? reason.message : "Price import preview failed."); }
-    finally { setImporting(false); }
-    return AntUpload.LIST_IGNORE;
-  };
+  function downloadCurrentTemplate() {
+    const target = priceLists.find((item) => item.id === importTarget) ?? priceLists.find(isDraft) ?? priceLists[0];
+    if (!target) {
+      downloadPriceImportTemplate();
+      return;
+    }
+    void (async () => {
+      try {
+        if (!session || session.mode === "demo") {
+          downloadPriceImportTemplate();
+          return;
+        }
+        const detail = await api.getPriceList(target.id, session.activeTenantId);
+        downloadPriceImportTemplate(detail.items);
+      } catch {
+        downloadPriceImportTemplate();
+      }
+    })();
+  }
 
   return (
     <div className="page">
       {contextHolder}
       <PageHeader title="价格表" description="版本化管理市场价格、渠道价与项目特批规则。" actions={<Space wrap><Button icon={<UploadIcon size={15} />} onClick={() => { setImportTarget(priceLists.find(isDraft)?.id); setImportOpen(true); }}>导入</Button><Button type="primary" icon={<Plus size={15} />} onClick={openCreatePriceList}>新建价格表</Button></Space>} />
-      <div style={{ marginBottom: 16 }}><Button icon={<FileDown size={15} />} onClick={downloadPriceImportTemplate}>Download XLSX import template</Button></div>
+      <div style={{ marginBottom: 16 }}><Button icon={<FileDown size={15} />} onClick={downloadCurrentTemplate}>Download XLSX import template</Button></div>
       <section className="erp-price-grid">
         {priceLists.map((priceList) => {
           const menuItems: MenuProps["items"] = [
@@ -290,10 +236,10 @@ export function PricingPage() {
         </div>
       </Card>
 
-      <Modal open={importOpen} title="导入价格表" okText="选择 CSV 文件" cancelText="取消" confirmLoading={importing} onCancel={() => setImportOpen(false)} footer={null} destroyOnHidden>
+      <Modal open={importOpen} title="导入价格表" okText="选择 XLSX/CSV 文件" cancelText="取消" confirmLoading={importing} onCancel={() => setImportOpen(false)} footer={null} destroyOnHidden>
         <p className="erp-modal-description">导入只会更新现有 BOM 物料的 1.0 基准单价和备注。该价格不含运费和包装，不会新增未知物料。</p>
         <Select style={{ width: "100%", marginBottom: 16 }} value={importTarget} onChange={setImportTarget} placeholder="选择要更新的草稿价格表" options={priceLists.filter(isDraft).map((item) => ({ value: item.id, label: `${item.name} · ${item.version}` }))} />
-        <AntUpload {...uploadProps} disabled={!importTarget || importing}><Button icon={<UploadIcon size={15} />} loading={importing}>选择 CSV 文件</Button></AntUpload>
+        <AntUpload {...uploadProps} disabled={!importTarget || importing}><Button icon={<UploadIcon size={15} />} loading={importing}>选择 XLSX/CSV 文件</Button></AntUpload>
       </Modal>
 
       <Modal open={open} title="新建价格表" okText="创建草稿" cancelText="取消" confirmLoading={submitting} width={680} onCancel={closeCreatePriceList} onOk={() => form.submit()} destroyOnHidden>

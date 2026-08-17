@@ -113,6 +113,13 @@
       "when": 1786820400000,
       "tag": "0015_sales_pricing_preferences",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1786822200000,
+      "tag": "0016_password_policy",
+      "breakpoints": true
     }
   ]
 }

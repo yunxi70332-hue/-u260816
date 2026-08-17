@@ -21,6 +21,11 @@ export interface InventoryMaterialImportRow {
 export interface OpeningInventoryImportRow {
   warehouseCode: string;
   materialCode: string;
+  materialKey?: string;
+  specKey?: string;
+  specification?: string;
+  color?: string;
+  finish?: string;
   openingQty: number;
   location?: string;
   batchNo?: string;
@@ -62,6 +67,8 @@ type MaterialColumn =
   | "name"
   | "specification"
   | "colorFinish"
+  | "color"
+  | "finish"
   | "unit"
   | "weightKg"
   | "referenceCost"
@@ -69,16 +76,30 @@ type MaterialColumn =
   | "note"
   | "source";
 
-type OpeningColumn = "warehouseCode" | "materialCode" | "openingQty" | "location" | "batchNo" | "note";
+type OpeningColumn =
+  | "warehouseCode"
+  | "materialCode"
+  | "materialKey"
+  | "specKey"
+  | "specification"
+  | "colorFinish"
+  | "color"
+  | "finish"
+  | "openingQty"
+  | "location"
+  | "batchNo"
+  | "note";
 
 const MATERIAL_HEADER_ALIASES: Record<MaterialColumn, string[]> = {
-  materialCode: ["物料编码", "materialcode", "material_code", "sku", "code"],
+  materialCode: ["物料编码", "materialcode", "material_code", "sku", "code", "officialsku", "official_sku", "完整sku", "完整物料编码"],
   materialKey: ["materialkey", "material_key", "物料key", "物料键"],
   specKey: ["speckey", "spec_key", "规格key", "规格键"],
   category: ["分类", "category", "materialcategory"],
   name: ["名称", "物料名称", "name", "materialname"],
   specification: ["规格", "规格描述", "specification", "spec"],
-  colorFinish: ["颜色/表面处理", "颜色／表面处理", "颜色表面处理", "color/finish", "colorfinish", "color_finish", "颜色", "表面处理"],
+  colorFinish: ["颜色/表面处理", "颜色／表面处理", "颜色表面处理", "color/finish", "colorfinish", "color_finish", "variant", "variantlabel", "颜色", "表面处理"],
+  color: ["color", "panelcolor"],
+  finish: ["finish", "surfacefinish"],
   unit: ["单位", "unit", "uom"],
   weightKg: ["单重kg", "单重", "weightkg", "weight_kg", "unitweightkg"],
   referenceCost: ["参考采购成本", "参考成本", "referencecost", "reference_cost", "purchasecost", "cost"],
@@ -90,11 +111,31 @@ const MATERIAL_HEADER_ALIASES: Record<MaterialColumn, string[]> = {
 const OPENING_HEADER_ALIASES: Record<OpeningColumn, string[]> = {
   warehouseCode: ["仓库编码", "warehousecode", "warehouse_code", "warehouse"],
   materialCode: ["物料编码", "materialcode", "material_code", "sku", "code"],
+  materialKey: ["materialkey", "material_key", "物料key", "物料键"],
+  specKey: ["speckey", "spec_key", "规格key", "规格键"],
+  specification: ["specification", "spec", "规格", "规格描述"],
+  colorFinish: ["colorfinish", "color_finish", "color/finish", "颜色/表面处理", "变体", "变体标签"],
+  color: ["color", "panelcolor", "颜色", "色号"],
+  finish: ["finish", "surfacefinish", "surface_finish", "表面处理"],
   openingQty: ["期初数量", "期初库存", "openingqty", "opening_qty", "quantity", "qty"],
   location: ["库位", "location", "bin", "binlocation"],
   batchNo: ["批次号", "批号", "batchno", "batch_no", "batch"],
   note: ["备注", "note", "remark", "remarks"]
 };
+
+// Keep the historical Chinese headers above while accepting canonical
+// identifiers used by catalog and eight-colour SKU exports.
+MATERIAL_HEADER_ALIASES.materialCode.push("officialsku", "official_sku", "officialskucode", "official_sku_code", "officialcode", "official_code", "fullsku", "full_sku", "8colorssku", "8colors_sku", "货号", "完整sku", "完整物料编码");
+MATERIAL_HEADER_ALIASES.colorFinish.push("variant", "variantlabel", "variant_label");
+MATERIAL_HEADER_ALIASES.color.push("color", "panelcolor", "颜色", "色号");
+MATERIAL_HEADER_ALIASES.finish.push("finish", "surfacefinish", "surface_finish", "表面处理");
+OPENING_HEADER_ALIASES.materialCode.push("officialsku", "official_sku", "officialskucode", "official_sku_code", "officialcode", "official_code", "fullsku", "full_sku", "8colorssku", "8colors_sku", "货号", "完整sku", "完整物料编码");
+OPENING_HEADER_ALIASES.materialKey.push("materialkey", "material_key", "物料key", "物料键");
+OPENING_HEADER_ALIASES.specKey.push("speckey", "spec_key", "规格key", "规格键");
+OPENING_HEADER_ALIASES.specification.push("specification", "spec", "规格", "规格描述");
+OPENING_HEADER_ALIASES.colorFinish.push("variant", "variantlabel", "variant_label", "colorfinish", "color_finish");
+OPENING_HEADER_ALIASES.color.push("color", "panelcolor", "颜色", "色号");
+OPENING_HEADER_ALIASES.finish.push("finish", "surfacefinish", "surface_finish", "表面处理");
 
 export async function parseInventoryImportWorkbook(file: File): Promise<InventoryImportWorkbook> {
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -180,7 +221,7 @@ function parseXlsx(bytes: Uint8Array): InventoryImportWorkbook {
   const materialWarnings: string[] = [];
   const openingWarnings: string[] = [];
   const materialRows = rowsToMaterialRows(materialTable, materialWarnings);
-  const openingRows = rowsToOpeningRows(openingTable, openingWarnings);
+  const openingRows = rowsToOpeningRows(openingTable, openingWarnings, materialRows);
 
   return { materialRows, openingRows, warnings: [...warnings, ...materialWarnings, ...openingWarnings] };
 }
@@ -207,12 +248,14 @@ function rowsToMaterialRows(rows: string[][], warnings: string[]): InventoryMate
     if (!row.some((value) => String(value ?? "").trim())) return [];
     const rowNumber = index + 2;
     const colorFinish = valueAt(row, indexes.colorFinish);
-    const [color, finish] = splitColorFinish(colorFinish);
+    const [combinedColor, combinedFinish] = splitColorFinish(colorFinish);
+    const color = valueAt(row, indexes.color) || combinedColor;
+    const finish = valueAt(row, indexes.finish) || combinedFinish;
     const weightKg = parseOptionalNumber(valueAt(row, indexes.weightKg));
     const referenceCost = parseOptionalNumber(valueAt(row, indexes.referenceCost));
     const materialCode = valueAt(row, indexes.materialCode);
     const materialKey = valueAt(row, indexes.materialKey);
-    const specKey = valueAt(row, indexes.specKey);
+    const specKey = valueAt(row, indexes.specKey) || valueAt(row, indexes.specification);
     const name = valueAt(row, indexes.name);
 
     if (!materialCode || !materialKey || !specKey || !name) {
@@ -240,7 +283,90 @@ function rowsToMaterialRows(rows: string[][], warnings: string[]): InventoryMate
   });
 }
 
-function rowsToOpeningRows(rows: string[][], warnings: string[]): OpeningInventoryImportRow[] {
+function rowsToOpeningRows(
+  rows: string[][],
+  warnings: string[],
+  materialRows: InventoryMaterialImportRow[] = []
+): OpeningInventoryImportRow[] {
+  if (!rows.length) return [];
+  const indexes = headerIndexes<OpeningColumn>(rows[0], OPENING_HEADER_ALIASES);
+  if (indexes.warehouseCode < 0 || indexes.openingQty < 0) {
+    warnings.push("Opening inventory is missing required headers: warehouseCode or openingQty");
+  }
+
+  return rows.slice(1).flatMap((row, index) => {
+    if (!row.some((value) => String(value ?? "").trim())) return [];
+    const rowNumber = index + 2;
+    const warehouseCode = valueAt(row, indexes.warehouseCode);
+    const explicitMaterialCode = valueAt(row, indexes.materialCode);
+    const materialKey = valueAt(row, indexes.materialKey);
+    const specKey = valueAt(row, indexes.specKey) || valueAt(row, indexes.specification);
+    const [combinedColor, combinedFinish] = splitColorFinish(valueAt(row, indexes.colorFinish));
+    const color = valueAt(row, indexes.color) || combinedColor;
+    const finish = valueAt(row, indexes.finish) || combinedFinish;
+    const resolution = explicitMaterialCode
+      ? { materialCode: explicitMaterialCode, reason: undefined as string | undefined }
+      : resolveOpeningMaterialCode(materialRows, { materialKey, specKey, color, finish });
+    const materialCode = resolution.materialCode;
+    const openingQty = parseRequiredNumber(valueAt(row, indexes.openingQty));
+    if (!warehouseCode || Number.isNaN(openingQty)) {
+      warnings.push(`Opening inventory row ${rowNumber} is missing a warehouse or valid quantity`);
+    }
+    if (!explicitMaterialCode && resolution.reason) {
+      warnings.push(`Opening inventory row ${rowNumber}: ${resolution.reason}`);
+    } else if (!materialCode) {
+      warnings.push(`Opening inventory row ${rowNumber} is missing a material code`);
+    }
+    return [{
+      warehouseCode,
+      materialCode,
+      materialKey: materialKey || undefined,
+      specKey: specKey || undefined,
+      specification: valueAt(row, indexes.specification) || undefined,
+      color: color || undefined,
+      finish: finish || undefined,
+      openingQty,
+      location: optionalValue(row, indexes.location),
+      batchNo: optionalValue(row, indexes.batchNo),
+      note: optionalValue(row, indexes.note)
+    }];
+  });
+}
+
+function resolveOpeningMaterialCode(
+  materialRows: InventoryMaterialImportRow[],
+  input: { materialKey: string; specKey: string; color: string; finish: string }
+): { materialCode: string; reason?: string } {
+  if (!input.materialKey || !input.specKey) {
+    return { materialCode: "", reason: "materialCode is blank and materialKey/specKey are incomplete" };
+  }
+  const normalizedMaterialKey = normalizeIdentityPart(input.materialKey);
+  const normalizedSpecKey = normalizeIdentityPart(input.specKey);
+  const normalizedColor = normalizeIdentityPart(input.color);
+  const normalizedFinish = normalizeIdentityPart(input.finish);
+  const candidates = materialRows.filter((row) => {
+    if (normalizeIdentityPart(row.materialKey) !== normalizedMaterialKey) return false;
+    const rowSpecKey = normalizeIdentityPart(row.specKey);
+    const rowSpecification = normalizeIdentityPart(row.specification);
+    if (rowSpecKey !== normalizedSpecKey && rowSpecification !== normalizedSpecKey) return false;
+    if (normalizedColor && normalizeIdentityPart(row.color) !== normalizedColor) return false;
+    if (normalizedFinish && normalizeIdentityPart(row.finish) !== normalizedFinish) return false;
+    return Boolean(row.materialCode);
+  });
+  if (candidates.length === 1) return { materialCode: candidates[0].materialCode };
+  if (!candidates.length) return { materialCode: "", reason: "no material master row matches materialKey/specKey/variant" };
+  return { materialCode: "", reason: `materialKey/specKey/variant matches ${candidates.length} material master rows; enter the complete materialCode` };
+}
+
+function normalizeIdentityPart(value: string | null | undefined) {
+  return String(value ?? "").trim().toLocaleLowerCase().normalize("NFKC");
+}
+
+function legacyRowsToOpeningRows(
+  rows: string[][],
+  warnings: string[],
+  materialRows: InventoryMaterialImportRow[] = []
+): OpeningInventoryImportRow[] {
   if (!rows.length) return [];
   const indexes = headerIndexes<OpeningColumn>(rows[0], OPENING_HEADER_ALIASES);
   if (indexes.warehouseCode < 0 || indexes.materialCode < 0 || indexes.openingQty < 0) {
@@ -398,6 +524,12 @@ function combineColorFinish(color?: string | null, finish?: string | null) {
 
 function splitColorFinish(value: string): [string, string] {
   if (!value) return ["", ""];
+  const parts = value.split(/\s*(?:\/|,|，|\||;|；)\s*/, 2);
+  return parts.length > 1 ? [parts[0].trim(), parts[1].trim()] : [value.trim(), ""];
+}
+
+function splitColorFinishLegacy(value: string): [string, string] {
+  if (!value) return ["", ""];
   const parts = value.split(/\s*(?:\/|／|\||;)\s*/, 2);
   return parts.length > 1 ? [parts[0].trim(), parts[1].trim()] : [value.trim(), ""];
 }
@@ -417,6 +549,10 @@ function normalizedAliases(aliases: string[]) {
 }
 
 function normalizeHeader(value: string) {
+  return value.trim().toLocaleLowerCase().normalize("NFKC").replace(/[\s_\-\/\\|:：()（）\[\]【】]/g, "");
+}
+
+function normalizeHeaderLegacy(value: string) {
   return value.trim().toLocaleLowerCase().replace(/[\s_\-\/／()（）]/g, "");
 }
 
@@ -430,10 +566,19 @@ function optionalValue(row: string[], index: number) {
 
 function parseOptionalNumber(value: string): number | undefined {
   if (!value) return undefined;
+  return Number(value.replace(/[,，\s]/g, ""));
+}
+
+function parseOptionalNumberLegacy(value: string): number | undefined {
+  if (!value) return undefined;
   return Number(value.replace(/[,，\s￥¥]/g, ""));
 }
 
 function parseRequiredNumber(value: string) {
+  return value ? Number(value.replace(/[,，\s]/g, "")) : Number.NaN;
+}
+
+function parseRequiredNumberLegacy(value: string) {
   return value ? Number(value.replace(/[,，\s]/g, "")) : Number.NaN;
 }
 

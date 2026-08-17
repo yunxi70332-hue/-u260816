@@ -91,8 +91,10 @@ export function loadConfig(): AppConfig {
   if (Boolean(bootstrapAdminEmail) !== Boolean(bootstrapAdminPassword)) {
     throw new Error("BOOTSTRAP_ADMIN_EMAIL and BOOTSTRAP_ADMIN_PASSWORD must be configured together");
   }
-  if (bootstrapAdminPassword && bootstrapAdminPassword.length < 12) {
-    throw new Error("BOOTSTRAP_ADMIN_PASSWORD must contain at least 12 characters");
+  // Keep old deployed bootstrap secrets bootable. Newly created and reset account
+  // passwords are enforced by Better Auth and the API contracts at 6-12 characters.
+  if (bootstrapAdminPassword && (bootstrapAdminPassword.length < 6 || bootstrapAdminPassword.length > 128)) {
+    throw new Error("BOOTSTRAP_ADMIN_PASSWORD must contain 6 to 128 characters");
   }
 
   const localDevelopmentOrigins = [

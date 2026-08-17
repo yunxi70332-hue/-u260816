@@ -37,6 +37,7 @@ import type {
   Shipment,
   WorkspaceData
 } from "../types";
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "../types";
 import { createClientId } from "./id";
 import { projectOrderConfiguration } from "./order-configuration";
 
@@ -943,6 +944,7 @@ function normalizeSession(payload: unknown): Session | null {
     },
     tenants: tenants.length ? tenants : [{ id: activeTenantId, name: "\u9ed8\u8ba4\u7ec4\u7ec7", code: "DEFAULT", plan: "\u6807\u51c6" }],
     activeTenantId,
+    principalType: raw.principalType === "platform_admin" || raw.principalType === "organization_member" ? raw.principalType : undefined,
     authorizationOrganizationId: raw.authorizationOrganizationId ? String(raw.authorizationOrganizationId) : undefined,
     dataOrganizationId: raw.dataOrganizationId ? String(raw.dataOrganizationId) : activeTenantId,
     permissions: effectivePermissions,
@@ -956,6 +958,8 @@ function normalizeSession(payload: unknown): Session | null {
       price: String(rawFieldPolicy.price ?? "none"),
       inventory: String(rawFieldPolicy.inventory ?? "none") as NonNullable<Session["fieldPolicy"]>["inventory"]
     },
+    mustChangePassword: Boolean(raw.mustChangePassword ?? raw.must_change_password ?? raw.passwordChangeRequired ?? raw.password_change_required),
+    passwordChangeRequired: Boolean(raw.passwordChangeRequired ?? raw.password_change_required ?? raw.mustChangePassword ?? raw.must_change_password),
     mode: "live"
   };
 }
@@ -987,9 +991,24 @@ export const api = {
   },
 
   changePassword(currentPassword: string, newPassword: string) {
-    return request<unknown>("/auth/change-password", {
+    if (newPassword.length < PASSWORD_MIN_LENGTH || newPassword.length > PASSWORD_MAX_LENGTH) {
+      return Promise.reject(new ApiError(`New password must be ${PASSWORD_MIN_LENGTH}-${PASSWORD_MAX_LENGTH} characters.`, 400, "PASSWORD_POLICY"));
+    }
+    return request<unknown>("/me/change-password", {
       method: "POST",
       body: { currentPassword, newPassword, revokeOtherSessions: true }
+    });
+  },
+
+  resetAccountPassword(accountId: string, newPassword: string, tenantId: string, idempotencyKey = createClientId()) {
+    if (newPassword.length < PASSWORD_MIN_LENGTH || newPassword.length > PASSWORD_MAX_LENGTH) {
+      return Promise.reject(new ApiError(`New password must be ${PASSWORD_MIN_LENGTH}-${PASSWORD_MAX_LENGTH} characters.`, 400, "PASSWORD_POLICY"));
+    }
+    return request<unknown>(`/accounts/${accountId}/reset-password`, {
+      method: "POST",
+      tenantId,
+      idempotencyKey,
+      body: { newPassword }
     });
   },
 

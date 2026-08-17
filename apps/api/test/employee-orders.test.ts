@@ -31,6 +31,9 @@ function createTestAuth(): AuthService {
     async getIdentity(headers) {
       return identities.get(testIdentity(headers)) ?? null;
     },
+    async changePassword() {
+      return { headers: new Headers(), response: { status: true } };
+    },
     async createEmployee(input) {
       employeeSequence += 1;
       const userId = `employee-test-${employeeSequence}`;
@@ -56,7 +59,7 @@ test("factory employees are isolated to their assigned orders and retain follow-
       method: "POST",
       url: "/api/employees",
       headers: { ...adminHeaders, "idempotency-key": key },
-      payload: { name, phone, password: "test-password-123" }
+      payload: { name, phone, password: "Test123!" }
     });
     assert.equal(response.statusCode, 201);
     return body<{ item: { id: string; userId: string } }>(response).item;
@@ -97,11 +100,22 @@ test("factory employees are isolated to their assigned orders and retain follow-
   const employeeBHeaders = { "x-test-user": employeeB.userId };
   const employeeSession = await app.inject({ method: "GET", url: "/api/session", headers: employeeAHeaders });
   assert.equal(employeeSession.statusCode, 200);
+  assert.equal(body<{ mustChangePassword: boolean }>(employeeSession).mustChangePassword, true);
+  for (const headers of [employeeAHeaders, employeeBHeaders]) {
+    const changed = await app.inject({
+      method: "POST",
+      url: "/api/me/change-password",
+      headers,
+      payload: { currentPassword: "Test123!", newPassword: "Changed6!" }
+    });
+    assert.equal(changed.statusCode, 200);
+  }
+  const activeEmployeeSession = await app.inject({ method: "GET", url: "/api/session", headers: employeeAHeaders });
   const employeeSessionBody = body<{
     effectivePermissions: string[];
     dataScopes: Record<string, { scope: string; assignedUserIds: string[] }>;
     fieldPolicy: { price: string; inventory: string };
-  }>(employeeSession);
+  }>(activeEmployeeSession);
   assert.equal(employeeSessionBody.effectivePermissions.includes("orders.view"), true);
   assert.equal(employeeSessionBody.effectivePermissions.includes("orders.assign"), false);
   assert.equal(employeeSessionBody.dataScopes.orders?.scope, "assigned");

@@ -1086,7 +1086,7 @@ function StructureTab({
           <button type="button" onClick={() => onPreset(1, 1, "metalBackModule")}><Box size={16} /> 750 单格</button>
           <button type="button" onClick={() => onPreset(2, 1, "metalBackModule")}><Columns3 size={16} /> 双列矮柜</button>
           <button type="button" onClick={() => onPreset(2, 2, "metalBackModule")}><Grid3X3 size={16} /> 四格柜</button>
-          <button type="button" onClick={() => onPreset(3, 2, "open")}><Layers3 size={16} /> 展示柜</button>
+          <button type="button" onClick={() => onPreset(3, 2, "open")}><Layers3 size={16} /> 3列框架</button>
           <button type="button" onClick={() => onConfigPreset(createSteppedPreset())}><Layers3 size={16} /> 阶梯异形</button>
           <button type="button" onClick={() => onConfigPreset(createKitchenIslandPreset())}><Columns3 size={16} /> 双面岛台</button>
           <button type="button" onClick={() => onConfigPreset(createSquareCoffeeTablePreset())}><Grid3X3 size={16} /> 四宫格茶几</button>

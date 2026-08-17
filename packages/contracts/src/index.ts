@@ -121,6 +121,8 @@ export const ErrorCodeSchema = z.enum([
   "VERSION_CONFLICT",
   "IDEMPOTENCY_CONFLICT",
   "INVALID_TRANSITION",
+  "PASSWORD_CHANGE_REQUIRED",
+  "PASSWORD_POLICY",
   "INTERNAL_ERROR"
 ]);
 
@@ -153,7 +155,10 @@ export const SessionSchema = z.object({
   effectivePermissions: z.array(PermissionSchema).default([]),
   delegablePermissions: z.array(PermissionSchema).default([]),
   dataScopes: z.record(z.string(), ResourceDataScopeSchema).default({}),
-  fieldPolicy: FieldPolicySchema.default({ price: "none", inventory: "none" })
+  fieldPolicy: FieldPolicySchema.default({ price: "none", inventory: "none" }),
+  principalType: z.enum(["platform_admin", "organization_member"]).optional(),
+  mustChangePassword: z.boolean().default(false),
+  passwordChangeRequired: z.boolean().default(false)
 });
 export type Session = z.infer<typeof SessionSchema>;
 
@@ -487,7 +492,7 @@ export const CreateDealerSchema = z.object({
   region: z.string().trim().max(100).optional().default(""),
   contact: z.string().trim().max(200).optional().default(""),
   phone: z.string().trim().min(6).max(32),
-  password: z.string().min(12).max(128),
+  password: z.string().min(6).max(12),
   email: z.email().optional(),
   level: DealerLevelSchema.default("standard"),
   settlementRatePercent: z.number().int().min(0).max(100).optional(),
@@ -515,6 +520,8 @@ export const AccountSummarySchema = z.object({
   updatedAt: IsoDateTimeSchema
 });
 export const UpdateAccountStatusSchema = z.object({ status: AccountStatusSchema });
+export const ResetAccountPasswordSchema = z.object({ newPassword: z.string().min(6).max(12) });
+export const ChangeOwnPasswordSchema = z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(6).max(12) });
 export type AccountSummary = z.infer<typeof AccountSummarySchema>;
 export type AccountStatus = z.infer<typeof AccountStatusSchema>;
 
@@ -525,7 +532,7 @@ export const CreateEmployeeSchema = z.object({
   name: z.string().trim().min(1).max(200),
   phone: z.string().trim().min(6).max(32),
   email: z.email().optional(),
-  password: z.string().min(12).max(128)
+  password: z.string().min(6).max(12)
 });
 export const CreateOrganizationAdminSchema = CreateEmployeeSchema;
 export const UpdateEmployeeStatusSchema = UpdateAccountStatusSchema;
@@ -623,6 +630,63 @@ export const SavePriceListItemsSchema = z.object({ items: z.array(SavePriceListI
     keys.add(key);
   });
 });
+const OptionalImportNumberSchema = z.preprocess((value) => {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value === "string") {
+    const normalized = value.replace(/[\s,]/g, "");
+    if (!normalized) return undefined;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : value;
+  }
+  return value;
+}, z.union([z.number().finite(), z.string().trim()]).optional());
+export const PriceListImportRowSchema = z.object({
+  materialKey: z.string().trim().max(200).optional(),
+  specKey: z.string().trim().max(300).optional(),
+  canonicalName: z.string().trim().max(300).optional(),
+  spec: z.string().trim().max(500).optional(),
+  materialCode: z.string().trim().max(200).optional(),
+  name: z.string().trim().max(300).optional(),
+  specification: z.string().trim().max(500).optional(),
+  color: z.string().trim().max(100).optional(),
+  unit: z.string().trim().max(50).optional(),
+  pricingMethod: PricingMethodSchema.optional(),
+  retailUnitPrice: OptionalImportNumberSchema,
+  unitPrice: OptionalImportNumberSchema,
+  pricingRule: z.union([JsonObjectSchema, z.string().trim().max(2000)]).nullable().optional(),
+  note: z.string().trim().max(2000).optional(),
+  sourceRow: z.number().int().positive().optional(),
+  page: z.number().int().nonnegative().optional(),
+  raw: JsonObjectSchema.optional()
+}).passthrough();
+export const PriceListImportPreviewSchema = z.object({
+  mode: z.literal("incremental").default("incremental"),
+  rows: z.array(PriceListImportRowSchema).max(5000)
+});
+export const PriceListImportCommitSchema = PriceListImportPreviewSchema.extend({
+  previewToken: z.string().trim().min(1).max(200).optional()
+});
+export const PriceListImportOutcomeSchema = z.enum(["new", "updated", "skipped", "conflict", "error"]);
+export const PriceListImportPreviewRowSchema = z.object({
+  rowNumber: z.number().int().positive(),
+  identity: z.string(),
+  outcome: PriceListImportOutcomeSchema,
+  message: z.string(),
+  input: PriceListImportRowSchema.optional()
+});
+export const PriceListImportCountsSchema = z.object({
+  new: z.number().int().nonnegative(),
+  updated: z.number().int().nonnegative(),
+  skipped: z.number().int().nonnegative(),
+  conflict: z.number().int().nonnegative(),
+  error: z.number().int().nonnegative()
+});
+export const PriceListImportPreviewResultSchema = z.object({
+  previewToken: z.string().optional(),
+  rows: z.array(PriceListImportPreviewRowSchema),
+  counts: PriceListImportCountsSchema,
+  errors: z.array(z.string())
+});
 export const PublishPriceListSchema = z.object({ effectiveFrom: z.string().date().optional() });
 export const ClonePriceListSchema = z.object({
   name: z.string().trim().min(1).max(200).optional(),
@@ -654,6 +718,10 @@ export type SavePriceListItemInput = z.input<typeof SavePriceListItemSchema>;
 export type PublishPriceListInput = z.infer<typeof PublishPriceListSchema>;
 export type ClonePriceListInput = z.infer<typeof ClonePriceListSchema>;
 export type PriceListValidation = z.infer<typeof PriceListValidationSchema>;
+export type PriceListImportRow = z.input<typeof PriceListImportRowSchema>;
+export type PriceListImportPreviewInput = z.input<typeof PriceListImportPreviewSchema>;
+export type PriceListImportCommitInput = z.input<typeof PriceListImportCommitSchema>;
+export type PriceListImportPreviewResult = z.infer<typeof PriceListImportPreviewResultSchema>;
 export type CalculatePricingInput = z.input<typeof CalculatePricingSchema>;
 
 export const ShipmentStatusSchema = z.enum(["pending", "shipped", "delivered", "cancelled"]);

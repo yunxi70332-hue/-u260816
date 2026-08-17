@@ -10,7 +10,7 @@ interface LoginFormValues {
 }
 
 export function LoginPage() {
-  const { session, login, enterDemo, loginError } = useAuth();
+  const { session, login, loginError } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
@@ -66,9 +66,6 @@ export function LoginPage() {
             {loginError && <Alert type="error" showIcon message={loginError} role="alert" />}
             <Button type="primary" htmlType="submit" size="large" block loading={submitting} iconPosition="end" icon={<ArrowRight size={17} />}>登录</Button>
           </Form>
-          <div className="login-divider"><span>或</span></div>
-          <Button size="large" block icon={<Database size={17} />} onClick={enterDemo}>进入演示工作区</Button>
-          <p className="login-footnote">演示模式使用浏览器内置数据，不需要启动 API 服务。</p>
         </div>
         <footer>USM Configurator · ERP Console 0.1</footer>
       </section>
