@@ -1,41 +1,88 @@
-# USM 配置器与 ERP 单域名部署
+# USM 配置器与 ERP 多实例部署
 
-## 公网入口
+本指南适用于同一台宝塔服务器部署 2-5 套相互隔离的 USM 配置器。每一套必须有独立的域名、Compose 项目名、环境文件、网关端口、PostgreSQL 卷、MinIO 卷、密钥和备份目录。
 
-- `https://<DOMAIN>/`：USM 产品设计器。
-- `https://<DOMAIN>/erp/`：ERP 登录与管理界面。
-- `https://<DOMAIN>/api/`：Fastify API 与 Better Auth 接口。
+## 目录与映射
 
-宝塔 Nginx 负责公网 HTTPS，并将整个网站反向代理到
-`http://127.0.0.1:18080`。Docker 内部的 Caddy 再按路径分发请求，
-PostgreSQL、MinIO、设计器和 API 端口均不直接暴露到公网。
+推荐将 Git 源码与运行数据分开，避免更新代码时覆盖实例配置或备份：
 
-## 首次部署
-
-1. 将 `.env.example` 复制为 `.env`。
-2. 将 `PUBLIC_DOMAIN` 与 `PUBLIC_ORIGIN` 替换为正式域名和 HTTPS Origin。
-3. 将 `BETTER_AUTH_URL` 和 `CORS_ORIGINS` 设置为与 `PUBLIC_ORIGIN` 相同的 Origin，不能带路径或结尾 `/`。
-4. 为 PostgreSQL、MinIO、`BETTER_AUTH_SECRET` 和初始化管理员生成独立强密码。
-5. 在宝塔创建域名网站、申请证书并启用 HTTP 到 HTTPS 跳转。
-6. 在宝塔网站中配置反向代理，将所有请求转发到 `http://127.0.0.1:18080`。反代必须保留 `Host`、`X-Forwarded-Host`、`X-Forwarded-Proto` 与 `X-Forwarded-For`；可直接使用 `deploy/baota-reverse-proxy.conf.example`。
-7. 校验并启动容器：
-
-```bash
-docker compose config
-docker compose build
-docker compose up -d
-docker compose ps
-docker compose logs --tail 200 api
+```text
+/www/docker/usm/
+  source/                 # 本仓库，跟踪 main
+  instances/usm-01/.env   # 权限 600，不能提交 Git
+  instances/usm-02/.env
+  backups/usm-01/
+  backups/usm-02/
 ```
 
-也可在新发布目录中一次性生成生产密钥并启动：
+| 实例 | 域名 | 网关端口 | Compose 项目名 | 环境文件 | 备份目录 |
+| --- | --- | --- | --- | --- | --- |
+| usm-01 | usm1.example.com | 18080 | usm-01 | `instances/usm-01/.env` | `backups/usm-01` |
+| usm-02 | usm2.example.com | 18081 | usm-02 | `instances/usm-02/.env` | `backups/usm-02` |
+
+Docker 内部继续使用 8080、9012、5432、9000 和 9001。只有 Caddy 网关通过 `127.0.0.1:<GATEWAY_PORT>` 绑定宿主机；PostgreSQL 和 MinIO 均没有公网端口。
+
+## 首次创建实例
+
+在 `/www/docker/usm/source` 中逐套执行，不要同时构建多个实例：
 
 ```bash
-sh deploy/bootstrap-server.sh <DOMAIN>
+git fetch origin main
+git checkout main
+git pull --ff-only origin main
+
+sh deploy/bootstrap-instance.sh usm-01 usm1.example.com 18080
 ```
 
-API 启动时会自动执行 Drizzle 迁移和 Better Auth 初始化。日志出现
-`Database migrations completed`，且 API 容器状态变为 `healthy` 后，检查：
+脚本会创建 `/www/docker/usm/instances/usm-01/.env`、`/www/docker/usm/backups/usm-01/`，生成独立数据库、对象存储、认证密钥和初始平台管理员，并在启动后检查：
+
+```text
+http://127.0.0.1:18080/api/health
+```
+
+环境文件必须至少包含这些实例隔离字段：
+
+```dotenv
+COMPOSE_PROJECT_NAME=usm-01
+GATEWAY_PORT=18080
+BACKUP_DIR=/www/docker/usm/backups/usm-01
+PUBLIC_DOMAIN=usm1.example.com
+PUBLIC_ORIGIN=https://usm1.example.com
+POSTGRES_DB=usm_erp_01
+POSTGRES_USER=usm_erp_01
+S3_BUCKET=usm-erp-01
+```
+
+`POSTGRES_PASSWORD`、`DATABASE_URL`、`BETTER_AUTH_SECRET`、MinIO 密钥和 `BOOTSTRAP_ADMIN_PASSWORD` 也必须每套独立。环境文件设置 `chmod 600`，不可提交到 Git。不要为卷或网络设置固定的 Docker `name`；Compose 会使用 `COMPOSE_PROJECT_NAME` 自动产生 `usm-01_postgres_data`、`usm-01_object_data` 等隔离资源。
+
+普通运行命令可使用统一包装脚本，避免漏写环境文件或项目名：
+
+```bash
+sh deploy/instance-compose.sh usm-01 ps
+sh deploy/instance-compose.sh usm-01 logs --tail 200 api
+sh deploy/instance-compose.sh usm-01 up -d --build
+```
+
+等价的原生命令为：
+
+```bash
+docker compose -p usm-01 \
+  --env-file /www/docker/usm/instances/usm-01/.env \
+  -f /www/docker/usm/source/docker-compose.yml up -d --build
+```
+
+## 宝塔网站与反向代理
+
+为每个域名各建一个宝塔网站、各申请一张 SSL 证书，并只反代到本实例的 loopback 端口：
+
+```text
+usm1.example.com -> http://127.0.0.1:18080
+usm2.example.com -> http://127.0.0.1:18081
+```
+
+使用 `deploy/baota-reverse-proxy.conf.example` 作为模板，替换其中的端口。保留 `Host`、`X-Forwarded-*` 请求头。公网仅开放 80/443（及必要的 SSH）；不要开放 PostgreSQL、MinIO、8080 或 9012。
+
+验收地址：
 
 ```text
 https://<DOMAIN>/
@@ -43,56 +90,53 @@ https://<DOMAIN>/erp/login
 https://<DOMAIN>/api/health
 ```
 
-## 平台所有者与企业管理员
+## 平台管理员
 
-部署时生成的 `BOOTSTRAP_ADMIN_EMAIL` 是隐藏的平台所有者账号。它拥有当前部署企业及下属工作区的完整运维、监察和授权能力，
-不作为企业侧“账号与权限”中的普通成员展示。企业管理员由平台所有者在 ERP 内创建，是企业侧可见的最高账号。
+部署时生成的 `BOOTSTRAP_ADMIN_EMAIL` 是隐藏的平台运维/所有者账号。它可跨企业工作区监察和授权，但企业侧的“账号与权限”不展示此账号、账号 ID 或其操作人身份。企业管理员是企业侧可见的最高管理角色。
 
-`BOOTSTRAP_ADMIN_PASSWORD` 只在账号首次创建时用于设置密码；启动过程仍会校正该账号的平台角色和总部成员关系，
-因此首次轮换密码后必须删除引导配置，避免后续重启再次启用引导逻辑。为兼容历史部署，已有的引导配置最多可保留 128 位；
-新建账号和管理员重置账号使用 6–12 位临时密码，并在首次登录时强制改密。
-完成平台密码轮换后，从 `.env` 删除以下字段：
-
-- `BOOTSTRAP_ADMIN_EMAIL`
-- `BOOTSTRAP_ADMIN_PASSWORD`
-- `BOOTSTRAP_ADMIN_NAME`
-- `BOOTSTRAP_ADMIN_USERNAME`
-
-然后执行脚本删除初始化字段并重建 API 容器：
+平台账号完成首次登录和强制改密后，立即关闭引导配置，避免后续重启重新执行引导逻辑：
 
 ```bash
-sh deploy/disable-bootstrap-admin.sh
+USM_INSTANCE_ENV_FILE=/www/docker/usm/instances/usm-01/.env \
+  sh deploy/disable-bootstrap-admin.sh --project-name usm-01
 ```
 
-如果历史部署曾把平台账号改成普通企业账号，可先备份数据库，再执行：
+脚本会先验证临时环境文件，再保存带 UTC 时间戳的环境备份，最后仅重建目标实例的 API 容器。
+
+修复历史平台账号前，先备份该实例，再显式确认目标项目：
 
 ```bash
-sh deploy/repair-platform-admin.sh admin@example.com
+sh deploy/backup-instance.sh usm-01
+USM_INSTANCE_ENV_FILE=/www/docker/usm/instances/usm-01/.env \
+  sh deploy/repair-platform-admin.sh --project-name usm-01 --confirm admin@usm1.example.com
 ```
 
-该命令会恢复全局平台角色、清除平台成员上的持久化业务授权、注销旧会话并要求下一次登录改密。
-企业侧审计会将平台操作显示为“系统操作”，并隐藏平台用户 ID；平台账号可通过顶部企业切换器进入各企业工作区监察操作记录。
+该命令会清除目标平台账号在企业成员上的业务授权、注销旧会话并要求下次登录改密，因此不得针对不确定的实例执行。
 
-## 更新与回滚
+## 更新、备份与回滚
 
-更新前先执行数据库备份并保留上一个发布目录：
+每次只更新一个实例。更新前先完成 PostgreSQL 和 MinIO 数据备份：
 
 ```bash
-docker compose exec -T postgres pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc > deploy/backups/usm-erp.dump
-docker compose build api designer
-docker compose up -d
-docker compose ps
-docker compose logs --tail 200 api
+sh deploy/backup-instance.sh usm-01
+git fetch origin main
+git checkout main
+git pull --ff-only origin main
+sh deploy/instance-compose.sh usm-01 up -d --build
+curl --fail http://127.0.0.1:18080/api/health
 ```
 
-API 启动会自动运行待执行迁移。更新后验证设计器、ERP 登录、组织切换、
-设计保存、报价和订单流程。
+备份目录会生成 `usm-01-<UTC 时间>/postgres.dump`、`minio-data/`、`metadata.txt` 和 `SHA256SUMS`。恢复演练必须在维护窗口内进行；数据库恢复或误把对象数据恢复到另一实例会覆盖现有数据。
 
-## 安全基线
+API 启动时会自动运行数据库迁移。因此发生不兼容迁移时，不能只回退代码或镜像：必须使用更新前保留的代码版本，并按同一实例的数据库与对象存储备份恢复。不要执行 `docker compose down -v` 或 `docker system prune --volumes`。
 
-- 生产环境只开放宝塔所需端口、SSH、`80/tcp` 和 `443/tcp`。
-- Docker 网关只能绑定 `127.0.0.1`，不得改为 `0.0.0.0`。
-- 不提交 `.env`、Cookie、数据库备份、对象存储数据或 MCP Token。
-- `BETTER_AUTH_SECRET` 至少 32 个随机字符，`SESSION_COOKIE_SECURE=true`。
-- PostgreSQL 与 MinIO 只加入 Docker 内部网络，不映射宿主机端口。
-- 至少每日备份数据库，并定期验证恢复流程。
+## 隔离验收与删除
+
+逐套确认首页、ERP 登录、`/api/health`、报价/订单、附件上传都正常；停止 `usm-01` 后，`usm-02` 的站点与数据仍应正常。确认 `docker volume ls` 中 PostgreSQL 和 MinIO 卷均带实例前缀，且备份只进入对应目录。
+
+删除前必须核对项目名、完成实例备份，并得到明确确认。日常停止或更新只操作目标项目，例如：
+
+```bash
+sh deploy/instance-compose.sh usm-01 stop
+sh deploy/instance-compose.sh usm-01 up -d
+```

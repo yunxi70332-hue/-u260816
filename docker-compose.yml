@@ -1,4 +1,4 @@
-name: usm-configurator-erp
+name: ${COMPOSE_PROJECT_NAME:?COMPOSE_PROJECT_NAME is required}
 
 services:
   gateway:
@@ -90,7 +90,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./deploy/backups:/backups
+      - ${BACKUP_DIR:?BACKUP_DIR is required}:/backups
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-usm_erp} -d ${POSTGRES_DB:-usm_erp}"]
       interval: 10s

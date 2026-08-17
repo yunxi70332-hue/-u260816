@@ -2,27 +2,61 @@
 set -eu
 
 root_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-cd "$root_dir"
+env_file=${USM_INSTANCE_ENV_FILE:-"$root_dir/.env"}
+project_name=
+confirmed=false
 
-email=${1:-}
-if [ -z "$email" ]; then
-  echo "Usage: sh deploy/repair-platform-admin.sh <platform-admin-email>" >&2
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --env-file)
+      env_file=${2:-}
+      shift 2
+      ;;
+    --project-name)
+      project_name=${2:-}
+      shift 2
+      ;;
+    --confirm)
+      confirmed=true
+      shift
+      ;;
+    *)
+      if [ -n "${email:-}" ]; then
+        echo "Usage: sh deploy/repair-platform-admin.sh [--env-file <path>] [--project-name <instance>] --confirm <platform-admin-email>" >&2
+        exit 2
+      fi
+      email=$1
+      shift
+      ;;
+  esac
+done
+
+if [ -z "${email:-}" ] || [ "$confirmed" != true ]; then
+  echo "Usage: sh deploy/repair-platform-admin.sh [--env-file <path>] [--project-name <instance>] --confirm <platform-admin-email>" >&2
   exit 2
 fi
 
-if [ ! -f .env ]; then
-  echo ".env was not found." >&2
+if [ ! -f "$env_file" ]; then
+  echo "Environment file was not found: $env_file" >&2
   exit 1
 fi
 
-set -a
-. ./.env
-set +a
+if [ -z "$project_name" ]; then
+  project_name=$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' "$env_file" | head -n 1)
+fi
+configured_project=$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' "$env_file" | head -n 1)
+if [ -z "$configured_project" ] || [ "$project_name" != "$configured_project" ]; then
+  echo "COMPOSE_PROJECT_NAME in $env_file must match --project-name." >&2
+  exit 1
+fi
 
-db_user=${POSTGRES_USER:-usm_erp}
-db_name=${POSTGRES_DB:-usm_erp}
+db_user=$(sed -n 's/^POSTGRES_USER=//p' "$env_file" | head -n 1)
+db_name=$(sed -n 's/^POSTGRES_DB=//p' "$env_file" | head -n 1)
+db_user=${db_user:-usm_erp}
+db_name=${db_name:-usm_erp}
 
-docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "$db_user" -d "$db_name" -v platform_email="$email" <<'SQL'
+docker compose --project-name "$project_name" --env-file "$env_file" -f "$root_dir/docker-compose.yml" \
+  exec -T postgres psql -v ON_ERROR_STOP=1 -U "$db_user" -d "$db_name" -v platform_email="$email" <<'SQL'
 BEGIN;
 
 WITH selected AS (
@@ -71,4 +105,4 @@ WHERE user_id IN (
 COMMIT;
 SQL
 
-echo "Platform administrator repaired. Sign in once and rotate the password immediately."
+echo "Platform administrator repaired for project $project_name. Sign in once and rotate the password immediately."

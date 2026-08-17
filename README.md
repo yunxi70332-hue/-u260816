@@ -4,6 +4,13 @@
 
 ## 更新日志
 
+### 2026-08-17 - Docker 多实例隔离部署
+
+- Docker Compose 项目名和 PostgreSQL 备份目录改为环境文件必填项；不同实例通过独立项目名自动获得独立 PostgreSQL/MinIO 卷、网络和容器资源。
+- 新增 `bootstrap-instance.sh`、`instance-compose.sh` 和 `backup-instance.sh`，支持逐套创建、操作以及 PostgreSQL 与 MinIO 数据备份。
+- 引导管理员关闭、平台账号修复、PowerShell 备份与恢复均要求核验目标实例环境，避免跨企业误操作。
+- 更新宝塔多域名反代模板与 [多实例 ERP 部署说明](docs/ERP_DEPLOYMENT.md)，包含逐套更新、迁移回滚和安全红线。
+
 ### 2026-08-17 - ERP 价格库存导入与平台账号安全
 
 - 新增价格表 XLSX/CSV 导入预览与提交流程：识别未知、重复和非法价格行，预览 token 可防止过期提交，并保留导入审计。
@@ -24,6 +31,8 @@ sh deploy/disable-bootstrap-admin.sh
 ```
 
 详细上线步骤见 [ERP 部署说明](docs/ERP_DEPLOYMENT.md) 与 [价格库存导入说明](docs/PRICE_INVENTORY_IMPORT_ROLLOUT.md)。
+
+生产环境支持在同一台宝塔服务器上部署 2-5 套相互隔离的 Docker 实例。每套必须使用独立的域名、`COMPOSE_PROJECT_NAME`、环境文件、网关端口、数据卷、密钥和备份目录；请按 [多实例 ERP 部署说明](docs/ERP_DEPLOYMENT.md) 操作，不要在共享服务器上使用无项目名和无环境文件的裸 `docker compose` 命令。
 
 ## 已支持
 

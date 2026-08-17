@@ -5,7 +5,9 @@ output/
 .playwright-cli/
 .env
 .env.local
-deploy/backups/*.dump
+deploy/backups/*
+!deploy/backups/.gitkeep
+instances/
 .venv/
 artifacts/
 scripts/__pycache__/
