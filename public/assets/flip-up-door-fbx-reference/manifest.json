@@ -1,0 +1,57 @@
+{
+  "id": "usm-flip-up-door-fbx-reference",
+  "description": "Flip-up door panel, lock and two-sided hinge mechanism extracted from closed and open FBX exports.",
+  "sourceFiles": {
+    "closed": {
+      "state": "closed",
+      "sha256": "daf3bbae57e9de2d07a5c9942168a6a37c433de387e2903f40aa97613623d6ce"
+    },
+    "open": {
+      "state": "open",
+      "sha256": "6b6f282e496c18212af6a97af3be75429c14599546db15c05a3da2c81f47ea4d"
+    }
+  },
+  "output": "flip-up-door-reference.glb",
+  "sceneScale": 0.004,
+  "pivotMm": [
+    -270.17122,
+    380,
+    175
+  ],
+  "templateSceneSize": {
+    "panelWidth": 2.908,
+    "panelHeight": 1.308,
+    "panelThickness": 0.032
+  },
+  "selectedSourceIndices": [
+    0,
+    1,
+    2,
+    3,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    41
+  ],
+  "roles": {
+    "lock-chrome-0": "lock-chrome",
+    "lock-chrome-1": "lock-chrome",
+    "lock-chrome-2": "lock-chrome",
+    "lock-dark-3": "lock-dark",
+    "fixed-chrome-8": "fixed-chrome",
+    "fixed-chrome-9": "fixed-chrome",
+    "moving-chrome-10": "moving-chrome",
+    "fixed-chrome-11": "fixed-chrome",
+    "fixed-chrome-12": "fixed-chrome",
+    "moving-chrome-13": "moving-chrome",
+    "panel-41": "panel"
+  },
+  "animation": {
+    "type": "two-state transform interpolation",
+    "closed": 0,
+    "open": 1
+  }
+}

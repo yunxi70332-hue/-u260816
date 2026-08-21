@@ -1,0 +1,85 @@
+{
+  "id": "usm-drop-door-fbx-reference",
+  "description": "Drop-door panel, lock and two-sided hinge mechanism extracted by comparing closed and open official FBX exports.",
+  "sourceFiles": {
+    "closed": {
+      "state": "closed",
+      "sha256": "c4c7cb751362df73bea0cc44449aea65377bfee78365ff5f8b7a44fbbd182347"
+    },
+    "open": {
+      "state": "open",
+      "sha256": "b4b506b2f44320709ad3025db5845112e1f4b130f2a0fb3369be27d56fe359fa"
+    }
+  },
+  "output": "drop-door-reference.glb",
+  "sceneScale": 0.004,
+  "pivotMm": [
+    -270.17122,
+    30,
+    175
+  ],
+  "templateSceneSize": {
+    "panelWidth": 2.9377758800000002,
+    "panelHeight": 1.33777604,
+    "panelThickness": 0.05798284000000001
+  },
+  "selectedSourceIndices": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "roles": {
+    "lock-chrome-0": "lock-chrome",
+    "lock-chrome-1": "lock-chrome",
+    "lock-chrome-2": "lock-chrome",
+    "lock-dark-3": "lock-dark",
+    "fixed-zinc-4": "fixed-zinc",
+    "fixed-zinc-5": "fixed-zinc",
+    "fixed-zinc-6": "fixed-zinc",
+    "fixed-zinc-7": "fixed-zinc",
+    "fixed-zinc-8": "fixed-zinc",
+    "fixed-zinc-9": "fixed-zinc",
+    "fixed-zinc-10": "fixed-zinc",
+    "fixed-zinc-11": "fixed-zinc",
+    "fixed-chrome-12": "fixed-chrome",
+    "fixed-chrome-13": "fixed-chrome",
+    "panel-14": "panel",
+    "moving-chrome-15": "moving-chrome",
+    "moving-chrome-16": "moving-chrome",
+    "moving-chrome-39": "moving-chrome",
+    "moving-chrome-40": "moving-chrome",
+    "moving-chrome-41": "moving-chrome",
+    "moving-chrome-42": "moving-chrome",
+    "moving-chrome-43": "moving-chrome",
+    "moving-chrome-44": "moving-chrome",
+    "moving-chrome-45": "moving-chrome",
+    "moving-chrome-46": "moving-chrome"
+  },
+  "animation": {
+    "type": "two-state transform interpolation",
+    "closed": 0,
+    "open": 1
+  }
+}

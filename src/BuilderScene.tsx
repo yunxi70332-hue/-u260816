@@ -157,14 +157,23 @@ const DROP_DOOR_HINGE_DARK_COLOR = "#383d40";
 const DROP_DOOR_ASSET_URL = "/assets/drop-door/drop-door-assembly.glb";
 const DROP_DOOR_PANEL_ASSET_URL = "/assets/drop-door/drop-door-panel.glb";
 const DROP_DOOR_HINGE_ASSET_URL = "/assets/drop-door/drop-door-hinges.glb";
+const DROP_DOOR_FBX_REFERENCE_ASSET_URL = "/assets/drop-door-fbx-reference/drop-door-reference.glb";
 const DRAWER_LOCK_ASSET_URL = "/assets/drop-door/drop-door-lock.glb";
 const FLIP_UP_DOOR_PANEL_ASSET_URL = "/assets/flip-up-door/panel.glb";
+const FLIP_UP_DOOR_FBX_REFERENCE_ASSET_URL = "/assets/flip-up-door-fbx-reference/flip-up-door-reference.glb";
 const COMBO_MOBILE_TRAY_ASSET_URL = "/assets/door-interior-combo/mobile-tray-single.glb";
 const COMBO_MOBILE_TRAY_RAILS_ASSET_URL = "/assets/door-interior-combo/mobile-tray-rails-single.glb";
 const DROP_DOOR_ASSET_TEMPLATE_WIDTH = 2.9;
 const DROP_DOOR_ASSET_TEMPLATE_HEIGHT = 1.3;
+const DROP_DOOR_FBX_REFERENCE_TEMPLATE_WIDTH = 2.93777588;
+const DROP_DOOR_FBX_REFERENCE_TEMPLATE_HEIGHT = 1.33777604;
 const FLIP_UP_DOOR_ASSET_TEMPLATE_WIDTH = 2.9;
 const FLIP_UP_DOOR_ASSET_TEMPLATE_HEIGHT = 1.3;
+const FLIP_UP_DOOR_FBX_REFERENCE_TEMPLATE_WIDTH = 2.908;
+const FLIP_UP_DOOR_FBX_REFERENCE_TEMPLATE_HEIGHT = 1.308;
+// The lower-door reference model is authored around a deeper hinge plane.
+// Bring the complete leaf assembly forward so its closed front face aligns with flip-up doors.
+const DROP_DOOR_FRONT_FACE_OFFSET = 8 * SCALE;
 const DIMENSION_LINE_COLOR = "#9a302a";
 const DIMENSION_EXTENSION_COLOR = "#d8aaa4";
 const DIMENSION_LABEL_COLOR = "#b42318";
@@ -202,8 +211,10 @@ let frameAssetsPromise: Promise<FrameAssets | null> | null = null;
 let dropDoorAssetPromise: Promise<THREE.Group | null> | null = null;
 let drawerFrontPanelAssetPromise: Promise<THREE.Group | null> | null = null;
 let dropDoorHingeAssetPromise: Promise<THREE.Group | null> | null = null;
+let dropDoorFbxReferenceAssetPromise: Promise<THREE.Group | null> | null = null;
 let drawerLockAssetPromise: Promise<THREE.Group | null> | null = null;
 let flipUpDoorAssetPartsPromise: Promise<DoorAssetParts | null> | null = null;
+let flipUpDoorFbxReferenceAssetPromise: Promise<THREE.Group | null> | null = null;
 let doorInteriorComboAssetsPromise: Promise<DoorInteriorComboAssets | null> | null = null;
 const doorDragHitboxesByCanvas = new WeakMap<HTMLCanvasElement, Set<THREE.Mesh>>();
 const mobileTrayHitboxesByCanvas = new WeakMap<HTMLCanvasElement, Set<THREE.Mesh>>();
@@ -2179,6 +2190,7 @@ function useDoorDrag({
     pointerId: number;
     startOpen: number;
     currentOpen: number;
+    moved: boolean;
     startX: number;
     startY: number;
     axisX: number;
@@ -2245,6 +2257,7 @@ function useDoorDrag({
         pointerId: event.pointerId,
         startOpen: doorOpenRef.current,
         currentOpen: doorOpenRef.current,
+        moved: false,
         startX: event.clientX,
         startY: event.clientY,
         ...axis
@@ -2259,6 +2272,7 @@ function useDoorDrag({
       event.stopImmediatePropagation();
       const dx = event.clientX - drag.startX;
       const dy = event.clientY - drag.startY;
+      if (dx * dx + dy * dy > 16) drag.moved = true;
       const projected = (dx * drag.axisX + dy * drag.axisY) / drag.axisLengthSq;
       const nextOpen = clampOpen(drag.startOpen + projected);
       drag.currentOpen = nextOpen;
@@ -2271,7 +2285,8 @@ function useDoorDrag({
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
-      onDoorOpenRef.current(selectionRef.current, drag.currentOpen, true);
+      const finalOpen = drag.moved ? drag.currentOpen : (drag.startOpen < 0.5 ? 1 : 0);
+      onDoorOpenRef.current(selectionRef.current, finalOpen, true);
       onDoorDragActiveRef.current(false);
       dragRef.current = null;
     }
@@ -2342,7 +2357,7 @@ function DropDoor({
   const panelW = Math.max(0.16, officialPanelSpan(cell.width));
   const panelH = Math.max(0.12, officialPanelSpan(cell.height));
   const pivotY = cell.y - cell.height / 2;
-  const pivotZ = frontZ;
+  const pivotZ = frontZ + DROP_DOOR_FRONT_FACE_OFFSET;
   const hingeXL = -panelW / 2 + 0.07;
   const hingeXR = panelW / 2 - 0.07;
   const darkMetal = OFFICIAL_BLACK_PLASTIC_COLOR;
@@ -2350,7 +2365,12 @@ function DropDoor({
   const hingeMetal = DROP_DOOR_HINGE_METAL_COLOR;
   const hingeDark = DROP_DOOR_HINGE_DARK_COLOR;
   const showHardware = hideDoor || open > 0.03;
+  const referenceAsset = useDropDoorFbxReferenceAsset();
   const selection = useMemo(() => ({ row: cell.row, column: cell.column, depthIndex: cell.depthIndex }), [cell.column, cell.depthIndex, cell.row]);
+  const toggleDoor = useCallback(() => {
+    onSelect();
+    onDoorOpen(selection, open < 0.5 ? 1 : 0, true);
+  }, [onDoorOpen, onSelect, open, selection]);
 
   useDoorDrag({
     hitboxRef,
@@ -2367,34 +2387,146 @@ function DropDoor({
 
   return (
     <group>
-      {!hideDoor ? (
+      {referenceAsset ? (
         <>
-          <group position={[cell.x, pivotY, pivotZ]} rotation={[angle, 0, 0]}>
-            <DropDoorFrontAsset panelW={panelW} panelH={panelH} color={color} lightMetal={lightMetal} darkMetal={darkMetal} hingeXL={hingeXL} hingeXR={hingeXR} />
-            <mesh ref={hitboxRef} position={[0, panelH / 2, PANEL_THICKNESS / 2 + DOOR_DRAG_HITBOX_DEPTH / 2]} renderOrder={40}>
-              <boxGeometry args={[panelW, panelH, DOOR_DRAG_HITBOX_DEPTH]} />
-              <meshBasicMaterial color="#ffffff" transparent opacity={0} depthWrite={false} />
-            </mesh>
+          <group position={[cell.x, pivotY, pivotZ]}>
+            <DropDoorFbxReferenceAssembly
+              asset={referenceAsset}
+              panelW={panelW}
+              panelH={panelH}
+              color={color}
+              lightMetal={lightMetal}
+              darkMetal={darkMetal}
+              open={open}
+              showDoor={!hideDoor}
+              showHardware={showHardware}
+              onActivate={toggleDoor}
+            />
           </group>
+          {!hideDoor ? (
+            <group position={[cell.x, pivotY, pivotZ]} rotation={[angle, 0, 0]}>
+              <mesh ref={hitboxRef} position={[0, panelH / 2, PANEL_THICKNESS / 2 + DOOR_DRAG_HITBOX_DEPTH / 2]} renderOrder={40} onClick={(event) => { event.stopPropagation(); toggleDoor(); }}>
+                <boxGeometry args={[panelW, panelH, DOOR_DRAG_HITBOX_DEPTH]} />
+                <meshBasicMaterial color="#ffffff" transparent opacity={0} depthWrite={false} />
+              </mesh>
+            </group>
+          ) : null}
         </>
-      ) : null}
-      {showHardware ? (
-        <DropDoorSupportHardware
-          cell={cell}
-          panelW={panelW}
-          panelH={panelH}
-          frontZ={frontZ}
-          pivotY={pivotY}
-          pivotZ={pivotZ}
-          angle={angle}
-          hingeXL={hingeXL}
-          hingeXR={hingeXR}
-          lightMetal={hingeMetal}
-          darkMetal={hingeDark}
-        />
-      ) : null}
+      ) : (
+        <>
+          {!hideDoor ? (
+            <group position={[cell.x, pivotY, pivotZ]} rotation={[angle, 0, 0]}>
+              <DropDoorFrontAsset panelW={panelW} panelH={panelH} color={color} lightMetal={lightMetal} darkMetal={darkMetal} hingeXL={hingeXL} hingeXR={hingeXR} />
+              <mesh ref={hitboxRef} position={[0, panelH / 2, PANEL_THICKNESS / 2 + DOOR_DRAG_HITBOX_DEPTH / 2]} renderOrder={40} onClick={(event) => { event.stopPropagation(); toggleDoor(); }}>
+                <boxGeometry args={[panelW, panelH, DOOR_DRAG_HITBOX_DEPTH]} />
+                <meshBasicMaterial color="#ffffff" transparent opacity={0} depthWrite={false} />
+              </mesh>
+            </group>
+          ) : null}
+          {showHardware ? (
+            <DropDoorSupportHardware
+              cell={cell}
+              panelW={panelW}
+              panelH={panelH}
+              frontZ={frontZ}
+              pivotY={pivotY}
+              pivotZ={pivotZ}
+              angle={angle}
+              hingeXL={hingeXL}
+              hingeXR={hingeXR}
+              lightMetal={hingeMetal}
+              darkMetal={hingeDark}
+            />
+          ) : null}
+        </>
+      )}
     </group>
   );
+}
+
+interface DropDoorFbxReferenceState {
+  role?: string;
+  closedPosition?: number[];
+  openPosition?: number[];
+  closedQuaternion?: number[];
+  openQuaternion?: number[];
+  closedScale?: number[];
+  openScale?: number[];
+}
+
+function DropDoorFbxReferenceAssembly({
+  asset,
+  panelW,
+  panelH,
+  color,
+  lightMetal,
+  darkMetal,
+  open,
+  showDoor,
+  showHardware,
+  onActivate
+}: {
+  asset: THREE.Group;
+  panelW: number;
+  panelH: number;
+  color: string;
+  lightMetal: string;
+  darkMetal: string;
+  open: number;
+  showDoor: boolean;
+  showHardware: boolean;
+  onActivate: () => void;
+}) {
+  const instance = useMemo(() => {
+    const clone = asset.clone(true);
+    clone.scale.set(
+      panelW / DROP_DOOR_FBX_REFERENCE_TEMPLATE_WIDTH,
+      panelH / DROP_DOOR_FBX_REFERENCE_TEMPLATE_HEIGHT,
+      1
+    );
+    clone.traverse((object) => {
+      if (!(object instanceof THREE.Mesh)) return;
+      const { role = "" } = object.userData as DropDoorFbxReferenceState;
+      object.castShadow = true;
+      object.receiveShadow = true;
+      if (role === "panel") {
+        object.material = new THREE.MeshStandardMaterial({ color, roughness: 0.42, metalness: 0.08, side: THREE.DoubleSide });
+      } else if (role === "lock-dark") {
+        object.material = new THREE.MeshStandardMaterial({ color: darkMetal, roughness: 0.28, metalness: 0.55, side: THREE.DoubleSide });
+      } else if (role === "fixed-zinc") {
+        object.material = new THREE.MeshStandardMaterial({ color: darkMetal, roughness: 0.48, metalness: 0.48, side: THREE.DoubleSide });
+      } else {
+        object.material = new THREE.MeshPhysicalMaterial({ color: lightMetal, roughness: 0.2, metalness: 0.82, clearcoat: 0.34, side: THREE.DoubleSide });
+      }
+    });
+    return clone;
+  }, [asset, color, darkMetal, lightMetal, panelH, panelW]);
+
+  useEffect(() => {
+    const amount = THREE.MathUtils.clamp(open, 0, 1);
+    const nextPosition = new THREE.Vector3();
+    const nextQuaternion = new THREE.Quaternion();
+    const nextScale = new THREE.Vector3();
+    instance.traverse((object) => {
+      if (!(object instanceof THREE.Mesh)) return;
+      const state = object.userData as DropDoorFbxReferenceState;
+      const role = state.role ?? "";
+      const isDoorPart = role === "panel" || role.startsWith("lock-");
+      const isHardware = role.startsWith("fixed-") || role === "moving-chrome";
+      object.visible = (isDoorPart && showDoor) || (isHardware && showHardware);
+
+      if (!state.closedPosition || !state.openPosition || !state.closedQuaternion || !state.openQuaternion) return;
+      object.position.fromArray(state.closedPosition).lerp(nextPosition.fromArray(state.openPosition), amount);
+      object.quaternion.fromArray(state.closedQuaternion).slerp(nextQuaternion.fromArray(state.openQuaternion), amount);
+      if (state.closedScale && state.openScale) {
+        object.scale.fromArray(state.closedScale).lerp(nextScale.fromArray(state.openScale), amount);
+      }
+    });
+  }, [instance, open, showDoor, showHardware]);
+
+  useEffect(() => () => disposeClonedAsset(instance), [instance]);
+
+  return <primitive object={instance} onClick={(event: { stopPropagation: () => void }) => { event.stopPropagation(); onActivate(); }} />;
 }
 
 function DropDoorSupportHardware({
@@ -2861,6 +2993,29 @@ function useDropDoorHingeAsset() {
   return failed ? null : asset;
 }
 
+function useDropDoorFbxReferenceAsset() {
+  const [asset, setAsset] = useState<THREE.Group | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    loadDropDoorFbxReferenceAsset()
+      .then((group) => {
+        if (!alive) return;
+        if (group) setAsset(group);
+        else setFailed(true);
+      })
+      .catch(() => {
+        if (alive) setFailed(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  return failed ? null : asset;
+}
+
 function loadGltfScene(url: string) {
   return new Promise<THREE.Group | null>((resolve) => {
     const loader = new GLTFLoader();
@@ -2899,6 +3054,13 @@ function loadDropDoorHingeAsset() {
     dropDoorHingeAssetPromise = loadGltfScene(DROP_DOOR_HINGE_ASSET_URL);
   }
   return dropDoorHingeAssetPromise;
+}
+
+function loadDropDoorFbxReferenceAsset() {
+  if (!dropDoorFbxReferenceAssetPromise) {
+    dropDoorFbxReferenceAssetPromise = loadGltfScene(DROP_DOOR_FBX_REFERENCE_ASSET_URL);
+  }
+  return dropDoorFbxReferenceAssetPromise;
 }
 
 function useDoorInteriorComboAssets() {
@@ -3074,6 +3236,79 @@ function useFlipUpDoorAssetParts() {
   return failed ? null : asset;
 }
 
+function FlipUpDoorFbxReferenceAssembly({
+  asset,
+  panelW,
+  panelH,
+  color,
+  lightMetal,
+  darkMetal,
+  open,
+  showDoor,
+  showHardware,
+  onActivate
+}: {
+  asset: THREE.Group;
+  panelW: number;
+  panelH: number;
+  color: string;
+  lightMetal: string;
+  darkMetal: string;
+  open: number;
+  showDoor: boolean;
+  showHardware: boolean;
+  onActivate: () => void;
+}) {
+  const instance = useMemo(() => {
+    const clone = asset.clone(true);
+    clone.scale.set(
+      panelW / FLIP_UP_DOOR_FBX_REFERENCE_TEMPLATE_WIDTH,
+      panelH / FLIP_UP_DOOR_FBX_REFERENCE_TEMPLATE_HEIGHT,
+      1
+    );
+    clone.traverse((object) => {
+      if (!(object instanceof THREE.Mesh)) return;
+      const { role = "" } = object.userData as DropDoorFbxReferenceState;
+      object.castShadow = true;
+      object.receiveShadow = true;
+      if (role === "panel") {
+        object.material = new THREE.MeshStandardMaterial({ color, roughness: 0.42, metalness: 0.08, side: THREE.DoubleSide });
+      } else if (role === "lock-dark") {
+        object.material = new THREE.MeshStandardMaterial({ color: darkMetal, roughness: 0.28, metalness: 0.55, side: THREE.DoubleSide });
+      } else {
+        object.material = new THREE.MeshPhysicalMaterial({ color: lightMetal, roughness: 0.2, metalness: 0.82, clearcoat: 0.34, side: THREE.DoubleSide });
+      }
+    });
+    return clone;
+  }, [asset, color, darkMetal, lightMetal, panelH, panelW]);
+
+  useEffect(() => {
+    const amount = THREE.MathUtils.clamp(open, 0, 1);
+    const nextPosition = new THREE.Vector3();
+    const nextQuaternion = new THREE.Quaternion();
+    const nextScale = new THREE.Vector3();
+    instance.traverse((object) => {
+      if (!(object instanceof THREE.Mesh)) return;
+      const state = object.userData as DropDoorFbxReferenceState;
+      const role = state.role ?? "";
+      const isDoorPart = role === "panel" || role.startsWith("lock-");
+      const isHardware = role.startsWith("fixed-") || role === "moving-chrome";
+      object.visible = (isDoorPart && showDoor) || (isHardware && showHardware);
+
+      if (!state.closedPosition || !state.openPosition || !state.closedQuaternion || !state.openQuaternion) return;
+      object.position.fromArray(state.closedPosition).lerp(nextPosition.fromArray(state.openPosition), amount);
+      object.quaternion.fromArray(state.closedQuaternion).slerp(nextQuaternion.fromArray(state.openQuaternion), amount);
+      if (state.closedScale && state.openScale) {
+        object.scale.fromArray(state.closedScale).lerp(nextScale.fromArray(state.openScale), amount);
+      }
+    });
+  }, [instance, open, showDoor, showHardware]);
+
+  useEffect(() => () => disposeClonedAsset(instance), [instance]);
+
+  return <primitive object={instance} onClick={(event: { stopPropagation: () => void }) => { event.stopPropagation(); onActivate(); }} />;
+}
+
 function loadFlipUpDoorAssetParts() {
   if (!flipUpDoorAssetPartsPromise) {
     flipUpDoorAssetPartsPromise = loadGltfScene(FLIP_UP_DOOR_PANEL_ASSET_URL).then((panel) => {
@@ -3082,6 +3317,36 @@ function loadFlipUpDoorAssetParts() {
     });
   }
   return flipUpDoorAssetPartsPromise;
+}
+
+function useFlipUpDoorFbxReferenceAsset() {
+  const [asset, setAsset] = useState<THREE.Group | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    loadFlipUpDoorFbxReferenceAsset()
+      .then((group) => {
+        if (!alive) return;
+        if (group) setAsset(group);
+        else setFailed(true);
+      })
+      .catch(() => {
+        if (alive) setFailed(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  return failed ? null : asset;
+}
+
+function loadFlipUpDoorFbxReferenceAsset() {
+  if (!flipUpDoorFbxReferenceAssetPromise) {
+    flipUpDoorFbxReferenceAssetPromise = loadGltfScene(FLIP_UP_DOOR_FBX_REFERENCE_ASSET_URL);
+  }
+  return flipUpDoorFbxReferenceAssetPromise;
 }
 
 function RodBetween({ start, end, radius, color }: { start: [number, number, number]; end: [number, number, number]; radius: number; color: string }) {
@@ -3129,7 +3394,7 @@ function FlipUpDoor({
   onDoorOpen: (selection: Selection, value: number, remember?: boolean) => void;
   onDoorDragActive: (active: boolean) => void;
 }) {
-  const maxAngle = Math.PI * 0.48;
+  const maxAngle = Math.PI / 2;
   const open = useSmoothedMotion(Math.max(0, Math.min(1, doorOpen)));
   const angle = -open * maxAngle;
   const hitboxRef = useRef<THREE.Mesh>(null);
@@ -3145,7 +3410,12 @@ function FlipUpDoor({
   const lightMetal = "#8a9098";
   const openAmount = Math.abs(angle);
   const showHardware = hideDoor || open > 0.03;
+  const referenceAsset = useFlipUpDoorFbxReferenceAsset();
   const selection = useMemo(() => ({ row: cell.row, column: cell.column, depthIndex: cell.depthIndex }), [cell.column, cell.depthIndex, cell.row]);
+  const toggleDoor = useCallback(() => {
+    onSelect();
+    onDoorOpen(selection, open < 0.5 ? 1 : 0, true);
+  }, [onDoorOpen, onSelect, open, selection]);
 
   useDoorDrag({
     hitboxRef,
@@ -3162,67 +3432,96 @@ function FlipUpDoor({
 
   return (
     <group>
-      {showHardware ? (
+      {referenceAsset ? (
         <>
-          <PanelBox position={[cell.x, pivotY - 0.028, frontZ - 0.018]} args={[panelW - 0.08, 0.026, 0.024]}>
-            <meshStandardMaterial color={lightMetal} roughness={0.24} metalness={0.78} />
-          </PanelBox>
-          {([-1, 1] as const).map((side) => (
-            <FlipUpFixedHinge
-              key={`flip-fixed-hinge-${side}`}
-              x={cell.x + side * sideMountX}
-              y={fixedHingeY}
-              z={fixedHingeZ}
-              side={side}
-              darkMetal={darkMetal}
+          <group position={[cell.x, pivotY, pivotZ]}>
+            <FlipUpDoorFbxReferenceAssembly
+              asset={referenceAsset}
+              panelW={panelW}
+              panelH={panelH}
+              color={color}
               lightMetal={lightMetal}
+              darkMetal={darkMetal}
+              open={open}
+              showDoor={!hideDoor}
+              showHardware={showHardware}
+              onActivate={toggleDoor}
             />
-          ))}
-        </>
-      ) : null}
-
-      {!hideDoor ? (
-        <>
-          <group position={[cell.x, pivotY, pivotZ]} rotation={[angle, 0, 0]}>
-            <FlipUpDoorFrontAsset panelW={panelW} panelH={panelH} color={color} lightMetal={lightMetal} darkMetal={darkMetal} hingeX={hingeX} />
-            <mesh ref={hitboxRef} position={[0, -panelH / 2, PANEL_THICKNESS / 2 + DOOR_DRAG_HITBOX_DEPTH / 2]} renderOrder={40}>
-              <boxGeometry args={[panelW, panelH, DOOR_DRAG_HITBOX_DEPTH]} />
-              <meshBasicMaterial color="#ffffff" transparent opacity={0} depthWrite={false} />
-            </mesh>
           </group>
-
+          {!hideDoor ? (
+            <group position={[cell.x, pivotY, pivotZ]} rotation={[angle, 0, 0]}>
+              <mesh ref={hitboxRef} position={[0, -panelH / 2, PANEL_THICKNESS / 2 + DOOR_DRAG_HITBOX_DEPTH / 2]} renderOrder={40} onClick={(event) => { event.stopPropagation(); toggleDoor(); }}>
+                <boxGeometry args={[panelW, panelH, DOOR_DRAG_HITBOX_DEPTH]} />
+                <meshBasicMaterial color="#ffffff" transparent opacity={0} depthWrite={false} />
+              </mesh>
+            </group>
+          ) : null}
+        </>
+      ) : (
+        <>
           {showHardware ? (
             <>
-              {([-1, 1] as const).map((side) => {
-                const cabinetPt: [number, number, number] = [
-                  cell.x + side * sideMountX,
-                  fixedHingeY - 0.1,
-                  fixedHingeZ + 0.18
-                ];
-                const doorPt: [number, number, number] = [
-                  cell.x + side * hingeX,
-                  pivotY - panelH * 0.56 * Math.cos(openAmount),
-                  pivotZ + panelH * 0.56 * Math.sin(openAmount)
-                ];
+              <PanelBox position={[cell.x, pivotY - 0.028, frontZ - 0.018]} args={[panelW - 0.08, 0.026, 0.024]}>
+                <meshStandardMaterial color={lightMetal} roughness={0.24} metalness={0.78} />
+              </PanelBox>
+              {([-1, 1] as const).map((side) => (
+                <FlipUpFixedHinge
+                  key={`flip-fixed-hinge-${side}`}
+                  x={cell.x + side * sideMountX}
+                  y={fixedHingeY}
+                  z={fixedHingeZ}
+                  side={side}
+                  darkMetal={darkMetal}
+                  lightMetal={lightMetal}
+                />
+              ))}
+            </>
+          ) : null}
 
-                return (
-                  <group key={`flip-stay-${side}`}>
-                    <RodBetween start={cabinetPt} end={doorPt} radius={0.009} color={lightMetal} />
-                    <mesh position={cabinetPt} castShadow>
-                      <sphereGeometry args={[0.021, 16, 10]} />
-                      <meshStandardMaterial color={darkMetal} metalness={0.8} roughness={0.22} />
-                    </mesh>
-                    <mesh position={doorPt} castShadow>
-                      <sphereGeometry args={[0.018, 16, 10]} />
-                      <meshStandardMaterial color={darkMetal} metalness={0.8} roughness={0.22} />
-                    </mesh>
-                  </group>
-                );
-              })}
+          {!hideDoor ? (
+            <>
+              <group position={[cell.x, pivotY, pivotZ]} rotation={[angle, 0, 0]}>
+                <FlipUpDoorFrontAsset panelW={panelW} panelH={panelH} color={color} lightMetal={lightMetal} darkMetal={darkMetal} hingeX={hingeX} />
+                <mesh ref={hitboxRef} position={[0, -panelH / 2, PANEL_THICKNESS / 2 + DOOR_DRAG_HITBOX_DEPTH / 2]} renderOrder={40} onClick={(event) => { event.stopPropagation(); toggleDoor(); }}>
+                  <boxGeometry args={[panelW, panelH, DOOR_DRAG_HITBOX_DEPTH]} />
+                  <meshBasicMaterial color="#ffffff" transparent opacity={0} depthWrite={false} />
+                </mesh>
+              </group>
+
+              {showHardware ? (
+                <>
+                  {([-1, 1] as const).map((side) => {
+                    const cabinetPt: [number, number, number] = [
+                      cell.x + side * sideMountX,
+                      fixedHingeY - 0.1,
+                      fixedHingeZ + 0.18
+                    ];
+                    const doorPt: [number, number, number] = [
+                      cell.x + side * hingeX,
+                      pivotY - panelH * 0.56 * Math.cos(openAmount),
+                      pivotZ + panelH * 0.56 * Math.sin(openAmount)
+                    ];
+
+                    return (
+                      <group key={`flip-stay-${side}`}>
+                        <RodBetween start={cabinetPt} end={doorPt} radius={0.009} color={lightMetal} />
+                        <mesh position={cabinetPt} castShadow>
+                          <sphereGeometry args={[0.021, 16, 10]} />
+                          <meshStandardMaterial color={darkMetal} metalness={0.8} roughness={0.22} />
+                        </mesh>
+                        <mesh position={doorPt} castShadow>
+                          <sphereGeometry args={[0.018, 16, 10]} />
+                          <meshStandardMaterial color={darkMetal} metalness={0.8} roughness={0.22} />
+                        </mesh>
+                      </group>
+                    );
+                  })}
+                </>
+              ) : null}
             </>
           ) : null}
         </>
-      ) : null}
+      )}
     </group>
   );
 }
@@ -4065,7 +4364,7 @@ function RimmedDrawer({
   const rimHeight = rimless
     ? Math.max(0.06, Math.min(0.14, cell.height * 0.12))
     : Math.min(Math.max(0.08, RIMMED_DRAWER_RIM_HEIGHT_MM * SCALE), Math.max(0.08, cell.height - 0.14));
-  const maxExtension = rimless ? Math.min(2.8, innerDepth * 0.78) : Math.min(0.58, innerDepth * 0.42);
+  const maxExtension = rimless ? Math.min(2.8, innerDepth * 0.78) : Math.max(0.32, innerDepth * 0.76);
   const visualPull = useSmoothedMotion(Math.max(0, Math.min(1, drawerPull)));
   const extension = maxExtension * visualPull;
   const trayDepth = Math.max(0.12, innerDepth * (rimless ? 0.9 : 0.86));
