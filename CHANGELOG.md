@@ -1,5 +1,27 @@
 # 更新日志
 
+## v4.22.0-cportal.1 - 2026-08-24
+
+### 新增
+
+- C 端首页公开展示真实 3D 基础一格，未注册用户可直接查看基础预览。
+- 新增注册悬浮窗：新增结构、模块、配件、颜色或点击其他受限模块时，引导用户注册或登录。
+- 注册/登录后解锁模块化配置操作，并隐藏 C 端不应展示的 ERP 价格、BOM 与内部配件清单。
+- ERP 新增“C端使用端口”配置，可启用/停用门户、设置门户 slug、配置注册后开放模块和企业客服验证码。
+- 新增客户模型事件记录与 ERP 时间线查看，覆盖 `opened`、`first_generated`、`config_changed`、`saved`、`exported`、`consultation_submitted`。
+- Vite 开发环境新增 `/api` 到 ERP API 的代理配置。
+
+### 验证
+
+- 通过 `pnpm typecheck`。
+- 通过 `pnpm build:designer`、`pnpm build:api` 与 `pnpm build:erp`。
+- 通过 `pnpm test`，API 测试 88/88 全部通过。
+- 通过 `git diff --check`。
+
+### 已知限制
+
+- 当前门户配置、客户账号和模型事件使用进程内存存储，API 重启后会清空；后续接入持久化存储时需保留现有事件字段和接口语义。
+
 ## 4.22.0 - 2026-08-21
 
 ### 新增
