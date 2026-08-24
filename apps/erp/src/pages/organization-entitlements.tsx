@@ -1,8 +1,9 @@
-import { Button, Form, Input, Modal as AntModal, Select, Space, Switch, Tag } from "antd";
+import { Button, Checkbox, Form, Input, Modal as AntModal, Select, Space, Switch, Tag } from "antd";
 import { RefreshCw, Save, ShieldCheck, UserRoundPlus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LoadingBlock, Notice, PageHeader } from "../components/ui";
 import { useAuth } from "../context/auth";
+import { useWorkspace } from "../context/workspace";
 import { api, ApiError } from "../lib/api";
 import { AUTHORIZATION_MODULES, PERMISSION_LABELS } from "../lib/authorization-catalog";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "../types";
@@ -10,6 +11,7 @@ import type { OrganizationEntitlement } from "../types";
 
 export function OrganizationEntitlementsPage() {
   const { session } = useAuth();
+  const workspace = useWorkspace();
   const [items, setItems] = useState<OrganizationEntitlement[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -19,6 +21,13 @@ export function OrganizationEntitlementsPage() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [adminSaving, setAdminSaving] = useState(false);
   const [adminForm] = Form.useForm<{ name: string; phone: string; email?: string; password: string }>();
+  const [portal, setPortal] = useState<{ tenantId: string; enabled: boolean; slug: string; defaultTemplateId: string | null; visibleModules: string[]; signupCodeHash: string | null; updatedAt: string } | null>(null);
+  const [portalSaving, setPortalSaving] = useState(false);
+  const [portalCode, setPortalCode] = useState("");
+  const [timeline, setTimeline] = useState<Array<Record<string, unknown>>>([]);
+  const drawingModules = [
+    ["single-cell", "基础一格"], ["shelf", "层板"], ["drawer", "抽屉"], ["door", "门板"], ["glass", "玻璃模块"]
+  ] as const;
 
   const refresh = useCallback(async () => {
     if (!session) return;
@@ -30,6 +39,14 @@ export function OrganizationEntitlementsPage() {
   }, [session]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+  const refreshPortal = useCallback(async () => {
+    if (!session) return;
+    try {
+      const [config, activity] = await Promise.all([api.getOrganizationPortal(session.activeTenantId), api.getOrganizationPortalTimeline(session.activeTenantId)]);
+      setPortal(config); setTimeline(activity.items);
+    } catch (reason) { setError(reason instanceof ApiError ? reason.message : "C端门户读取失败，请稍后重试。"); }
+  }, [session]);
+  useEffect(() => { void refreshPortal(); }, [refreshPortal]);
 
   const byModule = useMemo(() => new Map(items.map((item) => [item.module, item])), [items]);
   const update = (module: string, patch: Partial<OrganizationEntitlement>) => {
@@ -48,6 +65,16 @@ export function OrganizationEntitlementsPage() {
     try { setItems(await api.updateOrganizationEntitlements(items, session.activeTenantId)); setSaved(true); }
     catch (reason) { setError(reason instanceof ApiError ? reason.message : "企业模块授权保存失败，请稍后重试。"); }
     finally { setSaving(false); }
+  }
+
+  async function savePortal() {
+    if (!session || !portal) return;
+    setPortalSaving(true); setError(null);
+    try {
+      const savedPortal = await api.updateOrganizationPortal({ enabled: portal.enabled, slug: portal.slug, defaultTemplateId: portal.defaultTemplateId, visibleModules: portal.visibleModules, supportCode: portalCode.trim() || undefined }, session.activeTenantId);
+      setPortal(savedPortal); setPortalCode(""); setSaved(true); await refreshPortal();
+    } catch (reason) { setError(reason instanceof ApiError ? reason.message : "C端门户保存失败，请稍后重试。"); }
+    finally { setPortalSaving(false); }
   }
 
   const accountsEnabled = byModule.get("accounts")?.enabled === true;
@@ -86,6 +113,19 @@ export function OrganizationEntitlementsPage() {
           </div>;
         })}
       </div>
+    </section>}
+    {portal && <section className="erp-table-card" style={{ marginTop: 18 }}>
+      <div className="erp-table-toolbar"><span><ShieldCheck size={16} />C端使用端口</span><Tag color={portal.enabled ? "green" : "default"}>{portal.enabled ? "已启用" : "未启用"}</Tag></div>
+      <div style={{ display: "grid", gap: 14, maxWidth: 760 }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 10 }}><Switch checked={portal.enabled} onChange={(enabled) => setPortal({ ...portal, enabled })} />启用企业C端门户</label>
+        <div><div style={{ fontWeight: 600, marginBottom: 6 }}>门户地址标识</div><Input value={portal.slug} onChange={(event) => setPortal({ ...portal, slug: event.target.value })} addonBefore="/portal/" /></div>
+        <div><div style={{ fontWeight: 600, marginBottom: 6 }}>默认基础一格模板</div><Select style={{ minWidth: 320 }} value={portal.defaultTemplateId ?? undefined} allowClear placeholder="选择已发布模板" options={workspace.templates.map((template) => ({ value: template.id, label: `${template.name} · ${template.code}` }))} onChange={(value) => setPortal({ ...portal, defaultTemplateId: value ?? null })} /></div>
+        <div><div style={{ fontWeight: 600, marginBottom: 6 }}>注册后可用的作图模块</div><Space direction="vertical">{drawingModules.map(([value, label]) => <Checkbox key={value} checked={portal.visibleModules.includes(value)} onChange={(event) => setPortal({ ...portal, visibleModules: event.target.checked ? [...new Set([...portal.visibleModules, value])] : portal.visibleModules.filter((item) => item !== value) })}>{label}</Checkbox>)}</Space></div>
+        <div><div style={{ fontWeight: 600, marginBottom: 6 }}>企业共享客服验证码</div><Input.Password value={portalCode} onChange={(event) => setPortalCode(event.target.value)} placeholder={portal.signupCodeHash ? "已设置，留空保持不变" : "注册客户必须填写"} maxLength={64} /></div>
+        <div style={{ color: "var(--muted)", fontSize: 12 }}>客户入口：{window.location.origin}/portal/{portal.slug}</div>
+        <Space><Button type="primary" loading={portalSaving} onClick={() => void savePortal()}>保存C端配置</Button><Button onClick={() => void refreshPortal()}>刷新</Button></Space>
+      </div>
+      <div style={{ marginTop: 24, borderTop: "1px solid var(--line)", paddingTop: 16 }}><strong>模型生成时间线</strong>{timeline.length === 0 ? <div style={{ color: "var(--muted)", marginTop: 10 }}>暂无C端客户行为记录</div> : <div style={{ display: "grid", gap: 8, marginTop: 10 }}>{timeline.slice(0, 100).map((event, index) => <div key={String(event.id ?? index)} style={{ display: "grid", gridTemplateColumns: "180px 160px 1fr", gap: 12, fontSize: 12, padding: "8px 0", borderBottom: "1px solid var(--line)" }}><span>{String(event.createdAt ?? "-")}</span><Tag>{String(event.milestone ?? "-")}</Tag><span>客户 {String(event.customerId ?? "-")} · 模型 {String(event.designId ?? "-")}</span></div>)}</div>}</div>
     </section>}
     <AntModal title="新增企业管理员" open={adminOpen} onCancel={() => setAdminOpen(false)} footer={null} destroyOnHidden>
       <Form form={adminForm} layout="vertical" onFinish={(values) => void createOrganizationAdmin(values)} requiredMark={false}>

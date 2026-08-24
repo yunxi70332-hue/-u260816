@@ -2417,3 +2417,65 @@ button {
   font-size: 16px;
   line-height: 1.2;
 }
+
+.public-preview-banner {
+  position: fixed;
+  z-index: 30;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: calc(100vw - 32px);
+  padding: 10px 12px 10px 16px;
+  color: #26332d;
+  background: rgba(255, 255, 255, .96);
+  border: 1px solid #c9d1cc;
+  box-shadow: 0 10px 30px rgba(34, 45, 39, .14);
+  font-size: 13px;
+}
+
+.public-preview-banner button {
+  flex: 0 0 auto;
+  border: 0;
+  padding: 8px 14px;
+  color: #fff;
+  background: #26332d;
+  cursor: pointer;
+}
+
+.portal-gate-backdrop {
+  position: fixed;
+  z-index: 60;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(22, 29, 25, .48);
+}
+
+.portal-gate-modal {
+  position: relative;
+  width: min(440px, 100%);
+  display: grid;
+  gap: 12px;
+  padding: 30px;
+  color: #26332d;
+  background: #fff;
+  border: 1px solid #d4dbd6;
+  box-shadow: 0 22px 70px rgba(20, 28, 23, .24);
+}
+
+.portal-gate-modal h2 { margin: 0; font-size: 26px; }
+.portal-gate-eyebrow { margin: 0; color: #69756e; font-size: 12px; letter-spacing: .08em; }
+.portal-gate-copy { margin: 0 0 6px; color: #68736d; font-size: 13px; line-height: 1.65; }
+.portal-gate-modal input { width: 100%; box-sizing: border-box; min-height: 42px; padding: 0 12px; border: 1px solid #cbd3ce; background: #fbfcfb; }
+.portal-gate-close { position: absolute; top: 10px; right: 12px; border: 0; color: #69756e; background: transparent; font-size: 24px; line-height: 1; cursor: pointer; }
+.portal-gate-submit { min-height: 44px; border: 0; color: #fff; background: #26332d; cursor: pointer; }
+.portal-gate-switch { border: 0; color: #526159; background: transparent; cursor: pointer; }
+.portal-gate-error { color: #b42318; font-size: 13px; }
+
+@media (max-width: 640px) {
+  .public-preview-banner { bottom: 10px; align-items: stretch; flex-direction: column; gap: 8px; width: calc(100vw - 32px); }
+}

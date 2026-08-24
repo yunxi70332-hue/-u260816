@@ -80,6 +80,20 @@ import {
   DEFAULT_DELIVERY_LEAD_TIME_DAYS
 } from "./services/delivery-schedule.js";
 import { listInventoryShortages } from "./services/inventory-shortages.js";
+import {
+  createPortalCustomer,
+  createPortalSession,
+  findPortalBySlug,
+  findPortalCustomer,
+  getPortalConfig,
+  getPortalSession,
+  hashPortalSecret,
+  listPortalDrafts,
+  listPortalEvents,
+  recordPortalEvent,
+  savePortalDraft,
+  updatePortalConfig
+} from "./portal-store.js";
 
 interface RouteDependencies {
   repository: Repository;
@@ -1157,7 +1171,7 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
 
   app.addHook("preHandler", async (request) => {
     const path = request.url.split("?")[0];
-    if (!path.startsWith("/api") || path === "/api/health" || path.startsWith("/api/auth/")) return;
+    if (!path.startsWith("/api") || path === "/api/health" || path.startsWith("/api/auth/") || path.startsWith("/api/portal/")) return;
     const identity = await auth.getIdentity(request.headers);
     if (!identity) {
       if (path === "/api/session" || path === "/api/pricing/calculate") return;
@@ -1250,6 +1264,76 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
     };
   });
 
+  // Public customer portal. It intentionally returns only configurator data and
+  // keeps customer identity separate from Better Auth organization accounts.
+  app.get<{ Params: { slug: string } }>("/api/portal/:slug", async (request) => {
+    const config = findPortalBySlug(request.params.slug);
+    if (!config || !config.enabled) throw new AppError(404, "NOT_FOUND", "Customer portal is not available");
+    const template = config.defaultTemplateId ? await repository.getTemplate(config.tenantId, config.defaultTemplateId) : null;
+    const session = getPortalSession(request.cookies?.portal_session);
+    const designId = session?.customer.id ?? `visitor-${request.id}`;
+    if (session) recordPortalEvent({ tenantId: config.tenantId, customerId: session.customer.id, designId, milestone: "opened", configSnapshot: null });
+    return {
+      portal: { slug: config.slug, enabled: config.enabled, defaultTemplateId: config.defaultTemplateId, visibleModules: config.visibleModules },
+      authenticated: Boolean(session),
+      customer: session ? { id: session.customer.id, email: session.customer.email } : null,
+      template: template ? { id: template.id, name: template.name, configSnapshot: template.latestVersion?.configSnapshot ?? null } : null
+    };
+  });
+
+  app.post<{ Params: { slug: string }; Body: { email: string; password: string; supportCode: string } }>("/api/portal/:slug/signup", async (request, reply) => {
+    const config = findPortalBySlug(request.params.slug);
+    if (!config || !config.enabled) throw new AppError(404, "NOT_FOUND", "Customer portal is not available");
+    const body = request.body ?? {};
+    if (!body.email || !body.password || body.password.length < 6 || body.password.length > 72) throw new AppError(422, "VALIDATION_ERROR", "Email and password are required");
+    if (!config.signupCodeHash || hashPortalSecret(String(body.supportCode ?? "")) !== config.signupCodeHash) throw new AppError(403, "FORBIDDEN", "Invalid enterprise support code");
+    let customer;
+    try { customer = createPortalCustomer(config.tenantId, body.email, body.password); }
+    catch (error) { if (error instanceof Error && error.message === "PORTAL_EMAIL_EXISTS") throw new AppError(409, "BAD_REQUEST", "Email is already registered"); throw error; }
+    const token = createPortalSession(customer);
+    reply.setCookie("portal_session", token, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30, secure: false });
+    recordPortalEvent({ tenantId: config.tenantId, customerId: customer.id, designId: `portal-${customer.id}`, milestone: "opened", configSnapshot: null });
+    return { authenticated: true, customer: { id: customer.id, email: customer.email } };
+  });
+
+  app.post<{ Params: { slug: string }; Body: { email: string; password: string } }>("/api/portal/:slug/login", async (request, reply) => {
+    const config = findPortalBySlug(request.params.slug);
+    if (!config || !config.enabled) throw new AppError(404, "NOT_FOUND", "Customer portal is not available");
+    const body = request.body ?? {};
+    const customer = findPortalCustomer(config.tenantId, String(body.email ?? ""));
+    if (!customer || hashPortalSecret(String(body.password ?? "")) !== customer.passwordHash) throw new AppError(401, "UNAUTHORIZED", "Invalid email or password");
+    reply.setCookie("portal_session", createPortalSession(customer), { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30, secure: false });
+    return { authenticated: true, customer: { id: customer.id, email: customer.email } };
+  });
+
+  app.post<{ Params: { slug: string }; Body: { designId: string; milestone: string; configSnapshot?: Record<string, unknown>; moduleId?: string } }>("/api/portal/:slug/events", async (request) => {
+    const config = findPortalBySlug(request.params.slug);
+    const session = getPortalSession(request.cookies?.portal_session);
+    if (!config || !config.enabled) throw new AppError(404, "NOT_FOUND", "Customer portal is not available");
+    if (!session || session.tenantId !== config.tenantId) throw new AppError(401, "UNAUTHORIZED", "Registration or login is required");
+    const allowed = new Set(["opened", "first_generated", "config_changed", "saved", "exported", "consultation_submitted"]);
+    if (!allowed.has(request.body?.milestone)) throw new AppError(422, "VALIDATION_ERROR", "Unknown portal milestone");
+    return { item: recordPortalEvent({ tenantId: config.tenantId, customerId: session.customer.id, designId: request.body.designId, milestone: request.body.milestone as never, configSnapshot: request.body.configSnapshot ?? null, moduleId: request.body.moduleId }) };
+  });
+
+  app.post<{ Params: { slug: string }; Body: { id?: string; name?: string; configSnapshot: Record<string, unknown> } }>("/api/portal/:slug/drafts", async (request) => {
+    const config = findPortalBySlug(request.params.slug);
+    const session = getPortalSession(request.cookies?.portal_session);
+    if (!config || !config.enabled) throw new AppError(404, "NOT_FOUND", "Customer portal is not available");
+    if (!session || session.tenantId !== config.tenantId) throw new AppError(401, "UNAUTHORIZED", "Registration or login is required");
+    const draft = savePortalDraft({ id: request.body?.id, tenantId: config.tenantId, customerId: session.customer.id, name: request.body?.name || "C端模型", configSnapshot: request.body.configSnapshot });
+    recordPortalEvent({ tenantId: config.tenantId, customerId: session.customer.id, designId: draft.id, milestone: "saved", configSnapshot: draft.configSnapshot });
+    return { item: draft };
+  });
+
+  app.get<{ Params: { slug: string } }>("/api/portal/:slug/drafts", async (request) => {
+    const config = findPortalBySlug(request.params.slug);
+    const session = getPortalSession(request.cookies?.portal_session);
+    if (!config || !config.enabled) throw new AppError(404, "NOT_FOUND", "Customer portal is not available");
+    if (!session || session.tenantId !== config.tenantId) throw new AppError(401, "UNAUTHORIZED", "Registration or login is required");
+    return { items: listPortalDrafts(config.tenantId, session.customer.id) };
+  });
+
   app.post("/api/me/change-password", async (request, reply) => {
     const context = authContext(request);
     const input = parse(ChangeOwnPasswordSchema, request.body);
@@ -1302,6 +1386,41 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
     const { tenant, user } = authContext(request);
     const input = parse(UpdateOrganizationEntitlementsSchema, request.body);
     return { items: await repository.updateOrganizationEntitlements(tenant.id, input, user.id) };
+  });
+
+  app.get("/api/organization/portal", async (request) => {
+    const { tenant } = authContext(request);
+    requirePermission(request, "platform.entitlements.manage");
+    return { item: getPortalConfig(tenant.id) };
+  });
+
+  app.put("/api/organization/portal", async (request) => {
+    const { tenant, user } = authContext(request);
+    requirePermission(request, "platform.entitlements.manage");
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const visibleModules = Array.isArray(body.visibleModules) ? body.visibleModules.map(String).filter(Boolean).slice(0, 100) : undefined;
+    const patch: Parameters<typeof updatePortalConfig>[1] = {
+      enabled: body.enabled === undefined ? undefined : Boolean(body.enabled),
+      slug: body.slug === undefined ? undefined : String(body.slug),
+      defaultTemplateId: body.defaultTemplateId === null || body.defaultTemplateId === undefined ? undefined : String(body.defaultTemplateId),
+      visibleModules,
+      signupCodeHash: body.supportCode ? hashPortalSecret(String(body.supportCode)) : undefined
+    };
+    let item;
+    try {
+      item = updatePortalConfig(tenant.id, patch);
+    } catch (error) {
+      if (error instanceof Error && error.message === "PORTAL_SLUG_EXISTS") throw new AppError(409, "BAD_REQUEST", "门户地址标识已被占用");
+      throw error;
+    }
+    await repository.recordAudit({ tenantId: tenant.id, actorUserId: user.id, action: "organization.portal.updated", entityType: "organization_portal", entityId: tenant.id, requestId: request.id, after: item as unknown as Record<string, unknown> });
+    return { item };
+  });
+
+  app.get("/api/organization/portal/timeline", async (request) => {
+    const { tenant } = authContext(request);
+    requireAnyPermission(request, ["platform.entitlements.manage", "audit.view"]);
+    return { items: listPortalEvents(tenant.id), drafts: listPortalDrafts(tenant.id) };
   });
   app.post("/api/organization/admins", async (request, reply) => {
     requirePermission(request, "platform.entitlements.manage");

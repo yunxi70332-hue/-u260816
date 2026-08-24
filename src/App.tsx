@@ -192,11 +192,15 @@ type ReadonlyOrderState =
   | { status: "error"; orderId: string; message: string };
 
 export default function App() {
+  const portalMode = window.location.pathname.startsWith("/portal/");
+  const portalSlug = portalMode ? window.location.pathname.split("/")[2] || "" : "";
+  const publicLanding = !portalMode && window.location.pathname === "/";
+  const publicPortalSlug = new URLSearchParams(window.location.search).get("portal") || "portal-tenant-demo";
   const readonlyOrderId = getReadonlyOrderId();
   const resumeDraftId = getResumeDraftId();
   const isReadonlyOrder = Boolean(readonlyOrderId);
-  const [config, setConfig] = useState<CabinetConfig>(() => loadConfig());
-  const [selection, setSelection] = useState<Selection>(() => findNearestEnabled(loadConfig()));
+  const [config, setConfig] = useState<CabinetConfig>(() => publicLanding ? DEFAULT_CONFIG : loadConfig());
+  const [selection, setSelection] = useState<Selection>(() => findNearestEnabled(publicLanding ? DEFAULT_CONFIG : loadConfig()));
   const [selectedAccessory, setSelectedAccessory] = useState<SelectedAccessory>(null);
   const [selectedColorPanel, setSelectedColorPanel] = useState<{ cell: Selection; panel: StructurePanelKey } | null>(null);
   const [history, setHistory] = useState<FrameHistoryEntry[]>([]);
@@ -206,6 +210,16 @@ export default function App() {
   const panelPickEnabled = !isReadonlyOrder && tab === "colors" && config.colorScope === "panel";
   const sceneShowDimensions = (tab === "structure" || tab === "frame") && config.showDimensions;
   const [toast, setToast] = useState("");
+  const [portalGateOpen, setPortalGateOpen] = useState(false);
+  const [portalGateMode, setPortalGateMode] = useState<"signup" | "login">("signup");
+  const [portalGateEmail, setPortalGateEmail] = useState("");
+  const [portalGatePassword, setPortalGatePassword] = useState("");
+  const [portalGateCode, setPortalGateCode] = useState("");
+  const [publicPortalAuthenticated, setPublicPortalAuthenticated] = useState(false);
+  const [publicPortalEnabled, setPublicPortalEnabled] = useState(false);
+  const [publicPortalLoading, setPublicPortalLoading] = useState(publicLanding);
+  const [portalGateError, setPortalGateError] = useState<string | null>(null);
+  const publicPreviewMode = publicLanding && (publicPortalLoading || publicPortalEnabled);
   const [pricingState, setPricingState] = useState<PricingState>({ status: "loading" });
   const [salesMultiplierBasisPoints, setSalesMultiplierBasisPoints] = useState(15000);
   const [salesMultiplierSource, setSalesMultiplierSource] = useState<"user_default" | "system_default">("system_default");
@@ -220,6 +234,7 @@ export default function App() {
     ? { status: "loading", orderId: readonlyOrderId }
     : { status: "idle" });
   const businessExtensionsEnabled = Object.values(ERP_FEATURES).some(Boolean);
+  const [portalModules, setPortalModules] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sceneApiRef = useRef<SceneApi | null>(null);
   const fitSceneView = useCallback(() => {
@@ -234,6 +249,31 @@ export default function App() {
   const selectedFramePart = selectedFramePartId ? getFramePart(config, selectedFramePartId) : undefined;
   const selectedFrameImpact = selectedFramePartId ? evaluateFramePartRemoval(config, selectedFramePartId) : null;
   const selectedFramePanelMaterial = selectedFramePart?.kind === "panel" ? selectedFramePart.material : null;
+
+  useEffect(() => {
+    if (!portalMode) return;
+    void fetch(`/api/portal/${encodeURIComponent(portalSlug)}`, { credentials: "include" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => {
+        setPortalModules(Array.isArray(payload?.portal?.visibleModules) ? payload.portal.visibleModules : []);
+      });
+  }, [portalMode, portalSlug]);
+
+  useEffect(() => {
+    if (!publicLanding) return;
+    setPublicPortalLoading(true);
+    void fetch(`/api/portal/${encodeURIComponent(publicPortalSlug)}`, { credentials: "include" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => {
+        setPublicPortalEnabled(Boolean(payload?.portal?.enabled));
+        setPublicPortalAuthenticated(Boolean(payload?.authenticated));
+      })
+      .catch(() => {
+        setPublicPortalEnabled(false);
+        setPublicPortalAuthenticated(false);
+      })
+      .finally(() => setPublicPortalLoading(false));
+  }, [publicLanding, publicPortalSlug]);
 
   useEffect(() => {
     if (selectedFramePartId && !getFramePart(config, selectedFramePartId)) setSelectedFramePartId(null);
@@ -263,7 +303,20 @@ export default function App() {
   useEffect(() => {
     if (isReadonlyOrder) return;
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-  }, [config, isReadonlyOrder]);
+    if (portalMode) {
+      const timer = window.setTimeout(() => {
+        const body = JSON.stringify({ id: `portal-${portalSlug}`, name: "C端模型", configSnapshot: config });
+        void fetch(`/api/portal/${encodeURIComponent(portalSlug)}/drafts`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body });
+        void fetch(`/api/portal/${encodeURIComponent(portalSlug)}/events`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ designId: `portal-${portalSlug}`, milestone: "config_changed", configSnapshot: config }) });
+      }, 500);
+      return () => window.clearTimeout(timer);
+    }
+  }, [config, isReadonlyOrder, portalMode, portalSlug]);
+
+  useEffect(() => {
+    if (!portalMode) return;
+    void fetch(`/api/portal/${encodeURIComponent(portalSlug)}/events`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ designId: `portal-${portalSlug}`, milestone: "first_generated", configSnapshot: config }) });
+  }, [portalMode, portalSlug]);
 
   useEffect(() => {
     if (!readonlyOrderId) return;
@@ -313,6 +366,7 @@ export default function App() {
 
   useEffect(() => {
     if (isReadonlyOrder && readonlyOrder.status !== "ready") return;
+    if (portalMode) return;
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       setPricingState({ status: "loading" });
@@ -340,7 +394,7 @@ export default function App() {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [config, isReadonlyOrder, readonlyOrder.status, salesMultiplierBasisPoints]);
+  }, [config, isReadonlyOrder, portalMode, readonlyOrder.status, salesMultiplierBasisPoints]);
 
   useEffect(() => {
     if (!toast) return;
@@ -358,6 +412,11 @@ export default function App() {
 
   const updateConfig = useCallback((next: CabinetConfig | ((current: CabinetConfig) => CabinetConfig), remember = true) => {
     if (isReadonlyOrder) return;
+    if (publicPreviewMode && !publicPortalAuthenticated) {
+      setPortalGateError(null);
+      setPortalGateOpen(true);
+      return;
+    }
     setConfig((current) => {
       const resolved = normalizeConfig(typeof next === "function" ? next(current) : next);
       if (remember && JSON.stringify(resolved) !== JSON.stringify(current)) {
@@ -365,7 +424,7 @@ export default function App() {
       }
       return resolved;
     });
-  }, [isReadonlyOrder]);
+  }, [isReadonlyOrder, publicPreviewMode, publicPortalAuthenticated]);
 
   const handleDrawerPull = useCallback((target: Selection, value: number, remember = true, interiorAccessoryId?: string) => {
     updateConfig((current) => (
@@ -541,11 +600,13 @@ export default function App() {
   }
 
   function exportJson() {
+    if (portalMode) void fetch(`/api/portal/${encodeURIComponent(portalSlug)}/events`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ designId: `portal-${portalSlug}`, milestone: "exported", configSnapshot: config }) });
     downloadFile("usm-config.json", JSON.stringify(config, null, 2), "application/json");
     setToast("配置已导出");
   }
 
   function exportBom() {
+    if (portalMode) { setToast("C端不提供企业BOM与价格导出"); return; }
     const serverLines = pricingState.status === "priced" ? pricingState.data.lines : [];
     const exportMultiplier = pricingState.status === "priced" && !pricingState.data.dealer
       ? pricingState.data.salesMultiplierBasisPoints ?? 15000
@@ -573,6 +634,7 @@ export default function App() {
   }
 
   function exportAccessoryRequirements() {
+    if (portalMode) { setToast("C端不提供企业内部配件清单"); return; }
     const payload = {
       generatedAt: new Date().toISOString(),
       purpose: "USM 4.0 本地化搭建配件需求清单",
@@ -618,6 +680,7 @@ export default function App() {
   }
 
   function exportImage() {
+    if (portalMode) void fetch(`/api/portal/${encodeURIComponent(portalSlug)}/events`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ designId: `portal-${portalSlug}`, milestone: "exported", configSnapshot: config }) });
     const data = sceneApiRef.current?.capturePng();
     if (!data) return;
     const link = document.createElement("a");
@@ -651,6 +714,29 @@ export default function App() {
     setToast("已重置");
   }
 
+  async function submitPortalGate(event: React.FormEvent) {
+    event.preventDefault();
+    setPortalGateError(null);
+    const mode = portalGateMode;
+    try {
+      const response = await fetch(`/api/portal/${encodeURIComponent(publicPortalSlug)}/${mode}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(mode === "signup"
+          ? { email: portalGateEmail, password: portalGatePassword, supportCode: portalGateCode }
+          : { email: portalGateEmail, password: portalGatePassword })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload?.error?.message || "认证失败");
+      setPublicPortalAuthenticated(true);
+      setPortalGateOpen(false);
+      setToast("账号已验证，已解锁模块操作");
+    } catch (reason) {
+      setPortalGateError(reason instanceof Error ? reason.message : "认证失败");
+    }
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -677,8 +763,8 @@ export default function App() {
               <IconButton label="视角回位" onClick={fitSceneView} icon={Focus} />
             </> : null}
           </> : <>
-          <PriceBadge state={pricingState} />
-          <DesignerErpPanel
+          {!portalMode && !publicPreviewMode && <PriceBadge state={pricingState} />}
+          {!portalMode && !publicPreviewMode && <DesignerErpPanel
             config={config}
             bom={bom}
             pricingSnapshot={{
@@ -700,7 +786,7 @@ export default function App() {
             onApplyConfig={applyConfigPreset}
             onNotice={setToast}
             resumeDraftId={resumeDraftId}
-          />
+          />}
           <IconButton label="导出图片" onClick={exportImage} icon={Camera} />
           <IconButton label="视角回位" onClick={fitSceneView} icon={Focus} />
           <IconButton label="重置" onClick={resetConfig} icon={RotateCcw} />
@@ -715,10 +801,17 @@ export default function App() {
         {isReadonlyOrder ? null : <>
         <aside className="control-panel">
           <nav className="tabs" aria-label="配置分类">
-            {tabs.map((item) => {
+            {tabs.filter((item) => !(portalMode || publicPreviewMode) || item.id !== "bom").map((item) => {
               const Icon = item.icon;
               return (
-                <button key={item.id} className={tab === item.id ? "tab active" : "tab"} onClick={() => setTab(item.id)} type="button">
+                <button key={item.id} className={tab === item.id ? "tab active" : "tab"} onClick={() => {
+                  if (publicPreviewMode && !publicPortalAuthenticated && item.id !== "structure") {
+                    setPortalGateError(null);
+                    setPortalGateOpen(true);
+                    return;
+                  }
+                  setTab(item.id);
+                }} type="button">
                   <Icon size={16} />
                   <span>{item.label}</span>
                 </button>
@@ -899,6 +992,28 @@ export default function App() {
         </section>
       </main> : null}
 
+      {publicPreviewMode ? (
+        <div className="public-preview-banner">
+          <span><strong>基础一格预览</strong> · 先看真实 3D 效果，新增模块和其它功能需注册</span>
+          <button type="button" onClick={() => { setPortalGateError(null); setPortalGateOpen(true); }}>注册解锁</button>
+        </div>
+      ) : null}
+      {portalGateOpen ? (
+        <div className="portal-gate-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPortalGateOpen(false); }}>
+          <form className="portal-gate-modal" onSubmit={submitPortalGate}>
+            <button type="button" className="portal-gate-close" aria-label="关闭" onClick={() => setPortalGateOpen(false)}>×</button>
+            <p className="portal-gate-eyebrow">企业模块化配置</p>
+            <h2>{portalGateMode === "signup" ? "注册后继续搭建" : "登录后继续搭建"}</h2>
+            <p className="portal-gate-copy">基础一格可以直接预览。注册后可新增层板、抽屉、门板和玻璃模块，并保存模型。</p>
+            <input value={portalGateEmail} onChange={(event) => setPortalGateEmail(event.target.value)} type="email" placeholder="邮箱" required />
+            <input value={portalGatePassword} onChange={(event) => setPortalGatePassword(event.target.value)} type="password" placeholder="密码（至少6位）" minLength={6} required />
+            {portalGateMode === "signup" ? <input value={portalGateCode} onChange={(event) => setPortalGateCode(event.target.value)} placeholder="企业客服验证码" required /> : null}
+            {portalGateError ? <div className="portal-gate-error">{portalGateError}</div> : null}
+            <button className="portal-gate-submit" type="submit">{portalGateMode === "signup" ? "注册并开始" : "登录并继续"}</button>
+            <button className="portal-gate-switch" type="button" onClick={() => { setPortalGateError(null); setPortalGateMode(portalGateMode === "signup" ? "login" : "signup"); }}>{portalGateMode === "signup" ? "已有账号，去登录" : "没有账号，去注册"}</button>
+          </form>
+        </div>
+      ) : null}
       {toast ? <div className="toast">{toast}</div> : null}
     </div>
   );

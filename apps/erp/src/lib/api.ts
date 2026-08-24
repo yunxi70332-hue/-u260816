@@ -1310,6 +1310,18 @@ export const api = {
     }).then((payload) => unwrapList<unknown>(payload).map(normalizeOrganizationEntitlement));
   },
 
+  getOrganizationPortal(tenantId: string): Promise<{ tenantId: string; enabled: boolean; slug: string; defaultTemplateId: string | null; visibleModules: string[]; signupCodeHash: string | null; updatedAt: string }> {
+    return request<unknown>("/organization/portal", { tenantId }).then((payload) => unwrapItem(payload) as { tenantId: string; enabled: boolean; slug: string; defaultTemplateId: string | null; visibleModules: string[]; signupCodeHash: string | null; updatedAt: string });
+  },
+
+  updateOrganizationPortal(input: { enabled: boolean; slug: string; defaultTemplateId?: string | null; visibleModules: string[]; supportCode?: string }, tenantId: string) {
+    return request<unknown>("/organization/portal", { method: "PUT", tenantId, body: input }).then((payload) => unwrapItem(payload) as { tenantId: string; enabled: boolean; slug: string; defaultTemplateId: string | null; visibleModules: string[]; signupCodeHash: string | null; updatedAt: string });
+  },
+
+  getOrganizationPortalTimeline(tenantId: string): Promise<{ items: Array<Record<string, unknown>>; drafts: Array<Record<string, unknown>> }> {
+    return request<unknown>("/organization/portal/timeline", { tenantId }).then((payload) => payload as { items: Array<Record<string, unknown>>; drafts: Array<Record<string, unknown>> });
+  },
+
   getEmployeeOrderSummary(tenantId: string): Promise<EmployeeOrderSummary[]> {
     return request<unknown>("/employees/order-summary", { tenantId }).then((payload) => unwrapList<unknown>(payload).map(normalizeEmployeeOrderSummary));
   },
