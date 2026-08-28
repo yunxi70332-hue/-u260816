@@ -112,7 +112,33 @@ GET /api/organization/portal/timeline
 
 每次发布记录：日期、Git 提交号、构建命令、容器状态、健康检查结果、首页资源 hash、门户 slug 和遗留问题。
 
-## 5. 回滚
+## 5. 统一域名与 HTTPS
+
+生产环境统一使用 `https://usm.seven-cloud.cn`。前端、ERP、API 和登录回跳都使用同一域名，不在环境变量或页面链接中填写服务器 IP。
+
+`.env` 中至少确认以下值：
+
+```dotenv
+PUBLIC_ORIGIN=https://usm.seven-cloud.cn
+BETTER_AUTH_URL=https://usm.seven-cloud.cn
+CORS_ORIGINS=https://usm.seven-cloud.cn
+SESSION_COOKIE_SECURE=true
+```
+
+宝塔站点应将 `usm.seven-cloud.cn` 的 HTTP 请求重定向到 HTTPS，并把 HTTPS 站点反代到本实例网关 `127.0.0.1:18080`。证书申请/部署后检查证书 SAN 包含 `usm.seven-cloud.cn`、有效期和 443 监听；改动 nginx 配置前先备份，改后必须执行 `nginx -t` 并 reload。
+
+域名验收：
+
+```bash
+curl -fsSI http://usm.seven-cloud.cn/
+curl -fsSI https://usm.seven-cloud.cn/
+curl -fsS https://usm.seven-cloud.cn/api/health
+curl -fsSI https://usm.seven-cloud.cn/erp/
+```
+
+确认首页资源和 JS 中不存在旧 IP，登录回跳地址保持 `https://usm.seven-cloud.cn/erp/login`。
+
+## 6. 回滚
 
 优先使用反向提交，不改写共享分支历史：
 
@@ -126,7 +152,7 @@ git push origin main
 
 服务器同步回退提交后，重复第 2 至第 4 节的构建和验收。数据库迁移已经执行时，不能只回退代码；必须使用对应时间点的 PostgreSQL/MinIO 备份恢复，并在维护窗口验证。
 
-## 6. 彻底清空并重新部署
+## 7. 彻底清空并重新部署
 
 这是破坏性操作，只在明确要清空当前实例数据时执行。它会删除当前项目的容器、PostgreSQL 数据卷、MinIO 对象卷和项目网络；源码目录保留。
 
@@ -159,11 +185,35 @@ docker network rm \
 
 清空后必须复查 `docker ps -a`、`docker volume ls`、`docker compose ls --all` 和宝塔数据库列表为空，再上传新版并从第 2 节开始部署。若服务器同时存在旧项目名实例，必须逐个列出并确认后再清理，不能按通配符误删。
 
-## 7. 这次清理记录
+## 8. 源码目录全量重拉
+
+需要连源码一起清空时，先确认仓库工作区干净并记录远端提交。部署环境必需的 `.env` 不在 Git 中，应暂存到项目目录外；克隆成功并通过构建验收后，再删除旧源码临时目录。
+
+```bash
+cd /www/wwwroot
+stamp=$(date +%Y%m%d-%H%M%S)
+mv jimuces1 "jimuces1.pre-clean-$stamp"
+git clone --branch main --single-branch \
+  git@github.com:yunxi70332-hue/-u260816.git jimuces1
+cp "jimuces1.pre-clean-$stamp/.env" jimuces1/.env
+chmod 600 jimuces1/.env
+cd jimuces1
+git rev-parse --short HEAD
+docker compose --project-name usm-configurator-erp \
+  --env-file /www/wwwroot/jimuces1/.env \
+  -f /www/wwwroot/jimuces1/docker-compose.yml \
+  up -d --build
+```
+
+确认第 4 节验收全部通过后，删除 `jimuces1.pre-clean-<时间戳>` 临时目录。若克隆或构建失败，先停止继续清理并把临时目录移回 `jimuces1`，避免留下半套源码。
+
+## 9. 这次清理记录
 
 - 日期：2026-08-28
 - 目标目录：`/www/wwwroot/jimuces1`
 - 已清理：两套旧/新 Compose 实例的 10 个容器、4 个 PostgreSQL/MinIO 数据卷、4 个项目网络
 - 面板数据库：清理前列表为空
-- 保留：源码目录 `/www/wwwroot/jimuces1`
-- 清理后复查：容器、卷、Compose 项目、数据库进程均为空
+- 源码：已全量移走旧目录并重新克隆 GitHub `main`，当前提交 `32073de`
+- 环境文件：从旧目录恢复 `.env`，未写入 Git
+- 清理后复查：旧源码临时目录、容器、卷、Compose 项目、数据库进程均为空
+- 域名与 HTTPS：`usm.seven-cloud.cn` 已接入证书并强制 HTTP→HTTPS，前端和 ERP 统一同源访问

@@ -3,6 +3,9 @@
 ## 2026-08-28 - 宝塔环境清理与发布流程固化
 
 - 清理宝塔 `/www/wwwroot/jimuces1` 中旧/新两套 Compose 实例的全部容器、PostgreSQL/MinIO 数据卷和项目网络，保留源码目录用于上传新版。
+- 随后全量移除旧源码目录并从 GitHub main 重新克隆 32073de，恢复部署必需的 .env，构建验收通过后删除临时旧目录。
+- 统一前端、ERP、API 和登录回跳到 https://usm.seven-cloud.cn，启用安全 Cookie，宝塔 nginx 已部署证书并强制 HTTP 跳转 HTTPS。
+- 完成 HTTPS 首页、ERP、API 健康检查和前端资源校验，确认不再引用服务器 IP。
 - 新增 [宝塔 Docker 发布与回滚流程](docs/BAOTA_RELEASE_RUNBOOK.md)，记录发布前检查、Git 同步、固定 Compose 重建、端口冲突处理、C 端验收、回滚和彻底清空流程。
 - 明确日常更新不使用 `docker compose down -v`；只有明确清空实例时才按容器名和卷名执行破坏性清理。
 
