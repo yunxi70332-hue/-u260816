@@ -1,5 +1,11 @@
 # 更新日志
 
+## 2026-08-28 - 宝塔环境清理与发布流程固化
+
+- 清理宝塔 `/www/wwwroot/jimuces1` 中旧/新两套 Compose 实例的全部容器、PostgreSQL/MinIO 数据卷和项目网络，保留源码目录用于上传新版。
+- 新增 [宝塔 Docker 发布与回滚流程](docs/BAOTA_RELEASE_RUNBOOK.md)，记录发布前检查、Git 同步、固定 Compose 重建、端口冲突处理、C 端验收、回滚和彻底清空流程。
+- 明确日常更新不使用 `docker compose down -v`；只有明确清空实例时才按容器名和卷名执行破坏性清理。
+
 ## v4.22.0-cportal.1 - 2026-08-24
 
 ### 新增
