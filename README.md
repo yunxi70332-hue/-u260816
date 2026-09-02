@@ -21,13 +21,13 @@
 - 新增 `must_change_password` 数据库迁移和平台账号修复脚本。历史环境升级后，若引导账号曾被转为普通账号，先备份数据库，再执行：
 
 ```bash
-sh deploy/repair-platform-admin.sh <platform-admin-email>
+sh 部署/修复-平台管理员.sh <平台管理员邮箱>
 ```
 
 随后使用该账号登录并完成强制改密，再执行：
 
 ```bash
-sh deploy/disable-bootstrap-admin.sh
+sh 部署/禁用-引导-管理员.sh
 ```
 
 详细上线步骤见 [ERP 部署说明](docs/ERP_DEPLOYMENT.md) 与 [价格库存导入说明](docs/PRICE_INVENTORY_IMPORT_ROLLOUT.md)。
@@ -39,7 +39,7 @@ sh deploy/disable-bootstrap-admin.sh
 - 3D 预览、旋转、缩放
 - 深度、列宽、层高选择
 - 增减列数和层数
-- 开放格、背板格、下翻门、三抽屉、玻璃门、托盘格
+-开放格、背板格、下翻门、三抽屉、玻璃门、托盘格
 - 板件颜色、钢管表面、脚垫/滚轮
 - 配置本地自动保存
 - 导入/导出 JSON
