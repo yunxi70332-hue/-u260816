@@ -188,3 +188,10 @@ git revert --no-edit <问题提交> && git push origin main   # 先在本地仓�
 - 构建：重试 1 次（首次 pnpm install 网络超时）
 - 验收：健康检查 ok / 新资源 hash index-Cl7KZOLA.js / 迁移 0017_login_logs 已应用 / 线上 200
 - 遗留：无
+
+### 2026-09-05 12:12 usm-configurator-erp（七云）
+- 提交：bab67fb（在 7af48f8 基础上仅新增文档：宝塔更新SOP 及重命名，无代码差异）
+- 备份：/www/docker/usm/backups/usm-01/usm-configurator-erp-20260905T040508Z
+- 构建：一次成功
+- 验收：健康检查 ok / 新资源 hash index-BfSQ14Rr.js（含「隐藏选中框」文案）/ 迁移 0017_login_logs 已应用 / 线上 https://usm.seven-cloud.cn 200
+- 遗留：无
