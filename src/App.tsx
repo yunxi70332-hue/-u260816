@@ -12,6 +12,7 @@ import {
   Download,
   Eraser,
   Eye,
+  EyeOff,
   Focus,
   Grid3X3,
   Layers3,
@@ -94,6 +95,8 @@ import {
   addCellInteriorAccessory,
   removeCellInteriorAccessory,
   clearColorOverride,
+  cloneColumn,
+  MAX_GRID_COUNT,
   setCellFitting,
   setCellFrontAccessory,
   setCellInteriorAccessoryPull,
@@ -200,7 +203,8 @@ export default function App() {
   const resumeDraftId = getResumeDraftId();
   const isReadonlyOrder = Boolean(readonlyOrderId);
   const [config, setConfig] = useState<CabinetConfig>(() => publicLanding ? DEFAULT_CONFIG : loadConfig());
-  const [selection, setSelection] = useState<Selection>(() => findNearestEnabled(publicLanding ? DEFAULT_CONFIG : loadConfig()));
+  const [selection, setSelection] = useState<Selection | null>(() => findNearestEnabled(publicLanding ? DEFAULT_CONFIG : loadConfig()));
+  const [highlightColumn, setHighlightColumn] = useState<number | null>(null);
   const [selectedAccessory, setSelectedAccessory] = useState<SelectedAccessory>(null);
   const [selectedColorPanel, setSelectedColorPanel] = useState<{ cell: Selection; panel: StructurePanelKey } | null>(null);
   const [history, setHistory] = useState<FrameHistoryEntry[]>([]);
@@ -210,6 +214,8 @@ export default function App() {
   const panelPickEnabled = !isReadonlyOrder && tab === "colors" && config.colorScope === "panel";
   const sceneShowDimensions = (tab === "structure" || tab === "frame") && config.showDimensions;
   const [toast, setToast] = useState("");
+  const [presenting, setPresenting] = useState(false);
+  const [frameDeleteConfirm, setFrameDeleteConfirm] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const [portalGateOpen, setPortalGateOpen] = useState(false);
   const [portalGateMode, setPortalGateMode] = useState<"signup" | "login">("signup");
   const [portalGateEmail, setPortalGateEmail] = useState("");
@@ -245,7 +251,7 @@ export default function App() {
 
   const bom = useMemo(() => buildBom(config), [config]);
   const dimensions = useMemo(() => getDimensions(config), [config]);
-  const activeSelection = useMemo(() => findNearestEnabled(config, selection), [config, selection]);
+  const activeSelection = useMemo(() => (selection ? findNearestEnabled(config, selection) : null), [config, selection]);
   const selectedFramePart = selectedFramePartId ? getFramePart(config, selectedFramePartId) : undefined;
   const selectedFrameImpact = selectedFramePartId ? evaluateFramePartRemoval(config, selectedFramePartId) : null;
   const selectedFramePanelMaterial = selectedFramePart?.kind === "panel" ? selectedFramePart.material : null;
@@ -279,6 +285,18 @@ export default function App() {
     if (selectedFramePartId && !getFramePart(config, selectedFramePartId)) setSelectedFramePartId(null);
   }, [config, selectedFramePartId]);
 
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setPresenting((active) => {
+        setToast(active ? "已恢复选中框" : "已隐藏选中框，再按 Esc 恢复");
+        return !active;
+      });
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const framePanelReplacementOptions = selectedFramePanelMaterial
     ? FRAME_PANEL_MATERIAL_OPTIONS.filter((option) => option.id !== selectedFramePanelMaterial)
     : [];
@@ -302,7 +320,12 @@ export default function App() {
 
   useEffect(() => {
     if (isReadonlyOrder) return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+    // iOS 私密浏览/存储配额满时 setItem 会抛异常，未捕获会导致整页崩溃
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+    } catch {
+      /* 存储不可用时仅跳过本地持久化 */
+    }
     if (portalMode) {
       const timer = window.setTimeout(() => {
         const body = JSON.stringify({ id: `portal-${portalSlug}`, name: "C端模型", configSnapshot: config });
@@ -417,6 +440,7 @@ export default function App() {
       setPortalGateOpen(true);
       return;
     }
+    setHighlightColumn(null);
     setConfig((current) => {
       const resolved = normalizeConfig(typeof next === "function" ? next(current) : next);
       if (remember && JSON.stringify(resolved) !== JSON.stringify(current)) {
@@ -452,14 +476,19 @@ export default function App() {
 
   const selectCell = useCallback((next: Selection | null) => {
     setSelectedAccessory(null);
-    if (!next) return;
+    setHighlightColumn(null);
+    if (!next) {
+      if (tab === "structure") setSelection(null);
+      return;
+    }
+    setPresenting(false);
     const bounded = {
       row: Math.max(0, Math.min(next.row, config.rowHeights.length - 1)),
       column: Math.max(0, Math.min(next.column, config.columnWidths.length - 1)),
       depthIndex: Math.max(0, Math.min(next.depthIndex ?? 0, getDepthSegments(config).length - 1))
     };
     setSelection(findNearestEnabled(config, bounded));
-  }, [config]);
+  }, [config, tab]);
 
   const selectAccessory = useCallback((target: Selection, accessoryId: string) => {
     const bounded = {
@@ -495,7 +524,7 @@ export default function App() {
   function handleRows(delta: number) {
     updateConfig((current) => {
       const next = resizeRows(current, current.rowHeights.length + delta);
-      setSelection((active) => findNearestEnabled(next, active));
+      setSelection((active) => (active ? findNearestEnabled(next, active) : null));
       return next;
     });
   }
@@ -503,7 +532,7 @@ export default function App() {
   function handleColumns(delta: number) {
     updateConfig((current) => {
       const next = resizeColumns(current, current.columnWidths.length + delta);
-      setSelection((active) => findNearestEnabled(next, active));
+      setSelection((active) => (active ? findNearestEnabled(next, active) : null));
       return next;
     });
   }
@@ -513,6 +542,17 @@ export default function App() {
     updateConfig((current) => {
       const next = expandCell(current, activeSelection, direction);
       setSelection(next.selection);
+      return next.config;
+    });
+  }
+
+  function cloneSelectedColumn(side: "left" | "right" = "right") {
+    if (!activeSelection) return;
+    updateConfig((current) => {
+      const insertAt = side === "left" ? activeSelection.column : activeSelection.column + 1;
+      const next = cloneColumn(current, activeSelection.column, insertAt);
+      setSelection({ row: activeSelection.row, column: next.column, depthIndex: activeSelection.depthIndex });
+      setHighlightColumn(next.column);
       return next.config;
     });
   }
@@ -539,6 +579,7 @@ export default function App() {
       }
       setConfig(previous.config);
       setSelection(findNearestEnabled(previous.config, selection ?? { row: 0, column: 0 }));
+      setHighlightColumn(null);
       setToast("已撤销");
       return items.slice(0, -1);
     });
@@ -562,10 +603,15 @@ export default function App() {
     }
     const part = selectedFramePart;
     const message = `确定删除“${part?.label ?? "当前零件"}”吗？同时会移除 ${selectedFrameImpact.removedTubes.length} 根钢管、${selectedFrameImpact.removedVertices.length} 个球节点、${selectedFrameImpact.removedPanels.length} 块面板和 ${selectedFrameImpact.removedSupports.length} 个底部支撑。柜体外尺寸保持不变。`;
-    if (!window.confirm(message)) return;
-    updateConfig((current) => applyFramePartRemoval(current, selectedFrameImpact));
-    setSelectedFramePartId(null);
-    setToast("已完成框架级联删除");
+    // iOS Safari（含主屏幕独立窗口）会拦截/抑制原生 confirm，必须用应用内弹窗
+    setFrameDeleteConfirm({
+      message,
+      onConfirm: () => {
+        updateConfig((current) => applyFramePartRemoval(current, selectedFrameImpact));
+        setSelectedFramePartId(null);
+        setToast("已完成框架级联删除");
+      }
+    });
   }
 
   function replaceSelectedFramePanelMaterial(material: Exclude<StructurePanelMaterial, "none">) {
@@ -680,14 +726,33 @@ export default function App() {
   }
 
   function exportImage() {
+    const api = sceneApiRef.current;
+    if (!api) return;
     if (portalMode) void fetch(`/api/portal/${encodeURIComponent(portalSlug)}/events`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ designId: `portal-${portalSlug}`, milestone: "exported", configSnapshot: config }) });
-    const data = sceneApiRef.current?.capturePng();
-    if (!data) return;
-    const link = document.createElement("a");
-    link.download = "usm-3d-preview.png";
-    link.href = data;
-    link.click();
-    setToast("图片已导出");
+    const wasPresenting = presenting;
+    setPresenting(true);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      window.setTimeout(() => {
+        try {
+          const data = api.capturePng();
+          if (!data) return;
+          const link = document.createElement("a");
+          link.download = "usm-3d-preview.png";
+          link.href = data;
+          link.click();
+          setToast("图片已导出");
+        } finally {
+          setPresenting(wasPresenting);
+        }
+      }, 90);
+    }));
+  }
+
+  function togglePresenting() {
+    setPresenting((active) => {
+      setToast(active ? "已恢复选中框" : "已隐藏选中框，点击模块恢复");
+      return !active;
+    });
   }
 
   function importJson(file: File | null) {
@@ -761,6 +826,7 @@ export default function App() {
             {readonlyOrder.status === "ready" ? <>
               <IconButton label="导出图片" onClick={exportImage} icon={Camera} />
               <IconButton label="视角回位" onClick={fitSceneView} icon={Focus} />
+              <IconButton label={presenting ? "显示选中框" : "隐藏选中框（截图用）"} onClick={togglePresenting} icon={presenting ? Eye : EyeOff} />
             </> : null}
           </> : <>
           {!portalMode && !publicPreviewMode && <PriceBadge state={pricingState} />}
@@ -789,6 +855,7 @@ export default function App() {
           />}
           <IconButton label="导出图片" onClick={exportImage} icon={Camera} />
           <IconButton label="视角回位" onClick={fitSceneView} icon={Focus} />
+          <IconButton label={presenting ? "显示选中框" : "隐藏选中框（截图用）"} onClick={togglePresenting} icon={presenting ? Eye : EyeOff} />
           <IconButton label="重置" onClick={resetConfig} icon={RotateCcw} />
           </>}
         </div>
@@ -933,11 +1000,13 @@ export default function App() {
             config={config}
             showDimensions={sceneShowDimensions}
             structureEditEnabled={!isReadonlyOrder && tab === "structure"}
-            selection={activeSelection}
+            selection={presenting ? null : activeSelection}
             selectedPanel={selectedPanelForScene}
             panelPickEnabled={panelPickEnabled}
             framePickEnabled={framePickEnabled}
             selectedFramePartId={selectedFramePartId}
+            highlightColumn={highlightColumn}
+            canCloneColumn={config.columnWidths.length < MAX_GRID_COUNT}
             onSelectPanel={(target, panel) => {
               if (panelPickEnabled) selectColorPanel(target, panel);
               else if (framePickEnabled) selectFramePart(`panel:${target.row}:${target.depthIndex ?? 0}:${target.column}:${panel}`);
@@ -947,13 +1016,14 @@ export default function App() {
             onSelect={selectCell}
             onSelectAccessory={selectAccessory}
             onExpand={expandSelected}
+            onCloneColumn={cloneSelectedColumn}
             onDrawerPull={isReadonlyOrder ? () => undefined : handleDrawerPull}
             onDoorOpen={isReadonlyOrder ? () => undefined : handleDoorOpen}
             onReady={(api) => {
               sceneApiRef.current = api;
             }}
           />
-          {!isReadonlyOrder && activeSelection ? (
+          {!isReadonlyOrder && activeSelection && !presenting ? (
             <div className="context-toolbar">
               <button type="button" className="ghost-button" onClick={undoLast}>
                 <CornerUpLeft size={16} /> 撤销
@@ -984,6 +1054,7 @@ export default function App() {
           {isReadonlyOrder && readonlyOrder.status === "ready" ? <div className="readonly-scene-note"><Eye size={15} /><span>订单冻结配置 · 可旋转、缩放查看</span></div> : null}
           {!isReadonlyOrder ? <div className="bottom-toolbar">
             <IconButton label="设置" onClick={() => setTab("fittings")} icon={Settings2} />
+            <IconButton label={presenting ? "显示选中框" : "隐藏选中框（截图用）"} onClick={togglePresenting} icon={presenting ? Eye : EyeOff} />
             <IconButton label="载图" onClick={exportImage} icon={Camera} />
             <IconButton label="撤销" onClick={undoLast} icon={CornerUpLeft} />
             <IconButton label="删除" onClick={deleteSelected} icon={Eraser} />
@@ -1012,6 +1083,26 @@ export default function App() {
             <button className="portal-gate-submit" type="submit">{portalGateMode === "signup" ? "注册并开始" : "登录并继续"}</button>
             <button className="portal-gate-switch" type="button" onClick={() => { setPortalGateError(null); setPortalGateMode(portalGateMode === "signup" ? "login" : "signup"); }}>{portalGateMode === "signup" ? "已有账号，去登录" : "没有账号，去注册"}</button>
           </form>
+        </div>
+      ) : null}
+      {frameDeleteConfirm ? (
+        <div className="app-confirm-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setFrameDeleteConfirm(null); }}>
+          <div className="app-confirm-modal" role="alertdialog" aria-modal="true" aria-label="删除确认">
+            <p className="app-confirm-title">删除确认</p>
+            <p className="app-confirm-message">{frameDeleteConfirm.message}</p>
+            <div className="app-confirm-actions">
+              <button type="button" onClick={() => setFrameDeleteConfirm(null)}>取消</button>
+              <button
+                type="button"
+                className="danger"
+                onClick={() => {
+                  const onConfirm = frameDeleteConfirm.onConfirm;
+                  setFrameDeleteConfirm(null);
+                  onConfirm();
+                }}
+              >确认删除</button>
+            </div>
+          </div>
         </div>
       ) : null}
       {toast ? <div className="toast">{toast}</div> : null}
@@ -2112,7 +2203,8 @@ function downloadFile(filename: string, body: string, type: string) {
   link.download = filename;
   link.href = URL.createObjectURL(blob);
   link.click();
-  URL.revokeObjectURL(link.href);
+  // iOS Safari 的下载是异步开始的，同步 revoke 会中断下载
+  window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 }
 
 function pricingStatusLabel(status: ServerPriceLine["pricingStatus"]): string {
