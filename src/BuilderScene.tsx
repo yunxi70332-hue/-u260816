@@ -184,11 +184,11 @@ const DROP_DOOR_FRONT_FACE_OFFSET = 8 * SCALE;
 const DIMENSION_LINE_COLOR = "#9a302a";
 const DIMENSION_EXTENSION_COLOR = "#d8aaa4";
 const DIMENSION_LABEL_COLOR = "#b42318";
-const DIMENSION_LABEL_PIXELS = 65;
-const DIMENSION_OUTER_LABEL_PIXELS = 65;
+const DIMENSION_LABEL_PIXELS = 46;
+const DIMENSION_OUTER_LABEL_PIXELS = 46;
 // Portion of the face-on guide length a label may occupy.
-const DIMENSION_LABEL_LENGTH_FIT = 0.68;
-const DIMENSION_LABEL_MIN_PIXELS = 24;
+const DIMENSION_LABEL_LENGTH_FIT = 1;
+const DIMENSION_LABEL_MIN_PIXELS = 36;
 // Keep guide offsets in millimetres so a larger cabinet does not push labels farther away.
 const DIMENSION_MM = 0.004;
 const DIMENSION_SEGMENT_TOP_GAP = 34 * DIMENSION_MM;
@@ -6057,9 +6057,9 @@ function getSceneMetrics(config: CabinetConfig, showDimensions: boolean) {
 }
 
 function createLabelTexture(label: string, vertical: boolean, emphasis: boolean, fontWeight: number) {
-  const fontSize = 84;
-  const padding = 68;
-  const outlineWidth = vertical ? 13 : 10;
+  const fontSize = 92;
+  const padding = 34;
+  const outlineWidth = vertical ? 14 : 11;
   const font = fontWeight + " " + fontSize + "px Inter, PingFang SC, Microsoft YaHei UI, Microsoft YaHei, sans-serif";
   const measureCanvas = document.createElement("canvas");
   const measureContext = measureCanvas.getContext("2d");
