@@ -186,6 +186,9 @@ const DIMENSION_EXTENSION_COLOR = "#d8aaa4";
 const DIMENSION_LABEL_COLOR = "#b42318";
 const DIMENSION_LABEL_PIXELS = 65;
 const DIMENSION_OUTER_LABEL_PIXELS = 65;
+// Portion of the face-on guide length a label may occupy.
+const DIMENSION_LABEL_LENGTH_FIT = 0.68;
+const DIMENSION_LABEL_MIN_PIXELS = 24;
 // Keep guide offsets in millimetres so a larger cabinet does not push labels farther away.
 const DIMENSION_MM = 0.004;
 const DIMENSION_SEGMENT_TOP_GAP = 34 * DIMENSION_MM;
@@ -5308,8 +5311,10 @@ function LabelSprite({
 }) {
   const spriteRef = useRef<THREE.Sprite>(null);
   const worldPosition = useMemo(() => new THREE.Vector3(), []);
-  const guideStartWorld = useMemo(() => new THREE.Vector3(), []);
-  const guideEndWorld = useMemo(() => new THREE.Vector3(), []);
+  const guideLength = useMemo(
+    () => new THREE.Vector3(...guideStart).distanceTo(new THREE.Vector3(...guideEnd)),
+    [guideEnd, guideStart]
+  );
   const texture = useMemo(() => createLabelTexture(label, vertical, emphasis, fontWeight), [emphasis, fontWeight, label, vertical]);
   const { camera, size } = useThree();
   useEffect(() => () => texture.dispose(), [texture]);
@@ -5322,20 +5327,23 @@ function LabelSprite({
     const viewportHeight = camera instanceof THREE.PerspectiveCamera
       ? 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * distance
       : (camera.top - camera.bottom) / camera.zoom;
-    guideStartWorld.set(...guideStart).project(camera);
-    guideEndWorld.set(...guideEnd).project(camera);
-    const guidePixels = Math.hypot(
-      (guideEndWorld.x - guideStartWorld.x) * size.width * 0.5,
-      (guideEndWorld.y - guideStartWorld.y) * size.height * 0.5
-    );
+    // Face-on guide length in screen pixels: projecting start/end instead would let
+    // perspective foreshortening shrink depth (Z-axis) guides to the pixel floor.
+    const guidePixels = guideLength / viewportHeight * size.height;
     const desiredPixels = emphasis ? DIMENSION_OUTER_LABEL_PIXELS : DIMENSION_LABEL_PIXELS;
     const aspect = texture.image.width / texture.image.height;
+    // Budget the pixels on the glyph-thickness axis. Vertical textures are drawn
+    // rotated (aspect < 1), so their length on screen is thickness / aspect.
     const fitPixels = vertical
-      ? guidePixels * 0.68 / 1.08
-      : guidePixels * 0.68 / Math.max(1, aspect);
-    const targetPixels = Math.max(22, Math.min(desiredPixels, fitPixels));
-    const labelHeight = Math.max(0.035, viewportHeight * (vertical ? targetPixels * 1.08 : targetPixels) / size.height);
-    sprite.scale.set(labelHeight * aspect, labelHeight, 1);
+      ? guidePixels * DIMENSION_LABEL_LENGTH_FIT * aspect
+      : guidePixels * DIMENSION_LABEL_LENGTH_FIT / Math.max(1, aspect);
+    const targetPixels = Math.max(DIMENSION_LABEL_MIN_PIXELS, Math.min(desiredPixels, fitPixels));
+    const labelThickness = Math.max(0.035, viewportHeight * targetPixels / size.height);
+    sprite.scale.set(
+      vertical ? labelThickness : labelThickness * aspect,
+      vertical ? labelThickness / aspect : labelThickness,
+      1
+    );
   });
 
   return (
