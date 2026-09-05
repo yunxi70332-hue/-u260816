@@ -223,3 +223,17 @@ git revert --no-edit <问题提交> && git push origin main   # 先在本地仓�
 - 构建：一次成功（仅 designer 重建）
 - 验收：健康检查 ok / 新资源 hash index-CRYDOMAF.js / 无迁移 / 线上 https://usm.seven-cloud.cn 200
 - 遗留：无
+
+### 2026-09-05 18:56 modun
+- 提交：e69a7d4（尺寸标注防重叠：高度/深度车道间距拉大，标注预算回调 40px/30px/fit0.9）
+- 备份：/www/docker/usm-modun/backups/modun/modun-20260905T104537Z
+- 构建：一次成功（仅 designer 重建）
+- 验收：健康检查 ok / 新资源 hash index-CqoZRaBE.js / 无迁移 / 线上 https://modun.usmxx.xyz 200
+- 遗留：无
+
+### 2026-09-05 19:05 usm-configurator-erp（七云）
+- 提交：e69a7d4（同上，与 modun 保持同步）
+- 备份：/www/docker/usm/backups/usm-01/usm-configurator-erp-20260905T105532Z
+- 构建：一次成功（仅 designer 重建）
+- 验收：健康检查 ok / 新资源 hash index-DOeRUcGf.js / 无迁移 / 线上 https://usm.seven-cloud.cn 200
+- 遗留：无
