@@ -195,3 +195,17 @@ git revert --no-edit <问题提交> && git push origin main   # 先在本地仓�
 - 构建：一次成功
 - 验收：健康检查 ok / 新资源 hash index-BfSQ14Rr.js（含「隐藏选中框」文案）/ 迁移 0017_login_logs 已应用 / 线上 https://usm.seven-cloud.cn 200
 - 遗留：无
+
+### 2026-09-05 17:26 modun
+- 提交：982392d（修复 3D 高度/深度外部尺寸标注字号过小、放大时相对缩小）
+- 备份：/www/docker/usm-modun/backups/modun/modun-20260905T091818Z
+- 构建：一次成功
+- 验收：健康检查 ok / 新资源 hash index-DYpVUwdq.js（含标注新常量 `qO=.68,JO=24`）/ 无迁移 / 线上 https://modun.usmxx.xyz 200
+- 遗留：无
+
+### 2026-09-05 17:52 usm-configurator-erp（七云）
+- 提交：982392d（同上，与 modun 保持同步）
+- 备份：/www/docker/usm/backups/usm-01/usm-configurator-erp-20260905T094447Z
+- 构建：一次成功
+- 验收：健康检查 ok / 新资源 hash index-BXGk9oR7.js（含标注新常量 `qO=.68,JO=24`）/ 无迁移 / 线上 https://usm.seven-cloud.cn 200
+- 遗留：无
