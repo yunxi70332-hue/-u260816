@@ -78,6 +78,35 @@ export interface AuditInput {
   metadata?: Record<string, unknown>;
 }
 
+export interface LoginLogInput {
+  userId: string;
+  tenantId: string | null;
+  accountIdentifier?: string | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+}
+
+export interface LoginLogQuery {
+  search?: string;
+  tenantId?: string;
+  start?: string;
+  end?: string;
+  page: number;
+  pageSize: number;
+}
+
+export interface LoginLogSummary {
+  id: string;
+  userId: string;
+  userName: string;
+  accountIdentifier: string | null;
+  tenantId: string | null;
+  tenantName: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+}
+
 export interface IdempotencyRecord {
   tenantId: string;
   key: string;
@@ -223,6 +252,8 @@ export interface Repository {
 
   recordAudit(input: AuditInput): Promise<AuditLog>;
   listAudit(tenantId: string, entityType?: string, entityId?: string): Promise<AuditLog[]>;
+  recordLoginLog(input: LoginLogInput): Promise<void>;
+  listLoginLogs(query: LoginLogQuery): Promise<{ items: LoginLogSummary[]; total: number }>;
   getIdempotency(tenantId: string, route: string, key: string): Promise<IdempotencyRecord | null>;
   saveIdempotency(record: IdempotencyRecord): Promise<void>;
   close(): Promise<void>;

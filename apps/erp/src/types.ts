@@ -112,6 +112,18 @@ export interface Session {
   mode: "live" | "demo";
 }
 
+export interface LoginLogEntry {
+  id: string;
+  userId: string;
+  userName: string;
+  accountIdentifier: string | null;
+  tenantId: string | null;
+  tenantName: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+}
+
 export interface CustomerProject {
   id: string;
   code: string;

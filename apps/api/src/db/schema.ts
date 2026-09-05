@@ -769,6 +769,19 @@ export const idempotencyKeys = pgTable("idempotency_keys", {
   index("idempotency_keys_expires_at_idx").on(table.expiresAt)
 ]);
 
+export const loginLogs = pgTable("login_logs", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tenantId: text("tenant_id").references(() => organizations.id, { onDelete: "set null" }),
+  accountIdentifier: text("account_identifier"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+}, (table) => [
+  index("login_logs_user_created_idx").on(table.userId, table.createdAt),
+  index("login_logs_tenant_created_idx").on(table.tenantId, table.createdAt)
+]);
+
 export const stockDocumentTypeEnum = pgEnum("stock_document_type", ["receive", "issue", "adjust", "transfer"]);
 export const stockDocumentStatusEnum = pgEnum("stock_document_status", ["draft", "posted", "reversed"]);
 export const inventoryLedgerDirectionEnum = pgEnum("inventory_ledger_direction", ["receive", "issue", "adjust", "reserve", "release", "reverse"]);
@@ -964,6 +977,7 @@ export type PriceListItem = typeof priceListItems.$inferSelect;
 export type Shipment = typeof shipments.$inferSelect;
 export type Attachment = typeof attachments.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
+export type LoginLog = typeof loginLogs.$inferSelect;
 export type IdempotencyKey = typeof idempotencyKeys.$inferSelect;
 export type OrganizationEntitlement = typeof organizationEntitlements.$inferSelect;
 export type MemberPermissionGrant = typeof memberPermissionGrants.$inferSelect;

@@ -96,6 +96,21 @@ test("quote and order responses include their linked customer and project names"
   assert.equal(body<{ item: { customerName: string | null; projectName: string | null } }>(orderDetail).item.projectName, "静安客厅组合柜");
 });
 
+test("order contract export checks access and records an audit event", async (context) => {
+  const app = await buildApp({ ...loadConfig(), erpDevServerUrl: undefined, erpStaticDir: "missing" });
+  context.after(() => app.close());
+
+  const response = await app.inject({ method: "POST", url: "/api/orders/order-demo/contract-export", payload: {} });
+  assert.equal(response.statusCode, 200);
+  assert.equal(body<{ item: { id: string; orderNo: string; revision: number } }>(response).item.orderNo, "ORD-00001");
+
+  const audits = await app.inject({ method: "GET", url: "/api/audit-logs?entityType=order&entityId=order-demo" });
+  assert.equal(audits.statusCode, 200);
+  const event = body<{ items: Array<{ action: string; metadata: { format?: string } }> }>(audits).items.find((item) => item.action === "order.contract_exported");
+  assert.ok(event);
+  assert.equal(event.metadata.format, "html-word-compatible");
+});
+
 test("employees and dealer administrators use phone number and password sign-in", async (context) => {
   const app = await buildApp({ ...loadConfig(), erpDevServerUrl: undefined, erpStaticDir: "missing" });
   context.after(() => app.close());
@@ -312,4 +327,52 @@ test("quote totals are recalculated and idempotent", async (context) => {
   const second = body<{ item: { id: string } }>(replay).item;
   assert.notEqual(first.totalMinor, 1);
   assert.equal(first.id, second.id);
+});
+
+test("login logs record sign-ins and are only visible to the platform admin", async (context) => {
+  const app = await buildApp({ ...loadConfig(), erpDevServerUrl: undefined, erpStaticDir: "missing" });
+  context.after(() => app.close());
+
+  const employee = await app.inject({
+    method: "POST", url: "/api/employees", headers: { "idempotency-key": "login-log-employee" },
+    payload: { name: "日志员工", phone: "137 1234 5678", password: "LogTest1!" }
+  });
+  assert.equal(employee.statusCode, 201);
+
+  const employeeSignIn = await app.inject({
+    method: "POST", url: "/api/auth/sign-in/phone-number",
+    payload: { phoneNumber: "+8613712345678", password: "LogTest1!" }
+  });
+  assert.equal(employeeSignIn.statusCode, 200);
+  const failedSignIn = await app.inject({
+    method: "POST", url: "/api/auth/sign-in/phone-number",
+    payload: { phoneNumber: "+8613712345678", password: "wrong-pass" }
+  });
+  assert.equal(failedSignIn.statusCode, 401);
+
+  const employeeCookie = employeeSignIn.headers["set-cookie"];
+  const employeeHeaders = { cookie: Array.isArray(employeeCookie) ? employeeCookie[0] : employeeCookie };
+  await app.inject({
+    method: "POST", url: "/api/me/change-password", headers: employeeHeaders,
+    payload: { currentPassword: "LogTest1!", newPassword: "Changed6!" }
+  });
+  const forbidden = await app.inject({ method: "GET", url: "/api/login-logs", headers: employeeHeaders });
+  assert.equal(forbidden.statusCode, 403);
+
+  const logs = await app.inject({ method: "GET", url: "/api/login-logs" });
+  assert.equal(logs.statusCode, 200);
+  const logsBody = body<{
+    items: Array<{ userName: string; accountIdentifier: string | null; ipAddress: string | null; createdAt: string; tenantName: string | null }>;
+    total: number;
+  }>(logs);
+  const entry = logsBody.items.find((item) => item.accountIdentifier === "+8613712345678");
+  assert.ok(entry);
+  assert.equal(entry.userName, "日志员工");
+  assert.ok(entry.ipAddress);
+  assert.ok(entry.createdAt);
+  assert.equal(entry.tenantName, "USM 本地演示");
+  assert.ok(logsBody.items.every((item) => item.accountIdentifier !== "wrong-pass"));
+
+  const empty = await app.inject({ method: "GET", url: "/api/login-logs?search=no-such-account" });
+  assert.equal(body<{ total: number }>(empty).total, 0);
 });

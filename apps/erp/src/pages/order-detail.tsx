@@ -1,4 +1,4 @@
-import { ArrowLeft, Boxes, CalendarClock, Check, ClipboardList, Clock3, ExternalLink, FileClock, MapPin, MessageSquarePlus, PackageCheck, PauseCircle, Phone, PlayCircle, RotateCcw, Send, ShieldCheck, Truck, UserRound, XCircle } from "lucide-react";
+import { ArrowLeft, Boxes, CalendarClock, Check, ClipboardList, Clock3, ExternalLink, FileClock, FileText, MapPin, MessageSquarePlus, PackageCheck, PauseCircle, Phone, PlayCircle, Printer, RotateCcw, Send, ShieldCheck, Truck, UserRound, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Link, NavLink, Navigate, useParams } from "react-router-dom";
 import { EmptyState, FormActions, LoadingBlock, Modal, Notice, PageHeader, StatusBadge, stopSubmit } from "../components/ui";
@@ -6,12 +6,14 @@ import { useAuth } from "../context/auth";
 import { useWorkspace } from "../context/workspace";
 import { api } from "../lib/api";
 import { addCalendarDays, beijingDateKey, calendarDayDifference, calculateDeliveryDate, formatBeijingDateTime } from "../lib/delivery-date";
+import { downloadSalesContract, printSalesContract } from "../lib/sales-contract";
 import type { InventoryRequirement, OrderDetail, OrderFollowUp, OrderStatus } from "../types";
 
 const money = new Intl.NumberFormat("zh-CN", { style: "currency", currency: "CNY", maximumFractionDigits: 0 });
 const tabs = [
   { id: "materials", label: "物料", icon: ClipboardList },
   { id: "overview", label: "概览", icon: ClipboardList },
+  { id: "pricing", label: "价格", icon: FileText },
   { id: "configuration", label: "配置", icon: Boxes },
   { id: "production", label: "生产", icon: PackageCheck },
   { id: "shipment", label: "发货", icon: Truck },
@@ -130,6 +132,7 @@ export function OrderDetailPage() {
   const [detail, setDetail] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [contractBusy, setContractBusy] = useState(false);
   const [shipmentOpen, setShipmentOpen] = useState(false);
   const [deliveryScheduleOpen, setDeliveryScheduleOpen] = useState(false);
   const [deliveryDaysDraft, setDeliveryDaysDraft] = useState(30);
@@ -220,6 +223,24 @@ export function OrderDetailPage() {
     try { await transitionOrder(detail!.id, status); }
     catch (reason) { setError(reason instanceof Error ? reason.message : "状态更新失败"); }
     finally { setBusy(false); }
+  }
+
+  function openContractPrint() {
+    if (!printSalesContract(detail!)) setError("打印窗口被浏览器拦截，请允许弹出窗口后重试。");
+  }
+
+  async function exportContract() {
+    if (!detail || contractBusy) return;
+    setContractBusy(true);
+    setError(null);
+    try {
+      if (session?.mode === "live") await api.recordOrderContractExport(detail.id, session.activeTenantId);
+      downloadSalesContract(detail);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "合同导出未完成，请稍后重试。");
+    } finally {
+      setContractBusy(false);
+    }
   }
 
   function openDeliverySchedule() {
@@ -320,6 +341,7 @@ export function OrderDetailPage() {
     <div className="page order-detail-page">
       <Link className="back-link" to="/orders"><ArrowLeft size={15} />返回订单列表</Link>
       <PageHeader title={detail.orderNo} description={`${detail.customer} · ${detail.project}`} actions={<>
+        {can("orders.export") && <><button className="button secondary" type="button" disabled={contractBusy} onClick={() => void exportContract()}><FileText size={16} />{contractBusy ? "正在导出" : "导出销售合同"}</button><button className="button secondary" type="button" disabled={contractBusy} onClick={openContractPrint}><Printer size={16} />打印合同</button></>}
         {can("order.transition.manage") && action && <button className="button primary" disabled={busy} onClick={() => void runTransition(action.status)}><action.icon size={16} />{action.label}</button>}
         {can("order.transition.manage") && detail.status === "暂停" && <button className="button primary" disabled={busy} onClick={() => void runTransition("已确认")}><RotateCcw size={16} />恢复订单</button>}
         {can("order.transition.manage") && pauseable.has(detail.status) && <button className="button secondary" disabled={busy} onClick={() => void runTransition("暂停")}><PauseCircle size={16} />暂停</button>}
@@ -329,7 +351,7 @@ export function OrderDetailPage() {
       {error && <Notice tone="danger">{error}</Notice>}
       <section className="object-summary" aria-label="订单摘要">
         <div className="object-summary-item"><span>订单状态</span><StatusBadge value={detail.status} /><small>{pausedLifecycle ? "流程已暂停，恢复后返回已确认" : cancelledLifecycle ? "订单流程已终止" : "销售订单生命周期"}</small></div>
-        <div className="object-summary-item"><span>含税金额</span><strong>{money.format(detail.amount)}</strong><small>{detail.lines.length} 项价格明细</small></div>
+        <div className="object-summary-item"><span>订单金额</span><strong>{money.format(detail.amount)}</strong><small>{detail.lines.length} 项价格明细</small></div>
         <div className={`object-summary-item object-summary-${deliveryTone}`}><span>期望交付</span><div className="delivery-summary-value"><strong>{detail.dueDate}</strong>{can("order.delivery.manage") && <button className="icon-button" type="button" title="调整交付周期" aria-label="调整交付周期" onClick={openDeliverySchedule}><CalendarClock size={15} /></button>}</div><small>{deliverySignal}</small></div>
         <div className="object-summary-item"><span>生产 / 发运</span><div className="object-summary-statuses"><StatusBadge value={detail.productionStatus} /><StatusBadge value={detail.shipmentStatus} /></div><small>生产与物流同步跟踪</small></div>
         <div className="object-summary-item"><span>责任与版本</span><strong>{detail.owner}</strong><small>订单 v{detail.version} · {detail.configuration.snapshotVersion}</small></div>
@@ -360,7 +382,7 @@ export function OrderDetailPage() {
         </> : <section className="panel configuration-empty"><div><h2>订单没有可用配置快照</h2><p>{detail.configuration.unavailableReason || "此历史订单没有保存可读取的配置冻结快照，因此无法展示尺寸、模块与颜色明细。"}</p><button className="button secondary" type="button" disabled><ExternalLink size={16} />配置器只读查看不可用</button></div></section>}
       </div>}
 
-      {activeTab === "pricing" && <section className="panel table-panel"><header className="panel-header padded"><div><h2>订单明细</h2><p>价格基于下单时价格表与折扣快照</p></div><span className="count-chip">{detail.lines.length} 项</span></header>{detail.lines.length ? <><div className="table-wrap"><table className="order-lines-table" aria-label="订单价格明细"><thead><tr><th scope="col">物料编码</th><th scope="col">说明</th><th scope="col">颜色</th><th scope="col">数量</th><th scope="col">单价</th><th scope="col">小计</th></tr></thead><tbody>{detail.lines.map((line) => <tr key={line.id}><td className="mono">{line.sku}</td><td><strong>{line.description}</strong></td><td>{line.color}</td><td>{line.qty}</td><td className="numeric">{money.format(line.unitPrice)}</td><td className="numeric strong">{money.format(line.total)}</td></tr>)}</tbody></table></div><div className="price-summary"><dl><div><dt>物料小计</dt><dd>{money.format(lineTotal)}</dd></div><div><dt>项目服务与安装</dt><dd>{money.format(Math.max(0, detail.amount - lineTotal))}</dd></div><div className="total"><dt>订单含税金额</dt><dd>{money.format(detail.amount)}</dd></div></dl></div></> : <EmptyState title="订单快照没有价格明细" detail="该订单仍可继续履约，价格明细暂不可用。" />}</section>}
+      {activeTab === "pricing" && <section className="panel table-panel"><header className="panel-header padded"><div><h2>订单明细</h2><p>价格基于下单时价格表与折扣快照</p></div><span className="count-chip">{detail.lines.length} 项</span></header>{detail.lines.length ? <><div className="table-wrap"><table className="order-lines-table" aria-label="订单价格明细"><thead><tr><th scope="col">物料编码</th><th scope="col">说明</th><th scope="col">颜色</th><th scope="col">数量</th><th scope="col">单价</th><th scope="col">小计</th></tr></thead><tbody>{detail.lines.map((line) => <tr key={line.id}><td className="mono">{line.sku}</td><td><strong>{line.description}</strong></td><td>{line.color}</td><td>{line.qty}</td><td className="numeric">{money.format(line.unitPrice)}</td><td className="numeric strong">{money.format(line.total)}</td></tr>)}</tbody></table></div><div className="price-summary"><dl><div><dt>明细合计（参考）</dt><dd>{money.format(lineTotal)}</dd></div><div className="total"><dt>订单金额</dt><dd>{money.format(detail.amount)}</dd></div></dl></div></> : <EmptyState title="订单快照没有价格明细" detail="该订单仍可继续履约，价格明细暂不可用。" />}</section>}
 
       {activeTab === "production" && <section className="panel production-detail"><header className="panel-header padded"><div><h2>生产进度</h2><p>当前：{detail.productionStatus}</p></div>{can("production.manage") && detail.status === "待生产" && <button className="button compact primary" disabled={busy} onClick={() => void runProduction("组装")}><PlayCircle size={15} />开始生产</button>}{can("production.manage") && detail.status === "生产中" && <button className="button compact primary" disabled={busy} onClick={() => void runProduction("已完工")}><PackageCheck size={15} />完成生产</button>}</header>{detail.production.length ? <div className="step-timeline">{detail.production.map((step, index) => <div className="timeline-step" key={step.id}><div className="timeline-marker">{step.status === "已完成" ? <Check size={15} /> : index + 1}</div><div><div className="timeline-title"><strong>{step.name}</strong><StatusBadge value={step.status} /></div><p>负责人：{step.owner} · 计划 {step.plannedAt}</p>{step.completedAt && <small>完成于 {step.completedAt}</small>}</div></div>)}</div> : <EmptyState title="暂无细分工序" detail="开始与完成生产会同步更新订单生命周期。" />}</section>}
 

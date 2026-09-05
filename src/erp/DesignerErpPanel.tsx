@@ -265,8 +265,13 @@ export function DesignerErpPanel({
 
   function persistActiveDesign(next: ErpDesignContext | null) {
     setActiveDesign(next);
-    if (next) window.localStorage.setItem(ACTIVE_DESIGN_KEY, JSON.stringify(next));
-    else window.localStorage.removeItem(ACTIVE_DESIGN_KEY);
+    // iOS 私密浏览/存储配额满时会抛异常
+    try {
+      if (next) window.localStorage.setItem(ACTIVE_DESIGN_KEY, JSON.stringify(next));
+      else window.localStorage.removeItem(ACTIVE_DESIGN_KEY);
+    } catch {
+      /* 存储不可用时仅跳过本地持久化 */
+    }
   }
 
   async function createCustomer() {

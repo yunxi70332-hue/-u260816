@@ -39,6 +39,11 @@ button {
   background: #f2f4f5;
 }
 
+/* iOS 上快速连续点选 3D 零件会触发双击缩放页面，禁掉画布的浏览器手势 */
+canvas {
+  touch-action: none;
+}
+
 .topbar {
   height: 76px;
   display: flex;
@@ -1855,6 +1860,55 @@ button {
 
 .hidden-input {
   display: none;
+}
+
+.app-confirm-backdrop {
+  position: fixed;
+  z-index: 70;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(22, 29, 25, .48);
+}
+
+.app-confirm-modal {
+  width: min(400px, 100%);
+  display: grid;
+  gap: 12px;
+  padding: 24px;
+  color: #26332d;
+  background: #fff;
+  border: 1px solid #d4dbd6;
+  box-shadow: 0 22px 70px rgba(20, 28, 23, .24);
+}
+
+.app-confirm-title { margin: 0; font-size: 18px; font-weight: 800; }
+.app-confirm-message { margin: 0; color: #5b6660; font-size: 13px; line-height: 1.7; }
+
+.app-confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.app-confirm-actions button {
+  min-height: 46px;
+  padding: 0 12px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  touch-action: manipulation;
+  border: 1px solid #cbd3ce;
+  background: #fbfcfb;
+  color: #26332d;
+}
+
+.app-confirm-actions button.danger {
+  border-color: #9f2525;
+  background: #9f2525;
+  color: #fff;
 }
 
 .hinge-viewer-backdrop {

@@ -153,7 +153,8 @@ export function downloadInventoryImportTemplate(materials: InventoryMaterial[], 
   anchor.href = url;
   anchor.download = "USM库存首次导入模板.xlsx";
   anchor.click();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+  // iOS Safari 的下载是异步开始的，revoke 过早会中断下载
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export function buildInventoryImportTemplate(materials: InventoryMaterial[], warehouses: Warehouse[]): Uint8Array {

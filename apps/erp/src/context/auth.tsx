@@ -44,6 +44,7 @@ interface AuthContextValue {
   refreshSession: () => Promise<void>;
   switchTenant: (tenantId: string) => Promise<void>;
   can: (permission: Permission) => boolean;
+  isPlatformAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -102,7 +103,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       fieldPolicy: { price: "none", inventory: "value" },
       mode: "demo"
     };
-    localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(demoSession));
+    // iOS 私密浏览/存储配额满时会抛异常
+    try {
+      localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(demoSession));
+    } catch { /* 存储不可用时仅跳过本地持久化 */ }
     setLoginError(null);
     setSession(demoSession);
   }, []);
@@ -126,7 +130,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!session || !session.tenants.some((tenant) => tenant.id === tenantId) || session.activeTenantId === tenantId) return;
     if (session.mode === "demo") {
       const next = { ...session, activeTenantId: tenantId };
-      localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(next));
+      try {
+        localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(next));
+      } catch { /* 存储不可用时仅跳过本地持久化 */ }
       setSession(next);
       return;
     }
@@ -147,7 +153,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return (permissionAliases[permission] ?? []).some((candidate) => granted.has(candidate));
   }, [session]);
 
-  const value = useMemo(() => ({ session, initializing, loginError, login, enterDemo, logout, refreshSession, switchTenant, can }), [session, initializing, loginError, login, enterDemo, logout, refreshSession, switchTenant, can]);
+  // Platform-only modules (e.g. login logs) rely on the server-computed
+  // principal type; demo sessions never carry it, so they stay out.
+  const isPlatformAdmin = session?.mode === "live" && session.principalType === "platform_admin";
+
+  const value = useMemo(() => ({ session, initializing, loginError, login, enterDemo, logout, refreshSession, switchTenant, can, isPlatformAdmin }), [session, initializing, loginError, login, enterDemo, logout, refreshSession, switchTenant, can, isPlatformAdmin]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

@@ -19,6 +19,7 @@ import { ProjectsPage } from "./pages/projects";
 import { QuotesPage } from "./pages/quotes";
 import { TemplatesPage } from "./pages/templates";
 import { InventoryPage, InventoryLedgerPage, InventoryInboundPage, InventoryOutboundPage } from "./pages/inventory";
+import { LoginLogsPage } from "./pages/login-logs";
 import { OrganizationEntitlementsPage } from "./pages/organization-entitlements";
 
 function ProtectedLayout() {
@@ -36,6 +37,11 @@ function PermissionRoute({ permission, dependencies = [], children }: { permissi
 function AnyPermissionRoute({ permissions, children }: { permissions: Permission[]; children: ReactNode }) {
   const { can } = useAuth();
   return permissions.some((permission) => can(permission)) ? children : <Navigate to="/" replace />;
+}
+
+function PlatformAdminRoute({ children }: { children: ReactNode }) {
+  const { isPlatformAdmin } = useAuth();
+  return isPlatformAdmin ? children : <Navigate to="/" replace />;
 }
 
 export function App() {
@@ -58,6 +64,7 @@ export function App() {
       <Route path="inventory/inbound" element={<PermissionRoute permission="inventory.receive" dependencies={["inventory.availability.view"]}><InventoryInboundPage /></PermissionRoute>} />
       <Route path="inventory/outbound" element={<PermissionRoute permission="inventory.issue" dependencies={["inventory.availability.view"]}><InventoryOutboundPage /></PermissionRoute>} />
       <Route path="settings/entitlements" element={<PermissionRoute permission="platform.entitlements.manage"><OrganizationEntitlementsPage /></PermissionRoute>} />
+      <Route path="settings/login-logs" element={<PlatformAdminRoute><LoginLogsPage /></PlatformAdminRoute>} />
     </Route>
     <Route path="*" element={<NotFoundPage />} />
   </Routes>;

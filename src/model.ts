@@ -766,23 +766,43 @@ export function resizeColumns(config: CabinetConfig, columns: number): CabinetCo
   return ensureOneActive(withPlanCells({ ...config, columnWidths }, planCells, depthSegments));
 }
 
-export function insertColumn(config: CabinetConfig, index: number): CabinetConfig {
+export interface InsertActiveCell {
+  row?: number;
+  column?: number;
+  depthIndex?: number;
+}
+
+function createPlaceholderCell() {
+  return { kind: "metalBackModule" as CellKind, enabled: false };
+}
+
+export function insertColumn(
+  config: CabinetConfig,
+  index: number,
+  active?: InsertActiveCell
+): CabinetConfig {
   if (config.columnWidths.length >= MAX_GRID_COUNT) return config;
   const insertAt = clamp(index, 0, config.columnWidths.length);
   const columnWidths = [...config.columnWidths];
   const sourceWidth = columnWidths[Math.max(0, Math.min(insertAt - 1, columnWidths.length - 1))] ?? 350;
   columnWidths.splice(insertAt, 0, sourceWidth);
 
-  const planCells = normalizePlanShape(config).map((row) => row.map((depthRow) => {
+  const planCells = normalizePlanShape(config).map((row, rowIndex) => row.map((depthRow, depthIndex) => {
     const nextRow = depthRow.map(cloneCell);
-    nextRow.splice(insertAt, 0, { kind: "metalBackModule", enabled: true });
+    const isActive = !active
+      || ((active.row ?? rowIndex) === rowIndex && (active.depthIndex ?? depthIndex) === depthIndex);
+    nextRow.splice(insertAt, 0, isActive ? { kind: "metalBackModule", enabled: true } : createPlaceholderCell());
     return nextRow;
   }));
 
   return withPlanCells({ ...config, columnWidths }, planCells);
 }
 
-export function insertRow(config: CabinetConfig, index: number): CabinetConfig {
+export function insertRow(
+  config: CabinetConfig,
+  index: number,
+  active?: InsertActiveCell
+): CabinetConfig {
   if (config.rowHeights.length >= MAX_GRID_COUNT) return config;
   const insertAt = clamp(index, 0, config.rowHeights.length);
   const rowHeights = [...config.rowHeights];
@@ -790,8 +810,12 @@ export function insertRow(config: CabinetConfig, index: number): CabinetConfig {
   rowHeights.splice(insertAt, 0, sourceHeight);
 
   const depthCount = getDepthSegments(config).length;
-  const cells: CellConfig[][] = Array.from({ length: depthCount }, () =>
-    Array.from({ length: config.columnWidths.length }, () => ({ kind: "metalBackModule", enabled: true }))
+  const cells: CellConfig[][] = Array.from({ length: depthCount }, (_, depthIndex) =>
+    Array.from({ length: config.columnWidths.length }, (_, columnIndex) => {
+      const isActive = !active
+        || ((active.depthIndex ?? depthIndex) === depthIndex && (active.column ?? columnIndex) === columnIndex);
+      return isActive ? { kind: "metalBackModule", enabled: true } : createPlaceholderCell();
+    })
   );
   const planCells = normalizePlanShape(config);
   planCells.splice(insertAt, 0, cells);
@@ -799,7 +823,11 @@ export function insertRow(config: CabinetConfig, index: number): CabinetConfig {
   return withPlanCells({ ...config, rowHeights }, planCells);
 }
 
-export function insertDepthSegment(config: CabinetConfig, index: number): CabinetConfig {
+export function insertDepthSegment(
+  config: CabinetConfig,
+  index: number,
+  active?: InsertActiveCell
+): CabinetConfig {
   const currentDepthSegments = getDepthSegments(config);
   if (currentDepthSegments.length >= MAX_GRID_COUNT) return config;
   const insertAt = clamp(index, 0, currentDepthSegments.length);
@@ -807,12 +835,15 @@ export function insertDepthSegment(config: CabinetConfig, index: number): Cabine
   const sourceDepth = depthSegments[Math.max(0, Math.min(insertAt - 1, depthSegments.length - 1))] ?? 350;
   depthSegments.splice(insertAt, 0, sourceDepth);
 
-  const planCells = normalizePlanShape(config).map((row) => {
+  const planCells = normalizePlanShape(config).map((row, rowIndex) => {
     const nextRow = row.map((depthRow) => depthRow.map(cloneCell));
     nextRow.splice(
       insertAt,
       0,
-      Array.from({ length: config.columnWidths.length }, () => ({ kind: "metalBackModule", enabled: true }))
+      Array.from({ length: config.columnWidths.length }, (_, columnIndex) => {
+        const isActive = !active || (active.row ?? rowIndex) === rowIndex && (active.column ?? columnIndex) === columnIndex;
+        return isActive ? { kind: "metalBackModule", enabled: true } : createPlaceholderCell();
+      })
     );
     return nextRow;
   });
@@ -820,14 +851,15 @@ export function insertDepthSegment(config: CabinetConfig, index: number): Cabine
   return withPlanCells(config, planCells, depthSegments);
 }
 
-function insertFrontDepthSegment(config: CabinetConfig): CabinetConfig {
-  const inserted = insertDepthSegment(config, 0);
+function insertFrontDepthSegment(config: CabinetConfig, active?: InsertActiveCell): CabinetConfig {
+  const inserted = insertDepthSegment(config, 0, active);
   const planCells = normalizePlanShape(inserted);
 
-  planCells.forEach((row) => {
+  planCells.forEach((row, rowIndex) => {
     const insertedDepthRow = row[0];
     const formerFrontDepthRow = row[1];
     formerFrontDepthRow?.forEach((cell, columnIndex) => {
+      if (active && ((active.row ?? rowIndex) !== rowIndex || (active.column ?? columnIndex) !== columnIndex)) return;
       if (!cell.enabled || !isFrontFacingClosableCell(cell)) return;
       insertedDepthRow[columnIndex] = createBackPanelShellFromFrontCell(cell);
       formerFrontDepthRow[columnIndex] = createBridgeCellFromFormerFront(cell);
@@ -847,34 +879,70 @@ export function expandCell(
     const targetDepthIndex = depthIndex - 1;
     if (targetDepthIndex >= 0) return enableCell(config, { row: selection.row, column: selection.column, depthIndex: targetDepthIndex });
     if (getDepthSegments(config).length >= MAX_GRID_COUNT) return { config, selection: { ...selection, depthIndex } };
-    return { config: insertFrontDepthSegment(config), selection: { row: selection.row, column: selection.column, depthIndex: 0 } };
+    return {
+      config: insertFrontDepthSegment(config, { row: selection.row, column: selection.column }),
+      selection: { row: selection.row, column: selection.column, depthIndex: 0 }
+    };
   }
 
   if (direction === "top") {
     const targetRow = selection.row + 1;
     if (targetRow < config.rowHeights.length) return enableCell(config, { row: targetRow, column: selection.column, depthIndex: selection.depthIndex });
     if (config.rowHeights.length >= MAX_GRID_COUNT) return { config, selection };
-    return { config: insertRow(config, config.rowHeights.length), selection: { row: targetRow, column: selection.column, depthIndex: selection.depthIndex } };
+    return {
+      config: insertRow(config, config.rowHeights.length, { row: targetRow, column: selection.column, depthIndex: selection.depthIndex }),
+      selection: { row: targetRow, column: selection.column, depthIndex: selection.depthIndex }
+    };
   }
 
   if (direction === "bottom") {
     const targetRow = selection.row - 1;
     if (targetRow >= 0) return enableCell(config, { row: targetRow, column: selection.column, depthIndex: selection.depthIndex });
     if (config.rowHeights.length >= MAX_GRID_COUNT) return { config, selection };
-    return { config: insertRow(config, 0), selection: { row: 0, column: selection.column, depthIndex: selection.depthIndex } };
+    return {
+      config: insertRow(config, 0, { row: 0, column: selection.column, depthIndex: selection.depthIndex }),
+      selection: { row: 0, column: selection.column, depthIndex: selection.depthIndex }
+    };
   }
 
   if (direction === "right") {
     const targetColumn = selection.column + 1;
     if (targetColumn < config.columnWidths.length) return enableCell(config, { row: selection.row, column: targetColumn, depthIndex: selection.depthIndex });
     if (config.columnWidths.length >= MAX_GRID_COUNT) return { config, selection };
-    return { config: insertColumn(config, config.columnWidths.length), selection: { row: selection.row, column: targetColumn, depthIndex: selection.depthIndex } };
+    return {
+      config: insertColumn(config, config.columnWidths.length, { row: selection.row, column: targetColumn, depthIndex: selection.depthIndex }),
+      selection: { row: selection.row, column: targetColumn, depthIndex: selection.depthIndex }
+    };
   }
 
   const targetColumn = selection.column - 1;
   if (targetColumn >= 0) return enableCell(config, { row: selection.row, column: targetColumn, depthIndex: selection.depthIndex });
   if (config.columnWidths.length >= MAX_GRID_COUNT) return { config, selection };
-  return { config: insertColumn(config, 0), selection: { row: selection.row, column: 0, depthIndex: selection.depthIndex } };
+  return {
+    config: insertColumn(config, 0, { row: selection.row, column: 0, depthIndex: selection.depthIndex }),
+    selection: { row: selection.row, column: 0, depthIndex: selection.depthIndex }
+  };
+}
+
+export function cloneColumn(
+  config: CabinetConfig,
+  sourceColumn: number,
+  insertAt: number = sourceColumn + 1
+): { config: CabinetConfig; column: number } {
+  if (config.columnWidths.length >= MAX_GRID_COUNT) return { config, column: sourceColumn };
+  const from = clamp(sourceColumn, 0, config.columnWidths.length - 1);
+  const at = clamp(insertAt, 0, config.columnWidths.length);
+  const columnWidths = [...config.columnWidths];
+  columnWidths.splice(at, 0, columnWidths[from]);
+
+  // 新列整列克隆源列配置: 门板/配件/颜色随格子一起复制(含源列中的空洞)
+  const planCells = normalizePlanShape(config).map((row) => row.map((depthRow) => {
+    const nextRow = depthRow.map(cloneCell);
+    nextRow.splice(at, 0, cloneCell(depthRow[from]));
+    return nextRow;
+  }));
+
+  return { config: withPlanCells({ ...config, columnWidths }, planCells), column: at };
 }
 
 export function deleteCell(config: CabinetConfig, selection: Selection): CabinetConfig {

@@ -443,7 +443,8 @@ export function PriceListDetailPage() {
         anchor.href = url;
         anchor.download = `${detail.code}-${detail.version}.csv`;
         anchor.click();
-        URL.revokeObjectURL(url);
+        // iOS Safari 的下载是异步开始的，同步 revoke 会中断下载
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
         return;
       } catch (reason) {
         messageApi.error(reason instanceof Error ? reason.message : "Price list export failed");
@@ -460,7 +461,8 @@ export function PriceListDetailPage() {
     anchor.href = url;
     anchor.download = `${detail.code}-${detail.version}.csv`;
     anchor.click();
-    URL.revokeObjectURL(url);
+    // iOS Safari 的下载是异步开始的，同步 revoke 会中断下载
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   const columns: TableProps<PriceListItem>["columns"] = [

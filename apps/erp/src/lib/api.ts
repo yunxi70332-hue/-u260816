@@ -19,6 +19,7 @@ import type {
   InventoryImportPreview,
   InventoryMaterial,
   InventoryRequirement,
+  LoginLogEntry,
   StockDocument,
   StockDocumentLineInput,
   Warehouse,
@@ -1012,6 +1013,35 @@ export const api = {
     });
   },
 
+  // Super-admin-only, cross-organization login audit — no tenant header on purpose.
+  listLoginLogs(params: { search?: string; tenantId?: string; start?: string; end?: string; page?: number; pageSize?: number } = {}): Promise<{ items: LoginLogEntry[]; total: number }> {
+    const query = new URLSearchParams();
+    if (params.search?.trim()) query.set("search", params.search.trim());
+    if (params.tenantId) query.set("tenantId", params.tenantId);
+    if (params.start) query.set("start", params.start);
+    if (params.end) query.set("end", params.end);
+    query.set("page", String(params.page ?? 1));
+    query.set("pageSize", String(params.pageSize ?? 20));
+    return request<{ items: LoginLogEntry[]; total: number }>(`/login-logs?${query.toString()}`)
+      .then((payload) => ({
+        items: unwrapList<LoginLogEntry>(payload).map((item) => {
+          const raw = asRecord(item);
+          return {
+            id: String(raw.id),
+            userId: String(raw.userId ?? raw.user_id ?? ""),
+            userName: display(raw.userName ?? raw.user_name, "未知账号"),
+            accountIdentifier: nullableDisplay(raw.accountIdentifier ?? raw.account_identifier),
+            tenantId: nullableDisplay(raw.tenantId ?? raw.tenant_id),
+            tenantName: nullableDisplay(raw.tenantName ?? raw.tenant_name),
+            ipAddress: nullableDisplay(raw.ipAddress ?? raw.ip_address),
+            userAgent: nullableDisplay(raw.userAgent ?? raw.user_agent),
+            createdAt: display(raw.createdAt ?? raw.created_at, "")
+          };
+        }),
+        total: Number(asRecord(payload).total ?? 0)
+      }));
+  },
+
   async loadWorkspace(tenantId: string, options: { ordersOnly?: boolean } = {}): Promise<WorkspaceData> {
     const resources = options.ordersOnly
       ? ["orders"]
@@ -1073,6 +1103,13 @@ export const api = {
 
   getOrder(orderId: string, tenantId: string): Promise<OrderDetail> {
     return request<unknown>("/orders/" + orderId, { tenantId }).then((payload) => normalizeOrderDetail(unwrapItem(payload)));
+  },
+
+  recordOrderContractExport(orderId: string, tenantId: string): Promise<void> {
+    return request<unknown>("/orders/" + orderId + "/contract-export", {
+      method: "POST",
+      tenantId
+    }).then(() => undefined);
   },
 
   transitionOrder(orderId: string, action: string, tenantId: string, expectedVersion: number): Promise<OrderDetail> {

@@ -38,11 +38,14 @@ interface BuilderSceneProps {
   panelPickEnabled: boolean;
   framePickEnabled: boolean;
   selectedFramePartId: string | null;
+  highlightColumn: number | null;
+  canCloneColumn: boolean;
   onSelect: (selection: Selection | null) => void;
   onSelectAccessory: (selection: Selection, accessoryId: string) => void;
   onSelectPanel: (selection: Selection, panel: StructurePanelKey) => void;
   onSelectFramePart: (partId: string) => void;
   onExpand: (direction: ExpandDirection) => void;
+  onCloneColumn: (side: "left" | "right") => void;
   onDrawerPull: DrawerPullHandler;
   onDoorOpen: (selection: Selection, value: number, remember?: boolean) => void;
   onReady: (api: SceneApi) => void;
@@ -122,6 +125,10 @@ const GLASS_CLIP_EDGE_INSET = 7 * SCALE;
 const EXPAND_HINT_FACE_OFFSET = 0.18;
 const EXPAND_HINT_FRONT_OFFSET = 0.68;
 const EXPAND_HINT_SCREEN_HIT_RADIUS = 32;
+const EXPAND_CLONE_HINT_SCREEN_HIT_RADIUS = 44;
+const EXPAND_CLONE_HINT_GAP = 0.44;
+const EXPAND_CLONE_HINT_PILL_HEIGHT = 0.3;
+const EXPAND_CLONE_HINT_PILL_ASPECT = 3.4;
 const EXPAND_HINT_SIDE_GAP = 0.28;
 const EXPAND_HINT_FRONT_DIAGONAL_GAP = 0.38;
 const CABINET_MODEL_Y_OFFSET = 0.05;
@@ -218,7 +225,8 @@ let flipUpDoorFbxReferenceAssetPromise: Promise<THREE.Group | null> | null = nul
 let doorInteriorComboAssetsPromise: Promise<DoorInteriorComboAssets | null> | null = null;
 const doorDragHitboxesByCanvas = new WeakMap<HTMLCanvasElement, Set<THREE.Mesh>>();
 const mobileTrayHitboxesByCanvas = new WeakMap<HTMLCanvasElement, Set<THREE.Mesh>>();
-const expandDirectionAtPointByCanvas = new WeakMap<HTMLCanvasElement, (event: PointerEvent | MouseEvent) => ExpandDirection | null>();
+type ScreenExpandAction = { kind: "expand"; direction: ExpandDirection } | { kind: "clone"; side: "left" | "right" };
+const expandDirectionAtPointByCanvas = new WeakMap<HTMLCanvasElement, (event: PointerEvent | MouseEvent) => ScreenExpandAction | null>();
 
 type ScreenBounds = { minX: number; maxX: number; minY: number; maxY: number };
 type MobileTrayHitboxUserData = {
@@ -256,11 +264,50 @@ function getExpandHintButtons(cell: LayoutCell): ExpandHintButton[] {
   ];
 }
 
+type CloneHintSide = "left" | "right" | "top";
+
+type CloneScreenPosition = { position: [number, number, number]; side: "left" | "right" };
+
+function getCloneColumnHintButton(
+  cell: LayoutCell,
+  side: CloneHintSide,
+  camera?: THREE.Camera,
+  size?: { width: number; height: number }
+): ExpandHintButton {
+  const faceZ = cell.z + cell.depth / 2 + EXPAND_HINT_FACE_OFFSET;
+  const sideGap = Math.max(EXPAND_HINT_SIDE_GAP, cell.height < 0.7 ? 0.34 : EXPAND_HINT_SIDE_GAP);
+  const pillHalfWidth = EXPAND_CLONE_HINT_PILL_HEIGHT * EXPAND_CLONE_HINT_PILL_ASPECT / 2;
+  if (side === "top") {
+    return { direction: "top", position: [cell.x, cell.y + cell.height / 2 + sideGap + EXPAND_CLONE_HINT_GAP, faceZ] };
+  }
+  const sign = side === "right" ? 1 : -1;
+  const desired: [number, number, number] = [
+    cell.x + sign * (cell.width / 2 + sideGap + EXPAND_CLONE_HINT_GAP + pillHalfWidth),
+    cell.y,
+    faceZ
+  ];
+  // 视口钳制: 胶囊中心落到屏幕外时拉回可见区域(左/右贴边场景)
+  if (!camera || !size || !size.width || !size.height) return { direction: side, position: desired };
+  const projected = new THREE.Vector3(desired[0], desired[1] + CABINET_MODEL_Y_OFFSET, desired[2]).project(camera);
+  const px = (projected.x * 0.5 + 0.5) * size.width;
+  const py = (-projected.y * 0.5 + 0.5) * size.height;
+  const marginX = Math.min(130, Math.max(80, size.width * 0.09));
+  const clampedPx = Math.min(size.width - marginX, Math.max(marginX, px));
+  const clampedPy = Math.min(size.height - 70, Math.max(70, py));
+  if (clampedPx === px && clampedPy === py) return { direction: side, position: desired };
+  const clamped = new THREE.Vector3(
+    (clampedPx / size.width) * 2 - 1,
+    -(clampedPy / size.height) * 2 + 1,
+    projected.z
+  ).unproject(camera);
+  return { direction: side, position: [clamped.x, clamped.y - CABINET_MODEL_Y_OFFSET, clamped.z] };
+}
+
 function sameSelection(a: Selection, b: Selection) {
   return a.row === b.row && a.column === b.column && (a.depthIndex ?? 0) === (b.depthIndex ?? 0);
 }
 
-export function BuilderScene({ config, showDimensions, structureEditEnabled, selection, selectedAccessory, selectedPanel, panelPickEnabled, framePickEnabled, selectedFramePartId, onSelect, onSelectAccessory, onSelectPanel, onSelectFramePart, onExpand, onDrawerPull, onDoorOpen, onReady }: BuilderSceneProps) {
+export function BuilderScene({ config, showDimensions, structureEditEnabled, selection, selectedAccessory, selectedPanel, panelPickEnabled, framePickEnabled, selectedFramePartId, highlightColumn, canCloneColumn, onSelect, onSelectAccessory, onSelectPanel, onSelectFramePart, onExpand, onCloneColumn, onDrawerPull, onDoorOpen, onReady }: BuilderSceneProps) {
   const metrics = getSceneMetrics(config, showDimensions);
   const [drawerDragging, setDrawerDragging] = useState(false);
   const [hoveredFramePartId, setHoveredFramePartId] = useState<string | null>(null);
@@ -310,7 +357,7 @@ export function BuilderScene({ config, showDimensions, structureEditEnabled, sel
           shadow-camera-top={8}
           shadow-camera-bottom={-8}
         />
-        <ScenePickRouter config={config} selection={selection} panelPickEnabled={panelPickEnabled} framePickEnabled={framePickEnabled} selectedFramePartId={selectedFramePartId} expandEnabled={structureEditEnabled} onSelect={onSelect} onSelectPanel={onSelectPanel} onSelectFramePart={onSelectFramePart} onHoverFramePart={setHoveredFramePartId} onExpand={onExpand} />
+        <ScenePickRouter config={config} selection={selection} panelPickEnabled={panelPickEnabled} framePickEnabled={framePickEnabled} selectedFramePartId={selectedFramePartId} expandEnabled={structureEditEnabled} canCloneColumn={canCloneColumn} onSelect={onSelect} onSelectPanel={onSelectPanel} onSelectFramePart={onSelectFramePart} onHoverFramePart={setHoveredFramePartId} onExpand={onExpand} onCloneColumn={onCloneColumn} />
         <CabinetModel
           config={config}
           showDimensions={showDimensions}
@@ -319,6 +366,8 @@ export function BuilderScene({ config, showDimensions, structureEditEnabled, sel
           selectedAccessory={selectedAccessory}
           selectedPanel={selectedPanel}
           panelPickEnabled={panelPickEnabled}
+          highlightColumn={highlightColumn}
+          canCloneColumn={canCloneColumn}
           onSelect={onSelect}
           onSelectAccessory={onSelectAccessory}
           onSelectPanel={onSelectPanel}
@@ -356,11 +405,13 @@ function ScenePickRouter({
   framePickEnabled,
   selectedFramePartId,
   expandEnabled,
+  canCloneColumn,
   onSelect,
   onSelectPanel,
   onSelectFramePart,
   onHoverFramePart,
-  onExpand
+  onExpand,
+  onCloneColumn
 }: {
   config: CabinetConfig;
   selection: Selection | null;
@@ -368,11 +419,13 @@ function ScenePickRouter({
   framePickEnabled: boolean;
   selectedFramePartId: string | null;
   expandEnabled: boolean;
+  canCloneColumn: boolean;
   onSelect: (selection: Selection | null) => void;
   onSelectPanel: (selection: Selection, panel: StructurePanelKey) => void;
   onSelectFramePart: (partId: string) => void;
   onHoverFramePart: (partId: string | null) => void;
   onExpand: (direction: ExpandDirection) => void;
+  onCloneColumn: (side: "left" | "right") => void;
 }) {
   const { camera, gl, scene } = useThree();
   const configRef = useRef(config);
@@ -381,11 +434,13 @@ function ScenePickRouter({
   const framePickEnabledRef = useRef(framePickEnabled);
   const selectedFramePartIdRef = useRef(selectedFramePartId);
   const expandEnabledRef = useRef(expandEnabled);
+  const canCloneColumnRef = useRef(canCloneColumn);
   const onSelectRef = useRef(onSelect);
   const onSelectFramePartRef = useRef(onSelectFramePart);
   const onHoverFramePartRef = useRef(onHoverFramePart);
   const onSelectPanelRef = useRef(onSelectPanel);
   const onExpandRef = useRef(onExpand);
+  const onCloneColumnRef = useRef(onCloneColumn);
   const frameVerticesRef = useRef(buildFrameTopology(config).vertices);
   const frameTubesRef = useRef(buildFrameTopology(config).tubes);
 
@@ -399,12 +454,14 @@ function ScenePickRouter({
     framePickEnabledRef.current = framePickEnabled;
     selectedFramePartIdRef.current = selectedFramePartId;
     expandEnabledRef.current = expandEnabled;
+    canCloneColumnRef.current = canCloneColumn;
     onSelectRef.current = onSelect;
     onSelectPanelRef.current = onSelectPanel;
     onSelectFramePartRef.current = onSelectFramePart;
     onHoverFramePartRef.current = onHoverFramePart;
     onExpandRef.current = onExpand;
-  }, [config, expandEnabled, framePickEnabled, onExpand, onHoverFramePart, onSelect, onSelectFramePart, onSelectPanel, panelPickEnabled, selectedFramePartId, selection]);
+    onCloneColumnRef.current = onCloneColumn;
+  }, [config, expandEnabled, framePickEnabled, onCloneColumn, onExpand, onHoverFramePart, onSelect, onSelectFramePart, onSelectPanel, panelPickEnabled, selectedFramePartId, selection, canCloneColumn]);
 
   useEffect(() => {
     const canvas = gl.domElement;
@@ -421,7 +478,9 @@ function ScenePickRouter({
     const frameTubeStart = new THREE.Vector3();
     const frameTubeEnd = new THREE.Vector3();
 
-    const getScreenExpandDirection = (event: PointerEvent | MouseEvent): ExpandDirection | null => {
+    // 屏幕空间就近匹配: 把 5 个"+"提示与 3 个克隆胶囊位置投影到屏幕, 命中半径内取最近者。
+    // 胶囊即使被卸载(宽限期外), 其屏幕位置仍可命中, 保证"点胶囊附近必克隆, 点"+"附近才是加一格"。
+    const getExpandActionAt = (event: PointerEvent | MouseEvent): ScreenExpandAction | null => {
       if (!expandEnabledRef.current || panelPickEnabledRef.current) return null;
       const active = selectionRef.current;
       if (!active) return null;
@@ -436,17 +495,32 @@ function ScenePickRouter({
       if (!cell) return null;
 
       const rect = canvas.getBoundingClientRect();
-      let nearest: { direction: ExpandDirection; distanceSq: number } | null = null;
-      for (const button of getExpandHintButtons(cell)) {
-        projectedHint.set(button.position[0], button.position[1] + CABINET_MODEL_Y_OFFSET, button.position[2]).project(camera);
+      const viewport = { width: canvas.clientWidth, height: canvas.clientHeight };
+      let nearest: { action: ScreenExpandAction; distanceSq: number } | null = null;
+      const consider = (action: ScreenExpandAction, position: [number, number, number]) => {
+        projectedHint.set(position[0], position[1] + CABINET_MODEL_Y_OFFSET, position[2]).project(camera);
         const screenX = rect.left + ((projectedHint.x + 1) / 2) * rect.width;
         const screenY = rect.top + ((1 - projectedHint.y) / 2) * rect.height;
         const distanceSq = (event.clientX - screenX) ** 2 + (event.clientY - screenY) ** 2;
-        if (!nearest || distanceSq < nearest.distanceSq) nearest = { direction: button.direction, distanceSq };
+        if (!nearest || distanceSq < nearest.distanceSq) nearest = { action, distanceSq };
+      };
+      for (const button of getExpandHintButtons(cell)) {
+        consider({ kind: "expand", direction: button.direction }, button.position);
       }
-      return nearest && nearest.distanceSq <= EXPAND_HINT_SCREEN_HIT_RADIUS ** 2 ? nearest.direction : null;
+      if (canCloneColumnRef.current) {
+        for (const cloneSide of ["top", "left", "right"] as const) {
+          const cloneButton = getCloneColumnHintButton(cell, cloneSide, camera, viewport);
+          consider({ kind: "clone", side: cloneSide === "left" ? "left" : "right" }, cloneButton.position);
+        }
+      }
+      const best = nearest as { action: ScreenExpandAction; distanceSq: number } | null;
+      if (!best) return null;
+      if (best.action.kind === "clone") {
+        return best.distanceSq <= EXPAND_CLONE_HINT_SCREEN_HIT_RADIUS ** 2 ? best.action : null;
+      }
+      return best.distanceSq <= EXPAND_HINT_SCREEN_HIT_RADIUS ** 2 ? best.action : null;
     };
-    expandDirectionAtPointByCanvas.set(gl.domElement, getScreenExpandDirection);
+    expandDirectionAtPointByCanvas.set(gl.domElement, getExpandActionAt);
 
     const getPointer = (event: { clientX: number; clientY: number }) => {
       const rect = canvas.getBoundingClientRect();
@@ -466,6 +540,13 @@ function ScenePickRouter({
           return {
             kind: "expand" as const,
             direction: data.usmExpandDirection as ExpandDirection,
+            setHovered: data.usmSetHovered as ((hovered: boolean) => void) | undefined
+          };
+        }
+        if (data.usmInteraction === "cloneColumn") {
+          return {
+            kind: "cloneColumn" as const,
+            side: (data.usmCloneSide as "left" | "right" | undefined) ?? "right",
             setHovered: data.usmSetHovered as ((hovered: boolean) => void) | undefined
           };
         }
@@ -494,6 +575,7 @@ function ScenePickRouter({
       for (const hit of hits) {
         const interaction = getInteraction(hit.object);
         if (interaction.kind === "expand") return interaction;
+        if (interaction.kind === "cloneColumn") return interaction;
         if (interaction.kind === "accessory") {
           if (!preferPanel && !preferFrame) return interaction;
           hasOther = true;
@@ -672,15 +754,16 @@ function ScenePickRouter({
     };
 
     const handlePointerDown = (event: PointerEvent | MouseEvent) => {
-      const expandDirection = getScreenExpandDirection(event);
-      if (expandDirection) {
+      const action = getExpandActionAt(event);
+      if (action) {
         lastExpandPointerAt = event.timeStamp;
         pointerStart = null;
         dragged = false;
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
-        onExpandRef.current(expandDirection);
+        if (action.kind === "expand") onExpandRef.current(action.direction);
+        else onCloneColumnRef.current(action.side);
         return;
       }
       pointerStart = { x: event.clientX, y: event.clientY };
@@ -694,7 +777,7 @@ function ScenePickRouter({
       const frameCandidates = framePickEnabledRef.current ? getFramePickCandidates(event, hits) : [];
       onHoverFramePartRef.current(framePickEnabledRef.current ? frameCandidates[0] ?? null : null);
       const interaction = panelTarget?.interaction ?? classifyHits(hits, false, framePickEnabledRef.current);
-      const canHoverExpand = expandEnabledRef.current && interaction.kind === "expand";
+      const canHoverExpand = expandEnabledRef.current && (interaction.kind === "expand" || interaction.kind === "cloneColumn");
       if (clearHoveredExpand) {
         clearHoveredExpand();
         clearHoveredExpand = null;
@@ -726,9 +809,19 @@ function ScenePickRouter({
         }
         return;
       }
+      const screenAction = getExpandActionAt(event);
+      if (screenAction) {
+        if (screenAction.kind === "expand") onExpandRef.current(screenAction.direction);
+        else onCloneColumnRef.current(screenAction.side);
+        return;
+      }
       const interaction = classifyHits(hits, false, framePickEnabledRef.current);
       if (expandEnabledRef.current && interaction.kind === "expand") {
         onExpandRef.current(interaction.direction);
+        return;
+      }
+      if (expandEnabledRef.current && interaction.kind === "cloneColumn") {
+        onCloneColumnRef.current(interaction.side ?? "right");
         return;
       }
       if (framePickEnabledRef.current) return;
@@ -772,6 +865,9 @@ function SceneReady({ onReady, requestFitRef }: { onReady: (api: SceneApi) => vo
   const { gl, scene, camera } = useThree();
 
   useEffect(() => {
+    // three-stdlib 控件 dispose 时会把 canvas 内联 touch-action 改回 auto，
+    // 导致 iOS 上双指捏合变成页面缩放；这里在场景每次就绪时强制改回 none
+    gl.domElement.style.touchAction = "none";
     onReady({
       capturePng: () => {
         gl.render(scene, camera);
@@ -962,6 +1058,8 @@ function CabinetModel({
   framePickEnabled,
   selectedFramePartId,
   hoveredFramePartId,
+  highlightColumn,
+  canCloneColumn,
   onSelectFramePart,
   onSelect,
   onSelectAccessory,
@@ -981,6 +1079,8 @@ function CabinetModel({
   framePickEnabled: boolean;
   selectedFramePartId: string | null;
   hoveredFramePartId: string | null;
+  highlightColumn: number | null;
+  canCloneColumn: boolean;
   onSelectFramePart: (partId: string) => void;
   onSelect: (selection: Selection | null) => void;
   onSelectAccessory: (selection: Selection, accessoryId: string) => void;
@@ -1033,6 +1133,7 @@ function CabinetModel({
              structureEditEnabled={structureEditEnabled}
              panelPickEnabled={panelPickEnabled}
              framePickEnabled={framePickEnabled}
+            canCloneColumn={canCloneColumn}
             selected={selection?.row === cell.row && selection.column === cell.column && (selection.depthIndex ?? 0) === cell.depthIndex}
           selectedAccessoryId={selectedAccessoryId}
             selectedPanel={selectedPanelTargets.find((target) => sameSelection(target.selection, cellSelection))?.panel ?? null}
@@ -1046,6 +1147,15 @@ function CabinetModel({
           />
         );
       })}
+
+      {highlightColumn !== null ? layout.cells
+        .filter((cell) => cell.column === highlightColumn)
+        .map((cell) => (
+          <SelectionFrame
+            key={`column-highlight-${cell.row}-${cell.depthIndex}-${cell.column}`}
+            cell={cell}
+          />
+        )) : null}
 
       {config.structureMode !== "frameOnly" ? (
         layout.workSurfaces.map((surface) => (
@@ -1085,6 +1195,7 @@ function CellContent({
   structureEditEnabled,
   panelPickEnabled,
   framePickEnabled,
+  canCloneColumn,
   selected,
   selectedAccessoryId,
   selectedPanel,
@@ -1107,6 +1218,7 @@ function CellContent({
   structureEditEnabled: boolean;
   panelPickEnabled: boolean;
   framePickEnabled: boolean;
+  canCloneColumn: boolean;
   selected: boolean;
   selectedAccessoryId?: string;
   selectedPanel: StructurePanelKey | null;
@@ -1182,7 +1294,7 @@ function CellContent({
       {selected ? (
         <>
           <SelectionFrame cell={cell} />
-          {structureEditEnabled && cellConfig.frontAccessory !== "glassDropDoor" ? <ExpandHints cell={cell} /> : null}
+          {structureEditEnabled && cellConfig.frontAccessory !== "glassDropDoor" ? <ExpandHints cell={cell} canCloneColumn={canCloneColumn} /> : null}
         </>
       ) : null}
     </group>
@@ -4838,12 +4950,85 @@ function SelectionFrame({ cell }: { cell: LayoutCell }) {
   );
 }
 
-function ExpandHints({ cell }: { cell: LayoutCell }) {
+const CLONE_COLUMN_HINT_LABEL = "全选新增一列";
+
+function createCloneColumnHintTexture(label: string) {
+  const fontSize = 64;
+  const paddingX = 52;
+  const paddingY = 40;
+  const font = `600 ${fontSize}px Inter, PingFang SC, Microsoft YaHei UI, Microsoft YaHei, sans-serif`;
+  const measureCanvas = document.createElement("canvas");
+  const measureContext = measureCanvas.getContext("2d");
+  if (!measureContext) return new THREE.CanvasTexture(measureCanvas);
+  measureContext.font = font;
+  const width = Math.ceil(measureContext.measureText(label).width + paddingX * 2);
+  const height = fontSize + paddingY * 2;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return new THREE.CanvasTexture(canvas);
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = "rgba(17, 17, 17, 0.85)";
+  roundRect(ctx, 4, 4, width - 8, height - 8, (height - 8) / 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255, 229, 0, 0.95)";
+  ctx.lineWidth = 6;
+  ctx.stroke();
+  ctx.font = font;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#ffe500";
+  ctx.fillText(label, width / 2, height / 2 + 4);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.generateMipmaps = false;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function ExpandHints({ cell, canCloneColumn }: { cell: LayoutCell; canCloneColumn: boolean }) {
   const [hoveredDirection, setHoveredDirection] = useState<ExpandDirection | null>(null);
+  const [cloneHovered, setCloneHovered] = useState(false);
+  const [cloneAnchor, setCloneAnchor] = useState<CloneHintSide | null>(null);
+  const cloneUnmountTimer = useRef<number | null>(null);
   const buttons = useMemo(
     () => getExpandHintButtons(cell),
     [cell.depth, cell.height, cell.width, cell.x, cell.y, cell.z]
   );
+
+  useEffect(() => {
+    if (hoveredDirection === "top" || hoveredDirection === "left" || hoveredDirection === "right") {
+      if (cloneUnmountTimer.current !== null) {
+        window.clearTimeout(cloneUnmountTimer.current);
+        cloneUnmountTimer.current = null;
+      }
+      setCloneAnchor(hoveredDirection);
+      return;
+    }
+    if (cloneHovered) {
+      if (cloneUnmountTimer.current !== null) {
+        window.clearTimeout(cloneUnmountTimer.current);
+        cloneUnmountTimer.current = null;
+      }
+      return;
+    }
+    // 指针在提示与胶囊之间的空白处时, 给予宽限期避免胶囊在移动途中消失
+    if (cloneUnmountTimer.current === null) {
+      cloneUnmountTimer.current = window.setTimeout(() => {
+        cloneUnmountTimer.current = null;
+        setCloneAnchor(null);
+      }, 2000);
+    }
+  }, [cloneHovered, hoveredDirection]);
+
+  useEffect(() => () => {
+    if (cloneUnmountTimer.current !== null) window.clearTimeout(cloneUnmountTimer.current);
+  }, []);
 
   return (
     <group>
@@ -4874,7 +5059,55 @@ function ExpandHints({ cell }: { cell: LayoutCell }) {
           </Billboard>
         );
       })}
+      {canCloneColumn && cloneAnchor ? (
+        <CloneColumnHint
+          cell={cell}
+          side={cloneAnchor === "left" ? "left" : "right"}
+          onHovered={setCloneHovered}
+        />
+      ) : null}
     </group>
+  );
+}
+
+function CloneColumnHint({ cell, side, onHovered }: { cell: LayoutCell; side: "left" | "right"; onHovered: (hovered: boolean) => void }) {
+  const [hovered, setHovered] = useState(false);
+  const groupRef = useRef<THREE.Group>(null);
+  const { camera, size } = useThree();
+  const texture = useMemo(() => createCloneColumnHintTexture(CLONE_COLUMN_HINT_LABEL), []);
+  useEffect(() => () => texture.dispose(), [texture]);
+  const aspect = Math.max(0.1, texture.image.width / Math.max(1, texture.image.height));
+  const pillHeight = EXPAND_CLONE_HINT_PILL_HEIGHT;
+
+  // 每帧按当前相机/视口计算钳制后的胶囊位置, 保证胶囊永远完整落在画面内
+  useFrame(() => {
+    const group = groupRef.current;
+    if (!group) return;
+    const button = getCloneColumnHintButton(cell, side, camera, size);
+    group.position.set(button.position[0], button.position[1], button.position[2]);
+  });
+
+  return (
+    <Billboard ref={groupRef}>
+      <mesh
+        renderOrder={65}
+        userData={{
+          usmInteraction: "cloneColumn",
+          usmCloneSide: side,
+          usmSetHovered: (active: boolean) => {
+            onHovered(active);
+            setHovered(active);
+          }
+        }}
+      >
+        <boxGeometry args={[Math.max(1.2, pillHeight * aspect + 0.16), 0.56, 0.05]} />
+        <meshBasicMaterial color="#ffffff" transparent opacity={0.001} depthTest={false} depthWrite={false} />
+      </mesh>
+      <mesh position={[0, 0.05, 0]} renderOrder={64} raycast={() => undefined} scale={hovered ? 1.07 : 1}>
+        <planeGeometry args={[pillHeight * aspect, pillHeight]} />
+        <meshBasicMaterial map={texture} transparent depthTest={false} depthWrite={false} toneMapped={false} />
+      </mesh>
+    </Billboard>
   );
 }
 

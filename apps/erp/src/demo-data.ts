@@ -60,7 +60,7 @@ export const demoPriceLists: PriceList[] = [
 ];
 
 export const demoAudits: AuditEvent[] = [
-  { id: "a-01", actor: "林乔", role: "销售主管", action: "提交审批", resource: "报价", resourceId: "QT-202608-031", tenant: "上海旗舰展厅", createdAt: "2026-08-11 09:40:16", ip: "10.21.4.18", detail: "报价 v3，含税金额 ¥286,400" },
+  { id: "a-01", actor: "林乔", role: "销售主管", action: "提交审批", resource: "报价", resourceId: "QT-202608-031", tenant: "上海旗舰展厅", createdAt: "2026-08-11 09:40:16", ip: "10.21.4.18", detail: "报价 v3，订单金额 ¥286,400" },
   { id: "a-02", actor: "系统", role: "自动任务", action: "状态更新", resource: "订单", resourceId: "SO-202608-018", tenant: "上海旗舰展厅", createdAt: "2026-08-11 09:12:04", ip: "internal", detail: "生产状态由备料变更为组装" },
   { id: "a-03", actor: "陈默", role: "销售", action: "发送报价", resource: "报价", resourceId: "QT-202608-026", tenant: "杭州经销中心", createdAt: "2026-08-10 17:18:52", ip: "10.24.8.03", detail: "发送至 shenyiwei@example.cn" },
   { id: "a-04", actor: "姜宁", role: "生产协调", action: "创建发运", resource: "发运单", resourceId: "SHP-260810-006", tenant: "深圳项目部", createdAt: "2026-08-10 15:37:28", ip: "10.22.6.90", detail: "6 件，德邦物流" },

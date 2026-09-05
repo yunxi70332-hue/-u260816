@@ -60,7 +60,7 @@ import type {
 import { snapshotDesignDraft } from "@usm/domain";
 import { DEFAULT_CONFIG } from "../../../src/model.js";
 import { AppError, VersionConflictError } from "./errors.js";
-import type { AuditInput, AuthMembership, IdempotencyRecord, Repository } from "./repository.js";
+import type { AuditInput, AuthMembership, IdempotencyRecord, LoginLogInput, LoginLogQuery, LoginLogSummary, Repository } from "./repository.js";
 import { recalculateDesignSnapshot } from "./services/configurator.js";
 import { buildLegacyPriceCatalog } from "./services/price-calculator.js";
 import { calculateAuthorization, dataScopeAllowsDelegation, DEALER_MODULES, ERP_MODULES, defaultEnabledModules, isPermissionAllowedForOrganization, legacyPermissionsForRole, platformAuthorization } from "./authorization.js";
@@ -118,6 +118,7 @@ export class MemoryRepository implements Repository {
   private shipments = new Map<string, Shipment>();
   private attachments = new Map<string, Attachment>();
   private audit: AuditLog[] = [];
+  private loginLogs: LoginLogSummary[] = [];
   private passwordChangeRequired = new Set<string>();
   private permissionGrants = new Map<string, PermissionGrant[]>();
   private dataScopes = new Map<string, Array<{ resource: string; scope: "own" | "assigned" | "specified" | "organization"; assignedUserIds: string[] }>>();
@@ -1337,6 +1338,30 @@ export class MemoryRepository implements Repository {
 
   async listAudit(tenantId: string, entityType?: string, entityId?: string): Promise<AuditLog[]> {
     return clone(this.audit.filter((item) => item.tenantId === tenantId && (!entityType || item.entityType === entityType) && (!entityId || item.entityId === entityId)));
+  }
+
+  async recordLoginLog(input: LoginLogInput): Promise<void> {
+    const account = [...this.accounts.values()].find((item) => item.userId === input.userId);
+    this.loginLogs.unshift({
+      id: randomUUID(), userId: input.userId, userName: account?.name ?? input.userId,
+      accountIdentifier: input.accountIdentifier ?? account?.email ?? account?.phone ?? null,
+      tenantId: input.tenantId, tenantName: input.tenantId ? this.tenant.name : null,
+      ipAddress: input.ipAddress ?? null, userAgent: input.userAgent ?? null, createdAt: now()
+    });
+  }
+
+  async listLoginLogs(query: LoginLogQuery): Promise<{ items: LoginLogSummary[]; total: number }> {
+    const normalized = query.search?.trim().toLocaleLowerCase() ?? "";
+    const filtered = this.loginLogs.filter((item) => {
+      if (query.tenantId && item.tenantId !== query.tenantId) return false;
+      const date = item.createdAt.slice(0, 10);
+      if (query.start && date < query.start) return false;
+      if (query.end && date > query.end) return false;
+      if (normalized && !`${item.userName}${item.accountIdentifier ?? ""}${item.ipAddress ?? ""}`.toLocaleLowerCase().includes(normalized)) return false;
+      return true;
+    });
+    const start = (query.page - 1) * query.pageSize;
+    return { items: clone(filtered.slice(start, start + query.pageSize)), total: filtered.length };
   }
 
   async getIdempotency(tenantId: string, route: string, key: string) {

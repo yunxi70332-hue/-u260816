@@ -24,6 +24,9 @@ export interface AppOverrides {
 export async function buildApp(config: AppConfig, overrides: AppOverrides = {}) {
   const app = Fastify({
     logger: { level: process.env.LOG_LEVEL ?? (config.isProduction ? "info" : "debug") },
+    // The API is served behind a reverse proxy (BT panel nginx) in production;
+    // trusting it lets request.ip resolve the real client IP from X-Forwarded-For.
+    trustProxy: true,
     genReqId(request) {
       const requestId = request.headers["x-request-id"];
       return typeof requestId === "string" && requestId.length <= 128 ? requestId : crypto.randomUUID();

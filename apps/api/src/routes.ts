@@ -129,6 +129,14 @@ function requireAnyPermission(request: FastifyRequest, permissions: Array<import
   }
 }
 
+// Platform-level capabilities (e.g. login logs) are reserved for the super
+// admin role and intentionally stay out of the delegable permission catalog.
+function requirePlatformAdmin(request: FastifyRequest): void {
+  if (authContext(request).principalType !== "platform_admin") {
+    throw new AppError(403, "FORBIDDEN", "Platform administrator access is required");
+  }
+}
+
 function requireMultiplierPermission(request: FastifyRequest, permission: "quotes.multiplier.view" | "quotes.multiplier.manage"): void {
   if (authContext(request).organizationType !== "hq") {
     throw new AppError(403, "FORBIDDEN", "Sales multiplier pricing is only available to headquarters organizations");
@@ -1218,6 +1226,40 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
       authorization,
       mustChangePassword
     };
+  });
+
+  // Record a login log entry for every successful ERP account sign-in. The
+  // write runs in the background: awaiting inside an onSend hook stalls the
+  // sign-in reply (the auth handler resolves right after reply.send). Only
+  // failures of the log write are logged — never fail the sign-in itself.
+  app.addHook("onSend", async (request, reply, payload) => {
+    const path = request.url.split("?")[0];
+    if (!/^\/api\/auth\/sign-in\/(email|username|phone-number)$/.test(path) || reply.statusCode !== 200) return payload;
+    try {
+      let parsed: unknown = payload;
+      if (Buffer.isBuffer(payload) || typeof payload === "string") parsed = JSON.parse(String(payload));
+      const userId = (parsed as { user?: { id?: unknown } } | undefined)?.user?.id;
+      if (typeof userId !== "string" || !userId) return payload;
+      const input = request.body as { email?: string; username?: string; phoneNumber?: string } | undefined;
+      const accountIdentifier = input?.email ?? input?.username ?? input?.phoneNumber ?? null;
+      const ipAddress = request.ip;
+      const userAgent = request.headers["user-agent"] ?? null;
+      void repository.resolveMembership(userId)
+        .catch(() => null)
+        .then(async (membership) => {
+          await repository.recordLoginLog({
+            userId,
+            tenantId: membership?.tenant.id ?? null,
+            accountIdentifier,
+            ipAddress,
+            userAgent
+          });
+        })
+        .catch((error) => request.log.error({ err: error }, "failed to record login log"));
+    } catch (error) {
+      request.log.error({ err: error }, "failed to parse sign-in payload for the login log");
+    }
+    return payload;
   });
 
   app.get("/api/health", async () => ({
@@ -2535,6 +2577,16 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
     reply.header("ETag", revisionEtag(item.revision));
     return { item: await redactPlatformUserReferences(repository, authContext(request), withPlatformOwnerName(authContext(request), { ...maskOrderForAuthorization(withOrderDisplayNames(item, relations), authContext(request).authorization.fieldPolicy), shipments })) };
   });
+  app.post<{ Params: { id: string } }>("/api/orders/:id/contract-export", async (request) => {
+    requirePermission(request, "orders.export");
+    const item = await foundOrder(repository, request, request.params.id);
+    await auditMutation(repository, request, "order.contract_exported", "order", item.id, null, null, {
+      orderNo: item.code,
+      revision: item.revision,
+      format: "html-word-compatible"
+    });
+    return { item: { id: item.id, orderNo: item.code, revision: item.revision } };
+  });
   app.post("/api/orders", async (request, reply) => {
     requirePermission(request, "orders.create");
     const input = parse(CreateOrderSchema, request.body);
@@ -2685,6 +2737,22 @@ export async function registerApiRoutes(app: FastifyInstance, deps: RouteDepende
       accountNames(repository, tenant.id)
     ]);
     return { items: await withVisibleAuditActors(repository, context, items, names), nextCursor: null };
+  });
+
+  // Super-admin-only, cross-organization login audit. Deliberately guarded by
+  // role (not a permission) so it can never appear in permission delegation.
+  app.get<{ Querystring: { search?: string; tenantId?: string; start?: string; end?: string; page?: string; pageSize?: string } }>("/api/login-logs", async (request) => {
+    requirePlatformAdmin(request);
+    const page = Math.max(1, Number(request.query.page ?? "") || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(request.query.pageSize ?? "") || 20));
+    return repository.listLoginLogs({
+      search: request.query.search,
+      tenantId: request.query.tenantId,
+      start: request.query.start,
+      end: request.query.end,
+      page,
+      pageSize
+    });
   });
 
   app.get("/api/warehouses", async (request) => {

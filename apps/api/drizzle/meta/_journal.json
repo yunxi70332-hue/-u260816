@@ -120,6 +120,13 @@
       "when": 1786822200000,
       "tag": "0016_password_policy",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1788534599340,
+      "tag": "0017_login_logs",
+      "breakpoints": true
     }
   ]
 }

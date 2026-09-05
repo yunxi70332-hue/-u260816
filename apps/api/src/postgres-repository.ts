@@ -62,17 +62,17 @@ import type {
   TemplateVersion
 } from "@usm/contracts";
 import { snapshotDesignDraft } from "@usm/domain";
-import { and, desc, eq, gte, inArray, isNull, lte, max, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, inArray, isNull, lte, max, ne, or, sql } from "drizzle-orm";
 import type { Database } from "./db/index.js";
 import {
-  attachments, auditLogs, authorizationAuditLogs, customers, dealerOrganizations, designVersions, designs, idempotencyKeys, members,
+  attachments, auditLogs, authorizationAuditLogs, customers, dealerOrganizations, designVersions, designs, idempotencyKeys, loginLogs, members,
   memberDataScopes, memberPermissionGrants, organizationEntitlements, salesPricingPreferences,
   orderAssignments, orderFollowUps, orders, organizations, priceListItems, priceLists, projects, quoteLines, quotes, sessions, shipments, templates,
   templateVersions, users, warehouses, materialVariants, inventoryBalances, inventoryLedger, stockDocuments, inventoryReservations
 } from "./db/schema.js";
 import { AppError, VersionConflictError } from "./errors.js";
 import { isSystemLoginEmail } from "./phone.js";
-import type { AuditInput, AuthMembership, IdempotencyRecord, Repository } from "./repository.js";
+import type { AuditInput, AuthMembership, IdempotencyRecord, LoginLogInput, LoginLogQuery, LoginLogSummary, Repository } from "./repository.js";
 import { recalculateDesignSnapshot } from "./services/configurator.js";
 import { ALL_PERMISSIONS, DEALER_MODULES, ERP_MODULES, calculateAuthorization, dataScopeAllowsDelegation, defaultEnabledModules, isPermissionAllowedForOrganization, legacyPermissionsForRole, platformAuthorization } from "./authorization.js";
 
@@ -1635,6 +1635,56 @@ class PostgresRepository implements Repository {
     if (entityType) filters.push(eq(auditLogs.entityType, entityType));
     if (entityId) filters.push(eq(auditLogs.entityId, entityId));
     return (await this.db.select().from(auditLogs).where(and(...filters)).orderBy(desc(auditLogs.createdAt)).limit(500)).map(mapAudit);
+  }
+  async recordLoginLog(input: LoginLogInput): Promise<void> {
+    await this.db.insert(loginLogs).values({
+      id: randomUUID(), userId: input.userId, tenantId: input.tenantId,
+      accountIdentifier: input.accountIdentifier ?? null, ipAddress: input.ipAddress ?? null, userAgent: input.userAgent ?? null
+    });
+  }
+  async listLoginLogs(query: LoginLogQuery): Promise<{ items: LoginLogSummary[]; total: number }> {
+    const filters = [];
+    if (query.search?.trim()) {
+      const pattern = `%${query.search.trim()}%`;
+      filters.push(or(
+        ilike(users.name, pattern), ilike(loginLogs.accountIdentifier, pattern), ilike(users.email, pattern),
+        ilike(users.phoneNumber, pattern), ilike(users.username, pattern)
+      ));
+    }
+    if (query.tenantId) filters.push(eq(loginLogs.tenantId, query.tenantId));
+    if (query.start) filters.push(gte(loginLogs.createdAt, new Date(`${query.start}T00:00:00`)));
+    if (query.end) filters.push(lte(loginLogs.createdAt, new Date(`${query.end}T23:59:59.999`)));
+    const where = filters.length ? and(...filters) : undefined;
+    const offset = (query.page - 1) * query.pageSize;
+    const rows = await this.db.select({
+      id: loginLogs.id, userId: loginLogs.userId, accountIdentifier: loginLogs.accountIdentifier,
+      tenantId: loginLogs.tenantId, ipAddress: loginLogs.ipAddress, userAgent: loginLogs.userAgent, createdAt: loginLogs.createdAt,
+      userName: users.name, userEmail: users.email, userPhone: users.phoneNumber, userUsername: users.username,
+      tenantName: organizations.name
+    }).from(loginLogs)
+      .leftJoin(users, eq(users.id, loginLogs.userId))
+      .leftJoin(organizations, eq(organizations.id, loginLogs.tenantId))
+      .where(where)
+      .orderBy(desc(loginLogs.createdAt), desc(loginLogs.id))
+      .limit(query.pageSize).offset(offset);
+    const [countRow] = await this.db.select({ total: sql<number>`count(*)::int` }).from(loginLogs)
+      .leftJoin(users, eq(users.id, loginLogs.userId))
+      .leftJoin(organizations, eq(organizations.id, loginLogs.tenantId))
+      .where(where);
+    return {
+      items: rows.map((row) => ({
+        id: row.id,
+        userId: row.userId,
+        userName: row.userName ?? row.userEmail ?? row.userId,
+        accountIdentifier: row.accountIdentifier ?? row.userEmail ?? row.userPhone ?? row.userUsername,
+        tenantId: row.tenantId,
+        tenantName: row.tenantName,
+        ipAddress: row.ipAddress,
+        userAgent: row.userAgent,
+        createdAt: iso(row.createdAt)
+      })),
+      total: countRow?.total ?? 0
+    };
   }
   async getIdempotency(tenantId: string, route: string, key: string): Promise<IdempotencyRecord | null> {
     const [row] = await this.db.select().from(idempotencyKeys).where(and(

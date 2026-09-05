@@ -2,7 +2,7 @@ import { ProLayout, type MenuDataItem } from "@ant-design/pro-components";
 import { Button, Dropdown, Tag } from "antd";
 import {
   Activity, Building2, CircleDollarSign, ClipboardList, Files, LayoutDashboard,
-  ArrowLeft, LockKeyhole, LogOut, Truck, Users, Warehouse, ArrowDownToLine, ArrowUpFromLine, ListTree, ShieldCheck
+  ArrowLeft, History, LockKeyhole, LogOut, Truck, Users, Warehouse, ArrowDownToLine, ArrowUpFromLine, ListTree, ShieldCheck
 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
@@ -20,9 +20,11 @@ interface NavItem {
   path?: string;
   name: string;
   icon: ReactNode;
-  permission: Permission;
+  permission?: Permission;
   anyPermissions?: Permission[];
   dependencies?: Permission[];
+  /** Reserved for the super admin role — hidden for every other account. */
+  platformAdminOnly?: boolean;
   children?: NavItem[];
 }
 
@@ -70,7 +72,8 @@ const NAV_GROUPS: NavGroup[] = [
     { path: "/employees", name: "账号与权限", icon: <Users size={18} />, permission: "account.manage", anyPermissions: ["account.manage", "permission.delegate"] }
   ] },
   { name: "系统管理", children: [
-    { path: "/settings/entitlements", name: "企业模块授权", icon: <ShieldCheck size={18} />, permission: "platform.entitlements.manage" }
+    { path: "/settings/entitlements", name: "企业模块授权", icon: <ShieldCheck size={18} />, permission: "platform.entitlements.manage" },
+    { path: "/settings/login-logs", name: "登录日志", icon: <History size={18} />, platformAdminOnly: true }
   ] }
 ];
 
@@ -108,7 +111,7 @@ function BrandMark() {
 }
 
 export function AppShell() {
-  const { session, logout, refreshSession, switchTenant, can } = useAuth();
+  const { session, logout, refreshSession, switchTenant, can, isPlatformAdmin } = useAuth();
   const workspace = useWorkspace();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
@@ -139,8 +142,11 @@ export function AppShell() {
 
   const routes = useMemo<MenuDataItem[]>(() => {
     const buildMenuItem = (item: NavItem, group?: string): MenuDataItem | null => {
-      const isAllowed = (item.anyPermissions?.some((permission) => can(permission)) ?? can(item.path ? NAV_PERMISSION_OVERRIDES[item.path] ?? item.permission : item.permission))
-        && (item.dependencies ?? []).every((dependency) => can(dependency));
+      const permission = item.path ? NAV_PERMISSION_OVERRIDES[item.path] ?? item.permission : item.permission;
+      const isAllowed = item.platformAdminOnly
+        ? isPlatformAdmin
+        : (item.anyPermissions?.some((entry) => can(entry)) ?? (permission !== undefined && can(permission)))
+          && (item.dependencies ?? []).every((dependency) => can(dependency));
       if (!isAllowed) return null;
 
       const children = item.children?.map((child) => buildMenuItem(child)).filter((child): child is MenuDataItem => child !== null);
@@ -157,7 +163,7 @@ export function AppShell() {
     return NAV_GROUPS.flatMap((group) => group.children
       .map((item) => buildMenuItem(item, group.name))
       .filter((item): item is MenuDataItem => item !== null));
-  }, [can]);
+  }, [can, isPlatformAdmin]);
 
   function openPasswordDialog() {
     setPasswordError("");

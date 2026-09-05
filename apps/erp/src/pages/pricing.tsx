@@ -57,7 +57,8 @@ function downloadText(text: string, filename: string) {
   anchor.href = url;
   anchor.download = filename;
   anchor.click();
-  URL.revokeObjectURL(url);
+  // iOS Safari 的下载是异步开始的，同步 revoke 会中断下载
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export function PricingPage() {

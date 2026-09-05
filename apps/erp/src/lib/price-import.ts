@@ -200,7 +200,8 @@ export function downloadPriceImportTemplate(items: PriceListItem[] = []) {
   anchor.href = url;
   anchor.download = "价格导入模板_管理员简版.xlsx";
   anchor.click();
-  URL.revokeObjectURL(url);
+  // iOS Safari 的下载是异步开始的，同步 revoke 会中断下载
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /** Build the customer-facing sheet. Technical identities stay in the reference sheet. */
