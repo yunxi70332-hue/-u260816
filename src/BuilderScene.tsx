@@ -189,6 +189,11 @@ const DIMENSION_OUTER_LABEL_PIXELS = 40;
 // Portion of the face-on guide length a label may occupy.
 const DIMENSION_LABEL_LENGTH_FIT = 0.9;
 const DIMENSION_LABEL_MIN_PIXELS = 30;
+// Labels follow camera zoom proportionally around the fit framing; these only
+// guard legibility at extreme zooms and are hit well outside the clamp range.
+const DIMENSION_LABEL_ZOOM_FACTOR_RANGE: [number, number] = [0.3, 3];
+const DIMENSION_LABEL_ABS_FLOOR_PIXELS = 12;
+const DIMENSION_LABEL_ABS_CEIL_PIXELS = 120;
 // Keep guide offsets in millimetres so a larger cabinet does not push labels farther away.
 const DIMENSION_MM = 0.004;
 const DIMENSION_SEGMENT_TOP_GAP = 34 * DIMENSION_MM;
@@ -230,6 +235,9 @@ const doorDragHitboxesByCanvas = new WeakMap<HTMLCanvasElement, Set<THREE.Mesh>>
 const mobileTrayHitboxesByCanvas = new WeakMap<HTMLCanvasElement, Set<THREE.Mesh>>();
 type ScreenExpandAction = { kind: "expand"; direction: ExpandDirection } | { kind: "clone"; side: "left" | "right" };
 const expandDirectionAtPointByCanvas = new WeakMap<HTMLCanvasElement, (event: PointerEvent | MouseEvent) => ScreenExpandAction | null>();
+// Reference camera framing (the fit view) so dimension labels can scale with camera zoom.
+type FitFraming = { target: THREE.Vector3; distance: number };
+const fitFramingByCanvas = new WeakMap<HTMLCanvasElement, FitFraming>();
 
 type ScreenBounds = { minX: number; maxX: number; minY: number; maxY: number };
 type MobileTrayHitboxUserData = {
@@ -958,7 +966,7 @@ function CameraRig({
   controlsRef: RefObject<OrbitControlsImpl | null>;
   requestFitRef: RefObject<() => void>;
 }) {
-  const { camera, size } = useThree();
+  const { camera, size, gl } = useThree();
   const initializedRef = useRef(false);
   const framingRef = useRef<{ target: THREE.Vector3; position: THREE.Vector3 } | null>(null);
   const transitionRef = useRef<{
@@ -987,6 +995,15 @@ function CameraRig({
   }, [camera, metrics.centerX, metrics.centerY, metrics.centerZ, metrics.depth, metrics.totalHeight, metrics.totalWidth, size.height, size.width]);
 
   framingRef.current = framing;
+
+  useEffect(() => {
+    fitFramingByCanvas.set(gl.domElement, { target: framing.target.clone(), distance: framing.position.distanceTo(framing.target) });
+  }, [framing, gl]);
+  useEffect(() => {
+    return () => {
+      fitFramingByCanvas.delete(gl.domElement);
+    };
+  }, [gl]);
 
   const startFit = useCallback(() => {
     const nextFraming = framingRef.current;
@@ -5316,7 +5333,7 @@ function LabelSprite({
     [guideEnd, guideStart]
   );
   const texture = useMemo(() => createLabelTexture(label, vertical, emphasis, fontWeight), [emphasis, fontWeight, label, vertical]);
-  const { camera, size } = useThree();
+  const { camera, size, gl, controls } = useThree();
   useEffect(() => () => texture.dispose(), [texture]);
 
   useFrame(() => {
@@ -5327,17 +5344,30 @@ function LabelSprite({
     const viewportHeight = camera instanceof THREE.PerspectiveCamera
       ? 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * distance
       : (camera.top - camera.bottom) / camera.zoom;
+    // Scale the pixel budget with camera zoom relative to the fit framing so
+    // labels grow and shrink with the cabinet instead of staying screen-fixed.
+    // Anchor at the orbit target (not the fit target) so panning does not
+    // skew the ratio; only the distance from the center matters.
+    const fit = fitFramingByCanvas.get(gl.domElement);
+    const orbitTarget = (controls as OrbitControlsImpl | null)?.target ?? fit?.target;
+    const zoomFactor = fit && orbitTarget
+      ? THREE.MathUtils.clamp(fit.distance / camera.position.distanceTo(orbitTarget), ...DIMENSION_LABEL_ZOOM_FACTOR_RANGE)
+      : 1;
     // Face-on guide length in screen pixels: projecting start/end instead would let
     // perspective foreshortening shrink depth (Z-axis) guides to the pixel floor.
     const guidePixels = guideLength / viewportHeight * size.height;
-    const desiredPixels = emphasis ? DIMENSION_OUTER_LABEL_PIXELS : DIMENSION_LABEL_PIXELS;
+    const desiredPixels = (emphasis ? DIMENSION_OUTER_LABEL_PIXELS : DIMENSION_LABEL_PIXELS) * zoomFactor;
+    const minPixels = DIMENSION_LABEL_MIN_PIXELS * zoomFactor;
     const aspect = texture.image.width / texture.image.height;
     // Budget the pixels on the glyph-thickness axis. Vertical textures are drawn
     // rotated (aspect < 1), so their length on screen is thickness / aspect.
     const fitPixels = vertical
       ? guidePixels * DIMENSION_LABEL_LENGTH_FIT * aspect
       : guidePixels * DIMENSION_LABEL_LENGTH_FIT / Math.max(1, aspect);
-    const targetPixels = Math.max(DIMENSION_LABEL_MIN_PIXELS, Math.min(desiredPixels, fitPixels));
+    const targetPixels = Math.max(
+      Math.max(minPixels, DIMENSION_LABEL_ABS_FLOOR_PIXELS),
+      Math.min(Math.min(desiredPixels, DIMENSION_LABEL_ABS_CEIL_PIXELS), fitPixels)
+    );
     const labelThickness = Math.max(0.035, viewportHeight * targetPixels / size.height);
     sprite.scale.set(
       vertical ? labelThickness : labelThickness * aspect,

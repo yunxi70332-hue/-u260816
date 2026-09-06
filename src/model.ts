@@ -776,6 +776,18 @@ function createPlaceholderCell() {
   return { kind: "metalBackModule" as CellKind, enabled: false };
 }
 
+// 列插入后, 台面的列区间跟随物理列移位; 与插入点相邻的台面顺势延伸, 让新列也拿到台面
+function shiftWorkSurfacesForColumnInsert(surfaces: WorkSurfaceConfig[], insertAt: number): WorkSurfaceConfig[] {
+  return surfaces.map((surface) => {
+    const from = surface.fromColumn >= insertAt ? surface.fromColumn + 1 : surface.fromColumn;
+    const to = surface.toColumn >= insertAt ? surface.toColumn + 1 : surface.toColumn;
+    const touchesInsert = surface.fromColumn === insertAt || surface.toColumn === insertAt - 1;
+    return touchesInsert
+      ? { ...surface, fromColumn: Math.min(from, insertAt), toColumn: Math.max(to, insertAt) }
+      : { ...surface, fromColumn: from, toColumn: to };
+  });
+}
+
 export function insertColumn(
   config: CabinetConfig,
   index: number,
@@ -795,7 +807,7 @@ export function insertColumn(
     return nextRow;
   }));
 
-  return withPlanCells({ ...config, columnWidths }, planCells);
+  return withPlanCells({ ...config, columnWidths, workSurfaces: shiftWorkSurfacesForColumnInsert(config.workSurfaces, insertAt) }, planCells);
 }
 
 export function insertRow(
@@ -820,7 +832,13 @@ export function insertRow(
   const planCells = normalizePlanShape(config);
   planCells.splice(insertAt, 0, cells);
 
-  return withPlanCells({ ...config, rowHeights }, planCells);
+  return withPlanCells({
+    ...config,
+    rowHeights,
+    workSurfaces: config.workSurfaces.map((surface) => (
+      surface.row >= insertAt ? { ...surface, row: surface.row + 1 } : surface
+    ))
+  }, planCells);
 }
 
 export function insertDepthSegment(
@@ -942,7 +960,7 @@ export function cloneColumn(
     return nextRow;
   }));
 
-  return { config: withPlanCells({ ...config, columnWidths }, planCells), column: at };
+  return { config: withPlanCells({ ...config, columnWidths, workSurfaces: shiftWorkSurfacesForColumnInsert(config.workSurfaces, at) }, planCells), column: at };
 }
 
 export function deleteCell(config: CabinetConfig, selection: Selection): CabinetConfig {
