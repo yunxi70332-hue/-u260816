@@ -237,3 +237,17 @@ git revert --no-edit <问题提交> && git push origin main   # 先在本地仓�
 - 构建：一次成功（仅 designer 重建）
 - 验收：健康检查 ok / 新资源 hash index-DOeRUcGf.js / 无迁移 / 线上 https://usm.seven-cloud.cn 200
 - 遗留：无
+
+### 2026-09-07 02:11 modun
+- 提交：235b490（克隆/新增一列后台面错位穿模修复 + 3D 尺寸标注跟随视口缩放）
+- 备份：/www/docker/usm-modun/backups/modun/modun-20260906T175838Z
+- 构建：一次成功（designer + api 均重建，本次只改前端逻辑但 compose 全量构建）
+- 验收：健康检查 ok / 新资源 hash index-DM6mvQbT.js（含 `=[.3,3]` 缩放钳制与 `fromColumn>=` 台面移位指纹）/ 无迁移 / 线上 https://modun.usmxx.xyz 200
+- 遗留：无
+
+### 2026-09-07 02:11 usm-configurator-erp（七云）
+- 提交：235b490（同上，与 modun 保持同步）
+- 备份：/www/docker/usm/backups/usm-01/usm-configurator-erp-20260906T175927Z
+- 构建：一次成功（designer + api 均重建）
+- 验收：健康检查 ok / 新资源 hash index-Rhmu-O0H.js（含同上两枚指纹）/ ERP 200 / 无迁移 / 线上 https://usm.seven-cloud.cn 200（本机实测 200；服务器本机首次 curl 域名瞬时 DNS 解析失败，重试即恢复，非发布问题）
+- 遗留：无
