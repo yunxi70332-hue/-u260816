@@ -145,9 +145,9 @@ interface SceneApi {
 
 const tabs: Array<{ id: TabKey; label: string; icon: React.ComponentType<{ size?: number }> }> = [
   { id: "structure", label: "\u7ed3\u6784", icon: Grid3X3 },
-  { id: "frame", label: "\u6846\u67b6", icon: CircleDot },
   { id: "fittings", label: "\u914d\u4ef6", icon: Settings2 },
   { id: "colors", label: "\u989c\u8272", icon: PaintBucket },
+  { id: "frame", label: "\u6846\u67b6", icon: CircleDot },
   { id: "bom", label: "BOM", icon: ClipboardList }
 ];
 

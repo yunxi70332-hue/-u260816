@@ -3883,7 +3883,7 @@ function addCellFittingBom(items: BomItem[], cell: CellConfig, kind: CellKind, w
   if (cell.fitting === "rimmedDrawer" && fittingCompatible(kind)) {
     addItem(items, "门板", `${width} x ${height} mm`, 1, "件", 0, { color });
     addItem(items, "移动托盘", `${width} x ${depth} mm`, 1, "件", 0, { color });
-    addItem(items, "围边", `${width} x ${depth} x ${RIMMED_DRAWER_RIM_HEIGHT_MM} mm`, 1, "件", 0, { color });
+    addItem(items, "围边", `${width} x ${depth} x ${height} mm`, 1, "件", 0, { color });
     addItem(items, "抽屉导轨", `${depth} mm`, 2, "条", 0);
   }
   if (cell.fitting === "rimlessDrawer" && fittingCompatible(kind)) {

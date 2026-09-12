@@ -211,17 +211,17 @@ function matchBomItem(item: BomItem, source: DealerPriceSource): PriceMatch {
   if (item.name === "上翻门组件" && Number.isFinite(first) && Number.isFinite(second)) {
     return composite(source, item, [
       ["doorPanel", panelSpec(first, second), 1],
-      ["panelDoorPivotSet", undefined, 1],
-      ["coinLockBox", undefined, 1]
-    ], "报价表未单列上翻门组件，暂按门板 + 扣板门转 + 一元锁+锁盒计。");
+      ["panelDoorPivotSet", undefined, 1]
+    ], "按2026-09确认口径：上翻门组件 = 门板 + 上翻铰链气缸套（硬币锁不含于上翻门）。");
   }
 
   if (item.name === "玻璃门组件" && Number.isFinite(first) && Number.isFinite(second)) {
     return composite(source, item, [
-      ["glass", undefined, squareMeters(first, second)],
+      ["glass", undefined, 1],
       ["glassDoorPivotSet", undefined, 1],
-      ["glassHandle", undefined, 1]
-    ], "按报价表拆为玻璃面积 + 玻璃门转 + 玻璃拉手。");
+      ["glassHandle", undefined, 1],
+      ["glassClip", undefined, 4]
+    ], "按2026-09确认口径：玻璃门整扇 + 玻璃门转 + 玻璃拉手 + 玻璃角夹*4。");
   }
 
   if ((item.name === "玻璃板" || item.name === "玻璃搁板") && Number.isFinite(first) && Number.isFinite(second)) {
@@ -238,7 +238,7 @@ function matchBomItem(item: BomItem, source: DealerPriceSource): PriceMatch {
         };
       }
     }
-    return formula(source, "glass", squareMeters(first, second), item, "玻璃按平方米计价。");
+    return formula(source, "glass", 1, item, "按2026-09确认口径：玻璃板/玻璃搁板整块统一定价。");
   }
 
   if (item.materialKey === "shelfPanel" || ["固定搁板", "固定托盘", "固定层板", "层板"].includes(item.name)) {
@@ -253,6 +253,9 @@ function matchBomItem(item: BomItem, source: DealerPriceSource): PriceMatch {
     return exact(source, "drawer", undefined, item);
   }
 
+  if (item.unitPrice === 0) {
+    return { unitPrice: 0, status: "sourceIncluded", sourceRows: [], note: "模型零价辅料：无工厂价行时按0元计，不阻断报价。" };
+  }
   return fallback(item, "报价表暂未匹配该 BOM 行，保留模型默认估算价。");
 }
 
@@ -315,6 +318,9 @@ function composite(
 }
 
 function fallback(item: BomItem, note: string): PriceMatch {
+  if (item.unitPrice === 0) {
+    return { unitPrice: 0, status: "sourceIncluded", sourceRows: [], note: "模型零价件：无工厂价行时按0元计，不阻断报价。" };
+  }
   return {
     unitPrice: item.unitPrice,
     status: "fallback",
