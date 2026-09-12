@@ -68,6 +68,10 @@ for c in result.get('content', []):
 
 ⚠️ **宝塔站点目录不是部署目录**：如 `/www/wwwroot/modun.usmxx.xyz` 只是 nginx 静态壳（默认欢迎页），真正源码按上表。新实例按「侦察」节现场确认，不要照抄本表。
 
+⚠️ **2026-09-12 起两实例已迁至 103.117.121.126（新服务器，CentOS Stream 9）**：宝塔 MCP 用 `搬家-mcp`（`https://103.117.121.126:8765/...`），AI 会话可直接用 MCP 工具（`mcp Bash/Read/ServerIP` 等），无需 bt.py。迁移当天已处理：`dnf install -y git`（新机无 git）；七云 remote 由 SSH 改 https（新机无部署密钥）；七云工作区被删的 `index.html` 已还原（构建需 COPY 该文件）；modun 的 2026-09-09 服务器热修已回流 main（`009496d`）并清理工作区。
+
+⚠️ **新机 npm 网络抖动大**：pnpm install 反复超时。已在两个 Dockerfile 固化：npmmirror 源 + pnpm fetch retries=10/超时拉长 + BuildKit cache mount（pnpm store 跨构建续传）。构建失败直接重试即可，缓存层会增量推进。
+
 ⚠️ 完整发布手册在仓库 `docs/BAOTA_RELEASE_RUNBOOK.md`；多实例规范在 `docs/ERP_DEPLOYMENT.md`。
 
 ## 三、侦察：确定实例四要素（只读）
@@ -250,4 +254,18 @@ git revert --no-edit <问题提交> && git push origin main   # 先在本地仓�
 - 备份：/www/docker/usm/backups/usm-01/usm-configurator-erp-20260906T175927Z
 - 构建：一次成功（designer + api 均重建）
 - 验收：健康检查 ok / 新资源 hash index-Rhmu-O0H.js（含同上两枚指纹）/ ERP 200 / 无迁移 / 线上 https://usm.seven-cloud.cn 200（本机实测 200；服务器本机首次 curl 域名瞬时 DNS 解析失败，重试即恢复，非发布问题）
+- 遗留：无
+
+### 2026-09-12 14:20 modun（103.117.121.126 新服务器首次发布）
+- 提交：009496d（竖管自动合并 175+175→350 + 回流 2026-09-09 服务器热修：玻璃门/上翻门计价口径、围边 BOM 规格、tab 顺序 + Dockerfile pnpm 网络强化）
+- 备份：/www/docker/usm-modun/backups/modun/modun-20260912T052931Z
+- 构建：重试 4 次（前 3 次新机 npm 网络抖动超时，加 cache mount/retries 强化后成功）
+- 验收：健康检查 ok / 新资源 hash index-BKy69KLI.js（含 `y-merged`/`连通竖向钢管` 指纹）/ ERP 产物含 `glassClip`（热修口径）/ 无迁移 / 线上 https://modun.usmxx.xyz 200
+- 遗留：stash "pre-009496d-cleanup" 保留在 modun 工作区作保险（内容已回流 main）；.bak-20260909 备份文件未删
+
+### 2026-09-12 14:30 usm-configurator-erp（七云）
+- 提交：009496d（同上，与 modun 保持同步）
+- 备份：/www/docker/usm/backups/usm-01/usm-configurator-erp-20260912T052932Z
+- 构建：重试 1 次（首次失败于工作区 index.html 被删，git 还原后成功）
+- 验收：健康检查 ok / 新资源 hash index-DCyWP0ld.js（含 `y-merged` 指纹）/ ERP 产物含 `glassClip` / 无迁移 / 线上 https://usm.seven-cloud.cn 200（本机实测 200；服务器本机 curl 域名 DNS 瞬时失败同 9-07，非发布问题）
 - 遗留：无
