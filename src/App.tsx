@@ -59,6 +59,9 @@ import {
   buildFrameTopology,
   evaluateFramePartRemoval,
   getFramePart,
+  getColumnLineKeyFromPartId,
+  isColumnLineMergeDisabled,
+  setColumnLineMergeDisabled,
   getFramePartConnections,
   applyFramePartRemoval,
   createKitchenIslandPreset,
@@ -253,6 +256,8 @@ export default function App() {
   const dimensions = useMemo(() => getDimensions(config), [config]);
   const activeSelection = useMemo(() => (selection ? findNearestEnabled(config, selection) : null), [config, selection]);
   const selectedFramePart = selectedFramePartId ? getFramePart(config, selectedFramePartId) : undefined;
+  const selectedFrameLineKey = selectedFramePartId ? getColumnLineKeyFromPartId(selectedFramePartId) : null;
+  const selectedLineMergeDisabled = selectedFrameLineKey ? isColumnLineMergeDisabled(config, selectedFrameLineKey) : false;
   const selectedFrameImpact = selectedFramePartId ? evaluateFramePartRemoval(config, selectedFramePartId) : null;
   const selectedFramePanelMaterial = selectedFramePart?.kind === "panel" ? selectedFramePart.material : null;
 
@@ -933,6 +938,27 @@ export default function App() {
                   </OptionGroup>
                 ) : null}
                 <button type="button" className="ghost-button danger" onClick={deleteSelectedFramePart} disabled={!selectedFramePartId}><Eraser size={16} /> 删除当前零件</button>
+                {selectedFrameLineKey && selectedFramePart && (selectedFramePart.kind === "vertex" || (selectedFramePart.kind === "tube" && selectedFramePart.axis === "y")) ? (
+                  <OptionGroup label="竖向柱线">
+                    <label className="switch-line">
+                      <span>强制分段（保留中间球节点）</span>
+                      <input
+                        type="checkbox"
+                        checked={selectedLineMergeDisabled}
+                        onChange={(event) => {
+                          const lineKey = selectedFrameLineKey;
+                          if (!lineKey) return;
+                          updateConfig((current) => setColumnLineMergeDisabled(current, lineKey, event.target.checked));
+                        }}
+                      />
+                    </label>
+                    <p className="helper-text">
+                      {selectedLineMergeDisabled
+                        ? "该柱线不参与自动合并：即使中间没有杆件接入，也保持分段竖管 + 中间球节点。"
+                        : "默认自动：中间高度没有杆件接入时合并为整根竖管；有杆件接入时保持分段 + 中间球节点。"}
+                    </p>
+                  </OptionGroup>
+                ) : null}
                 {selectedFramePart?.kind === "panel" ? (
                   <OptionGroup label="更换材质">
                     <p className="helper-text">当前材质：{FRAME_PANEL_MATERIAL_OPTIONS.find((option) => option.id === selectedFramePanelMaterial)?.label ?? "面板"}</p>

@@ -1,5 +1,5 @@
 // 竖向连通管合并（mergeContinuousVerticalTubes）回归验证：tsx scripts/verify-vertical-tube-merge.mts
-import { DEFAULT_CONFIG, normalizeConfig, buildFrameTopology, buildBom, type CabinetConfig } from "../src/model";
+import { DEFAULT_CONFIG, normalizeConfig, buildFrameTopology, buildBom, getColumnLineKeyFromPartId, isColumnLineMergeDisabled, setColumnLineMergeDisabled, type CabinetConfig } from "../src/model";
 
 const fail = (msg: string): never => { console.error("❌ " + msg); process.exit(1); };
 const ok = (msg: string) => console.log("✅ " + msg);
@@ -148,3 +148,53 @@ const yMerged = (t: { id: string }) => t.id.startsWith("tube:y-merged:");
 }
 
 console.log("\n全部场景通过 🎉");
+
+// ---------- 场景 G：柱线强制分段开关 → 即使无杆也保持 175+175+球 ----------
+{
+  const config = twoRow175();
+  const base = buildFrameTopology(config);
+  const overrides: Record<string, { deleted: true }> = {};
+  base.tubes.filter((t) => t.axis !== "y" && (t.id.startsWith("tube:x:0:1:") || /^tube:z:\d+:1:/.test(t.id))).forEach((t) => { overrides[t.id] = { deleted: true }; });
+  const probeTubeId = "tube:y:0:0:plane:-175.000";
+  const lineKey = getColumnLineKeyFromPartId(probeTubeId);
+  if (lineKey !== "0|plane:-175.000") fail(`G: 柱线键解析错误: ${lineKey}`);
+  if (getColumnLineKeyFromPartId("vertex:0:1:plane:-175.000") !== lineKey) fail("G: 球节点应解析到同一柱线键");
+  if (getColumnLineKeyFromPartId("tube:x:0:1:plane:-175.000") !== null) fail("G: 横杆不应解析出柱线键");
+  if (getColumnLineKeyFromPartId("tube:y-merged:0:0-2:plane:-175.000") !== lineKey) fail("G: 合并管应解析到同一柱线键");
+  const config2 = normalizeConfig({ ...setColumnLineMergeDisabled({ ...config, framePartOverrides: overrides }, lineKey, true) });
+  if (!isColumnLineMergeDisabled(config2, lineKey)) fail("G: 开关未生效");
+  const topo = buildFrameTopology(config2);
+  const lineY = topo.tubes.filter((t) => t.axis === "y" && t.id.startsWith("tube:y:0:") && t.id.endsWith("plane:-175.000"));
+  if (lineY.length !== 2 || !lineY.every((t) => t.length === 175)) fail(`G: 强制分段线应保持 2×175，实际 ${lineY.map((t) => t.length).join(",")}`);
+  if (!topo.vertices.some((v) => v.id === "vertex:0:1:plane:-175.000")) fail("G: 强制分段后中间球应保留");
+  const merged = topo.tubes.filter(yMerged);
+  if (merged.length !== 3) fail(`G: 其余 3 根柱线仍应自动合并，实际 ${merged.length}`);
+  ok(`G: 强制分段 → ${lineKey} 保持 2×175+球，其余 3 线照常合并为 350`);
+}
+
+// ---------- 场景 H：开关关闭 → 恢复自动合并，覆盖记录清空 ----------
+{
+  const config = twoRow175();
+  const lineKey = "0|plane:-175.000";
+  const forced = setColumnLineMergeDisabled(config, lineKey, true);
+  const base = buildFrameTopology(forced);
+  const overrides: Record<string, { deleted: true }> = {};
+  base.tubes.filter((t) => t.axis !== "y" && (t.id.startsWith("tube:x:0:1:") || /^tube:z:\d+:1:/.test(t.id))).forEach((t) => { overrides[t.id] = { deleted: true }; });
+  const released = normalizeConfig({ ...setColumnLineMergeDisabled({ ...forced, framePartOverrides: overrides }, lineKey, false) });
+  if (released.verticalMergeOverrides && Object.keys(released.verticalMergeOverrides).length) fail("H: 关闭开关后覆盖记录应清空");
+  const topo = buildFrameTopology(released);
+  const merged = topo.tubes.filter(yMerged);
+  if (merged.length !== 4 || !merged.every((t) => t.length === 350)) fail(`H: 关闭开关后应恢复 4 根 350 整管，实际 ${merged.length}`);
+  ok(`H: 开关关闭 → ${lineKey} 恢复自动合并为 350`);
+}
+
+// ---------- 场景 I：normalize 清洗非法覆盖记录 ----------
+{
+  const dirty = normalizeConfig({
+    ...twoRow175(),
+    verticalMergeOverrides: { "0|plane:-175.000": true, "bad-key": true, "1|plane:0.000": false, "": true } as Record<string, boolean>,
+  });
+  const kept = Object.keys(dirty.verticalMergeOverrides ?? {});
+  if (kept.length !== 1 || kept[0] !== "0|plane:-175.000") fail(`I: normalize 应只保留合法键，实际 ${JSON.stringify(kept)}`);
+  ok(`I: normalize 清洗非法柱线覆盖键`);
+}

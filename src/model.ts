@@ -126,6 +126,8 @@ export interface CabinetConfig {
   planCells?: CellConfig[][][];
   workSurfaces: WorkSurfaceConfig[];
   framePartOverrides?: Record<string, FramePartOverride>;
+  // 柱线键 `"<x>|<plane>"`（如 "0|plane:175.000"）→ true = 该柱线禁止自动合并，强制分段并保留中间球节点
+  verticalMergeOverrides?: Record<string, boolean>;
 }
 
 export interface DimensionLabelWeights {
@@ -725,7 +727,8 @@ export function normalizeConfig(input: Partial<CabinetConfig> | null | undefined
     cells,
     planCells,
     workSurfaces: normalizeWorkSurfaces(input?.workSurfaces, rows, columns, depth),
-    framePartOverrides: normalizeFramePartOverrides(input?.framePartOverrides)
+    framePartOverrides: normalizeFramePartOverrides(input?.framePartOverrides),
+    verticalMergeOverrides: normalizeVerticalMergeOverrides(input?.verticalMergeOverrides)
   };
   return normalized;
 }
@@ -4410,6 +4413,7 @@ function mergeContinuousVerticalTubes(
 
   lines.forEach((byRow, key) => {
     if (byRow.size < 2) return;
+    if (config.verticalMergeOverrides?.[key] === true) return;
     const [x, plane] = key.split("|");
     const rows = [...byRow.keys()].sort((a, b) => a - b);
     let startRow = rows[0];
@@ -4469,6 +4473,38 @@ function mergeContinuousVerticalTubes(
     if (!panel.supportTubeIds.some((id) => tubeIdRemap.has(id))) return;
     panel.supportTubeIds = panel.supportTubeIds.map((id) => tubeIdRemap.get(id) ?? id);
   });
+}
+
+function normalizeVerticalMergeOverrides(input: Record<string, boolean> | undefined): Record<string, boolean> | undefined {
+  if (!input) return undefined;
+  const result: Record<string, boolean> = {};
+  Object.entries(input).forEach(([key, value]) => {
+    if (!key || value !== true) return;
+    if (!/^\d+\|plane:-?\d+(\.\d+)?$/.test(key)) return;
+    result[key] = true;
+  });
+  return Object.keys(result).length ? result : undefined;
+}
+
+export function getColumnLineKeyFromPartId(partId: string): string | null {
+  let match = /^tube:y:(\d+):\d+:(plane:.+)$/.exec(partId);
+  if (match) return `${match[1]}|${match[2]}`;
+  match = /^tube:y-merged:(\d+):\d+-\d+:(plane:.+)$/.exec(partId);
+  if (match) return `${match[1]}|${match[2]}`;
+  match = /^vertex:(\d+):\d+:(plane:.+)$/.exec(partId);
+  if (match) return `${match[1]}|${match[2]}`;
+  return null;
+}
+
+export function isColumnLineMergeDisabled(config: CabinetConfig, lineKey: string): boolean {
+  return config.verticalMergeOverrides?.[lineKey] === true;
+}
+
+export function setColumnLineMergeDisabled(config: CabinetConfig, lineKey: string, disabled: boolean): CabinetConfig {
+  const overrides = { ...(config.verticalMergeOverrides ?? {}) };
+  if (disabled) overrides[lineKey] = true;
+  else delete overrides[lineKey];
+  return normalizeConfig({ ...config, verticalMergeOverrides: Object.keys(overrides).length ? overrides : undefined });
 }
 
 export function buildFrameTopology(config: CabinetConfig): FrameTopology {
