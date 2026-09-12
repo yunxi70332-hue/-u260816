@@ -38,6 +38,7 @@
     "verify:logic": "node scripts/verify-accessory-logic.mjs",
     "verify:pricing": "tsx scripts/verify-price-source.mjs",
     "verify:bom-identity": "tsx scripts/verify-bom-identity.mjs",
+    "verify:vertical-merge": "tsx scripts/verify-vertical-tube-merge.mts",
     "verify:local-cdp": "node scripts/verify-local-cdp.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "verify:business": "node scripts/verify-business-gateway.mjs"

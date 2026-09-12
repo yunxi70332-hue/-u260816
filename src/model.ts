@@ -4375,6 +4375,102 @@ export function isFramePartDeleted(config: CabinetConfig, partId: string): boole
   return config.framePartOverrides?.[partId]?.deleted === true;
 }
 
+// 竖向连通管合并：同一柱线（x + 平面）上相邻两层的竖管，若共享的中间球节点
+// 只被这两根竖管引用（没有横杆/深度管接入），则合并为一根整管并去掉中间球，
+// 例如 rowHeights = [175, 175] 时侧面立柱为整根 350 而非 175+175 拼接。
+function mergeContinuousVerticalTubes(
+  config: CabinetConfig,
+  tubes: Map<string, FrameTubePart>,
+  vertices: Map<string, FrameVertexPart>,
+  panels: Map<string, FramePanelPart>,
+  yBounds: number[]
+): void {
+  const yTubePattern = /^tube:y:(\d+):(\d+):(plane:.+)$/;
+  const tubesByVertex = new Map<string, string[]>();
+  tubes.forEach((tube) => tube.vertexIds.forEach((id) => {
+    const list = tubesByVertex.get(id);
+    if (list) list.push(tube.id);
+    else tubesByVertex.set(id, [tube.id]);
+  }));
+
+  const lines = new Map<string, Map<number, string>>();
+  tubes.forEach((tube) => {
+    const match = yTubePattern.exec(tube.id);
+    if (!match) return;
+    const key = `${match[1]}|${match[3]}`;
+    const byRow = lines.get(key) ?? new Map<number, string>();
+    byRow.set(Number(match[2]), tube.id);
+    lines.set(key, byRow);
+  });
+
+  const consumedTubeIds = new Set<string>();
+  const removedVertexIds = new Set<string>();
+  const tubeIdRemap = new Map<string, string>();
+  const merged: FrameTubePart[] = [];
+
+  lines.forEach((byRow, key) => {
+    if (byRow.size < 2) return;
+    const [x, plane] = key.split("|");
+    const rows = [...byRow.keys()].sort((a, b) => a - b);
+    let startRow = rows[0];
+    let endRow = rows[0] + 1;
+    let tubeIds = [byRow.get(rows[0])!];
+    const flush = () => {
+      if (tubeIds.length < 2) return;
+      tubeIds.forEach((id) => consumedTubeIds.add(id));
+      const y0 = yBounds[startRow];
+      const y1 = yBounds[endRow];
+      const source = tubes.get(tubeIds[0])!;
+      const id = `tube:y-merged:${x}:${startRow}-${endRow}:${plane}`;
+      // 整管被用户删除时，级联抑制其全部组成段与中间球
+      if (isFramePartDeleted(config, id)) {
+        for (let removedRow = startRow + 1; removedRow < endRow; removedRow += 1) removedVertexIds.add(`vertex:${x}:${removedRow}:${plane}`);
+        return;
+      }
+      tubeIds.forEach((oldId) => tubeIdRemap.set(oldId, id));
+      merged.push({
+        id,
+        kind: "tube",
+        axis: "y",
+        length: y1 - y0,
+        position: [source.position[0], (y0 + y1) / 2, source.position[2]],
+        vertexIds: [`vertex:${x}:${startRow}:${plane}`, `vertex:${x}:${endRow}:${plane}`],
+        label: `第 ${startRow + 1}-${endRow} 层连通竖向钢管（${y1 - y0} mm）`
+      });
+    };
+    for (let index = 1; index < rows.length; index += 1) {
+      const row = rows[index];
+      const upperId = byRow.get(row)!;
+      if (endRow === row) {
+        const middleId = `vertex:${x}:${row}:${plane}`;
+        const lowerId = tubeIds[tubeIds.length - 1];
+        const others = (tubesByVertex.get(middleId) ?? []).filter((id) => id !== upperId && id !== lowerId && !consumedTubeIds.has(id));
+        if (others.length === 0) {
+          consumedTubeIds.add(upperId);
+          removedVertexIds.add(middleId);
+          tubeIds.push(upperId);
+          endRow = row + 1;
+          continue;
+        }
+      }
+      flush();
+      startRow = row;
+      endRow = row + 1;
+      tubeIds = [upperId];
+    }
+    flush();
+  });
+
+  if (!merged.length) return;
+  consumedTubeIds.forEach((id) => tubes.delete(id));
+  removedVertexIds.forEach((id) => vertices.delete(id));
+  merged.forEach((tube) => tubes.set(tube.id, tube));
+  panels.forEach((panel) => {
+    if (!panel.supportTubeIds.some((id) => tubeIdRemap.has(id))) return;
+    panel.supportTubeIds = panel.supportTubeIds.map((id) => tubeIdRemap.get(id) ?? id);
+  });
+}
+
 export function buildFrameTopology(config: CabinetConfig): FrameTopology {
   const widths = config.columnWidths;
   const heights = config.rowHeights;
@@ -4513,6 +4609,8 @@ export function buildFrameTopology(config: CabinetConfig): FrameTopology {
       });
     });
   });
+
+  mergeContinuousVerticalTubes(config, tubes, vertices, panels, yBounds);
 
   tubes.forEach((tube) => tube.vertexIds.forEach((id) => {
     const vertex = vertices.get(id);
