@@ -1407,16 +1407,34 @@ export function getPhysicalStructurePanelTargets(
   const currentSelection = { ...selection, depthIndex };
   const current = getCellConfig(config, currentSelection);
   const targets: Array<{ selection: Selection; panel: StructurePanelKey }> = [{ selection: currentSelection, panel }];
-  if (!current?.enabled || (panel !== "top" && panel !== "bottom")) return targets;
+  if (!current?.enabled) return targets;
 
-  const neighborRow = panel === "top" ? selection.row + 1 : selection.row - 1;
-  const neighborPanel: StructurePanelKey = panel === "top" ? "bottom" : "top";
-  const neighborSelection = { row: neighborRow, column: selection.column, depthIndex };
+  let neighborRow = selection.row;
+  let neighborColumn = selection.column;
+  let neighborPanel: StructurePanelKey;
+  if (panel === "top") {
+    neighborRow = selection.row + 1;
+    neighborPanel = "bottom";
+  } else if (panel === "bottom") {
+    neighborRow = selection.row - 1;
+    neighborPanel = "top";
+  } else if (panel === "left") {
+    neighborColumn = selection.column - 1;
+    neighborPanel = "right";
+  } else if (panel === "right") {
+    neighborColumn = selection.column + 1;
+    neighborPanel = "left";
+  } else {
+    // front/back 面板不共享物理边界，不做镜像
+    return targets;
+  }
+
+  const neighborSelection = { row: neighborRow, column: neighborColumn, depthIndex };
   const neighbor = getCellConfig(config, neighborSelection);
   if (!neighbor?.enabled) return targets;
 
   const currentDepth = getCellDepth(config, selection.row, selection.column, depthIndex);
-  const neighborDepth = getCellDepth(config, neighborRow, selection.column, depthIndex);
+  const neighborDepth = getCellDepth(config, neighborRow, neighborColumn, depthIndex);
   if (currentDepth !== neighborDepth) return targets;
 
   targets.push({ selection: neighborSelection, panel: neighborPanel });
@@ -3801,8 +3819,9 @@ function hasGlassMobileTrayMount(cell: Pick<CellConfig, "kind" | "structure">, l
 }
 
 function applyRequiredMobileTrayPanels(cell: Pick<CellConfig, "structure">, kind: CellKind, legacyKind: CellKind = kind): CellStructureOverrides | undefined {
+  const explicitPanels = cell.structure?.panels ?? {};
   const panels: Partial<Record<StructurePanelKey, StructurePanelMaterial>> = {
-    ...cell.structure?.panels
+    ...explicitPanels
   };
 
   if (legacyKind !== kind) {
@@ -3811,9 +3830,10 @@ function applyRequiredMobileTrayPanels(cell: Pick<CellConfig, "structure">, kind
     });
   }
 
-  panels.left = "metal";
-  panels.right = "metal";
-  panels.bottom = "metal";
+  // 用户显式删除过的面（"none"）不强制恢复，避免放入移动托盘时已删面板静默复活
+  (["left", "right", "bottom"] as StructurePanelKey[]).forEach((panel) => {
+    if (explicitPanels[panel] !== "none") panels[panel] = "metal";
+  });
 
   return normalizeCellStructure({
     ...cell.structure,
