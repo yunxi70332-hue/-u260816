@@ -102,7 +102,7 @@ interface RouteDependencies {
 
 const EMPLOYEE_ORDER_TRANSITION_STATUSES = new Set(["confirmed", "technical_review", "ready_for_production", "on_hold"]);
 const CHINA_MAINLAND = "\u4e2d\u56fd\u5927\u9646";
-const DEFAULT_SALES_MULTIPLIER_BASIS_POINTS = 15_000;
+const DEFAULT_SALES_MULTIPLIER_BASIS_POINTS = 10_000;
 
 function parse<T>(schema: ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value);

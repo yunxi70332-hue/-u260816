@@ -176,13 +176,13 @@ export const salesPricingPreferences = pgTable("sales_pricing_preferences", {
   id: text("id").primaryKey(),
   organizationId: text("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  salesMultiplierBasisPoints: integer("sales_multiplier_basis_points").notNull().default(15000),
+  salesMultiplierBasisPoints: integer("sales_multiplier_basis_points").notNull().default(10000),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 }, (table) => [
   uniqueIndex("sales_pricing_preferences_org_user_unique").on(table.organizationId, table.userId),
   index("sales_pricing_preferences_user_idx").on(table.userId),
-  check("sales_pricing_preferences_multiplier_range", sql`${table.salesMultiplierBasisPoints} >= 10000 AND ${table.salesMultiplierBasisPoints} <= 99900`)
+  check("sales_pricing_preferences_multiplier_range", sql`${table.salesMultiplierBasisPoints} >= 5000 AND ${table.salesMultiplierBasisPoints} <= 99900`)
 ]);
 
 /** Fine-grained authorization data. Legacy member.role remains as a migration hint only. */

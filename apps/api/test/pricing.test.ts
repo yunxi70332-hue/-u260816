@@ -121,6 +121,36 @@ test("sales personal multiplier preference drives new pricing and stays hidden f
 
 });
 
+test("discount multipliers down to 0.50 are accepted while lower values are rejected", async (context) => {
+  const app = await buildApp({ ...loadConfig(), erpDevServerUrl: undefined, erpStaticDir: "missing" });
+  context.after(() => app.close());
+
+  const saved = await app.inject({
+    method: "PUT",
+    url: "/api/me/sales-pricing-preferences",
+    headers: { "x-test-role": "sales" },
+    payload: { salesMultiplierBasisPoints: 8000 }
+  });
+  assert.equal(saved.statusCode, 200);
+  assert.equal(body<{ item: { salesMultiplierBasisPoints: number } }>(saved).item.salesMultiplierBasisPoints, 8000);
+
+  const lowerBound = await app.inject({
+    method: "PUT",
+    url: "/api/me/sales-pricing-preferences",
+    headers: { "x-test-role": "sales" },
+    payload: { salesMultiplierBasisPoints: 5000 }
+  });
+  assert.equal(lowerBound.statusCode, 200);
+
+  const rejected = await app.inject({
+    method: "PUT",
+    url: "/api/me/sales-pricing-preferences",
+    headers: { "x-test-role": "sales" },
+    payload: { salesMultiplierBasisPoints: 4000 }
+  });
+  assert.equal(rejected.statusCode, 422);
+});
+
 test("BOM sync preserves entered prices and price-list export returns the current catalog", async (context) => {
   const app = await buildApp({ ...loadConfig(), erpDevServerUrl: undefined, erpStaticDir: "missing" });
   context.after(() => app.close());

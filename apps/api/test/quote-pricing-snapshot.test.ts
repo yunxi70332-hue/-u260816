@@ -117,7 +117,7 @@ test("quote pricing snapshot stays synchronized and freezes dealer settlement te
   const discountedMinor = created.subtotalMinor - discountMinor;
   const expectedTaxMinor = Math.round(discountedMinor * taxRateBasisPoints / 10_000);
   const expectedBasePriceTotalMinor = discountedMinor + expectedTaxMinor;
-  const expectedTotalMinor = Math.round(expectedBasePriceTotalMinor * 1.5);
+  const expectedTotalMinor = Math.round(expectedBasePriceTotalMinor * 1.0);
   const updateResponse = await app.inject({
     method: "PATCH",
     url: `/api/quotes/${created.id}`,
@@ -129,7 +129,7 @@ test("quote pricing snapshot stays synchronized and freezes dealer settlement te
   assert.equal(updated.discountMinor, discountMinor);
   assert.equal(updated.taxMinor, expectedTaxMinor);
   assert.equal(updated.basePriceTotalMinor, expectedBasePriceTotalMinor);
-  assert.equal(updated.salesMultiplierBasisPoints, 15_000);
+  assert.equal(updated.salesMultiplierBasisPoints, 10_000);
   assert.equal(updated.totalMinor, expectedTotalMinor);
 
   const calculation = record(updated.snapshot.calculation);

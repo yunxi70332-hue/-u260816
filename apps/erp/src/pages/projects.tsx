@@ -49,7 +49,7 @@ interface QuoteAdjustmentFormValues {
   notes?: string;
 }
 
-const DEFAULT_SALES_MULTIPLIER_BASIS_POINTS = 15000;
+const DEFAULT_SALES_MULTIPLIER_BASIS_POINTS = 10000;
 const DEFAULT_SALES_MULTIPLIER = DEFAULT_SALES_MULTIPLIER_BASIS_POINTS / 10000;
 const LEGACY_QUOTE_ADJUSTMENT_REASON = "前端人工调整报价";
 
@@ -458,13 +458,13 @@ export function ProjectsPage() {
               {internalPricingVisible && <Form.Item
                 label="销售倍率"
                 name="salesMultiplier"
-                extra="默认 1.50；倍率参考价按 1.0 基准价实时计算。"
+                extra="默认 1.00；倍率参考价按 1.0 基准价实时计算，低于 1.00 表示对客户折扣。"
                 rules={[
                   { required: true, message: "请输入销售倍率" },
-                  { type: "number", min: 1, max: 9.99, message: "倍率范围为 1.00 至 9.99" }
+                  { type: "number", min: 0.5, max: 9.99, message: "倍率范围为 0.50 至 9.99" }
                 ]}
               >
-                <InputNumber min={1} max={9.99} precision={2} step={0.01} disabled={!canManageMultiplier} style={{ width: "100%" }} />
+                <InputNumber min={0.5} max={9.99} precision={2} step={0.01} disabled={!canManageMultiplier} style={{ width: "100%" }} />
               </Form.Item>}
               <Form.Item
                 label="最终对客报价"

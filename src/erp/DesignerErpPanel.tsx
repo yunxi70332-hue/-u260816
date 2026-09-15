@@ -219,7 +219,7 @@ export function DesignerErpPanel({
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) return null;
     const basisPoints = Math.round(parsed * 10000);
-    return basisPoints >= 10000 && basisPoints <= 99900 ? basisPoints : null;
+    return basisPoints >= 5000 && basisPoints <= 99900 ? basisPoints : null;
   }
 
   function applyMultiplierInput(value: string) {
@@ -231,7 +231,7 @@ export function DesignerErpPanel({
   async function saveMultiplierPreference() {
     const basisPoints = parseMultiplier(multiplierInput);
     if (basisPoints === null) {
-      setError("销售倍率需在 1.00 至 9.99 之间");
+      setError("销售倍率需在 0.50 至 9.99 之间");
       return;
     }
     setBusy(true);
@@ -546,7 +546,7 @@ export function DesignerErpPanel({
                         <div>
                           <span>销售倍率 / 参考价</span>
                           <strong>{multiplierInput} 倍 · {salesMultiplierReferenceMinor === null ? "价格待确认" : formatRmbMinor(salesMultiplierReferenceMinor)}</strong>
-                          <small>{salesMultiplierSource === "user_default" ? "当前使用你的默认倍率" : "当前使用系统默认 1.50 倍"}</small>
+                          <small>{salesMultiplierSource === "user_default" ? "当前使用你的默认倍率" : "当前使用系统默认 1.00 倍"}</small>
                         </div>
                       )}
                       {canViewEnterpriseMultiplier && activeDesign ? (
@@ -556,7 +556,7 @@ export function DesignerErpPanel({
                             <input
                               id="designer-sales-multiplier"
                               type="number"
-                              min="1"
+                              min="0.5"
                               max="9.99"
                               step="0.01"
                               value={multiplierInput}
@@ -674,7 +674,7 @@ function normalizeQuoteWorkflow(value: unknown): ErpQuoteWorkflow {
     status: String(raw.status ?? ""),
     totalMinor: numberValue(raw.totalMinor, 0),
     basePriceTotalMinor: raw.basePriceTotalMinor === null || raw.basePriceTotalMinor === undefined ? null : numberValue(raw.basePriceTotalMinor, 0),
-    salesMultiplierBasisPoints: raw.salesMultiplierBasisPoints === null || raw.salesMultiplierBasisPoints === undefined ? null : numberValue(raw.salesMultiplierBasisPoints, 15000),
+    salesMultiplierBasisPoints: raw.salesMultiplierBasisPoints === null || raw.salesMultiplierBasisPoints === undefined ? null : numberValue(raw.salesMultiplierBasisPoints, 10000),
     multiplierQuoteTotalMinor: raw.multiplierQuoteTotalMinor === null || raw.multiplierQuoteTotalMinor === undefined ? null : numberValue(raw.multiplierQuoteTotalMinor, 0),
     revision: numberValue(raw.revision, 1),
     updatedAt: stringValue(raw.updatedAt)

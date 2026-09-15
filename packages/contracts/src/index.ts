@@ -318,7 +318,7 @@ export const QuoteLineSchema = z.object({
   pricingStatus: z.enum(["priced", "included", "unmatched"]),
   metadata: JsonObjectSchema
 });
-export const SalesMultiplierBasisPointsSchema = z.number().int().min(10_000).max(99_900);
+export const SalesMultiplierBasisPointsSchema = z.number().int().min(5_000).max(99_900);
 export const SalesPricingPreferenceSchema = z.object({
   salesMultiplierBasisPoints: SalesMultiplierBasisPointsSchema,
   source: z.enum(["user_default", "system_default"]),

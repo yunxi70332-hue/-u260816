@@ -139,6 +139,7 @@ import {
 } from "./model";
 
 const STORAGE_KEY = "usm-local-builder-config";
+const DEFAULT_SALES_MULTIPLIER_BASIS_POINTS = 10_000;
 
 interface SceneApi {
   capturePng: () => string;
@@ -230,7 +231,7 @@ export default function App() {
   const [portalGateError, setPortalGateError] = useState<string | null>(null);
   const publicPreviewMode = publicLanding && (publicPortalLoading || publicPortalEnabled);
   const [pricingState, setPricingState] = useState<PricingState>({ status: "loading" });
-  const [salesMultiplierBasisPoints, setSalesMultiplierBasisPoints] = useState(15000);
+  const [salesMultiplierBasisPoints, setSalesMultiplierBasisPoints] = useState(DEFAULT_SALES_MULTIPLIER_BASIS_POINTS);
   const [salesMultiplierSource, setSalesMultiplierSource] = useState<"user_default" | "system_default">("system_default");
   const handleSalesMultiplierChange = useCallback((value: number, source: "user_default" | "system_default" = "user_default") => {
     setSalesMultiplierBasisPoints(value);
@@ -660,7 +661,7 @@ export default function App() {
     if (portalMode) { setToast("C端不提供企业BOM与价格导出"); return; }
     const serverLines = pricingState.status === "priced" ? pricingState.data.lines : [];
     const exportMultiplier = pricingState.status === "priced" && !pricingState.data.dealer
-      ? pricingState.data.salesMultiplierBasisPoints ?? 15000
+      ? pricingState.data.salesMultiplierBasisPoints ?? DEFAULT_SALES_MULTIPLIER_BASIS_POINTS
       : null;
     const byKey = new Map(serverLines.map((line) => [pricingLineKey(line.materialKey, line.specKey), line]));
     const lines = [
@@ -1930,8 +1931,8 @@ function BomTab({
 }) {
   const lines = pricingState.status === "priced" ? pricingState.data.lines : [];
   const enterpriseMultiplierBasisPoints = pricingState.status === "priced"
-    ? pricingState.data.salesMultiplierBasisPoints ?? 15000
-    : 15000;
+    ? pricingState.data.salesMultiplierBasisPoints ?? DEFAULT_SALES_MULTIPLIER_BASIS_POINTS
+    : DEFAULT_SALES_MULTIPLIER_BASIS_POINTS;
   const isEnterprise = pricingState.status === "priced" && !pricingState.data.dealer;
   const pricedByKey = new Map(lines.map((line) => [pricingLineKey(line.materialKey, line.specKey), line]));
   const grouped = groupBomByCategory(bom);
@@ -2012,7 +2013,7 @@ function PriceBadge({ state }: { state: PricingState }) {
       <strong>{formatMinorRmb(state.data.dealer.purchaseTotalMinor)}</strong>
     </span>;
   }
-  const multiplierBasisPoints = state.data.salesMultiplierBasisPoints ?? 15000;
+  const multiplierBasisPoints = state.data.salesMultiplierBasisPoints ?? DEFAULT_SALES_MULTIPLIER_BASIS_POINTS;
   const multiplierTotalMinor = state.data.multiplierQuoteTotalMinor
     ?? multipliedMinor(state.data.retailTotalMinor, multiplierBasisPoints);
   return <span className="price-stack">

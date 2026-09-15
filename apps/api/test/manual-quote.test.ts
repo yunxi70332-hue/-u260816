@@ -57,8 +57,8 @@ test("project quote uses the published retail price as a baseline and audits man
   }>(createQuoteResponse).item;
   assert.equal(created.totalMinor, 12345);
   assert.ok((created.basePriceTotalMinor ?? 0) > 0);
-  assert.equal(created.salesMultiplierBasisPoints, 15_000);
-  assert.equal(created.multiplierQuoteTotalMinor, Math.round((created.basePriceTotalMinor ?? 0) * 1.5));
+  assert.equal(created.salesMultiplierBasisPoints, 10_000);
+  assert.equal(created.multiplierQuoteTotalMinor, created.basePriceTotalMinor);
   assert.equal(created.notes, "Include material samples with delivery");
   const terms = created.snapshot.quoteTerms as Record<string, unknown>;
   assert.equal(terms.pricingAuthority, "manual");

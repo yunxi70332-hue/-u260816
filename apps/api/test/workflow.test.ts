@@ -56,7 +56,7 @@ async function transition(
   });
 }
 
-test("new headquarters quotes retain the 1.0 baseline and default to the 1.50 multiplier", async (context) => {
+test("new headquarters quotes retain the 1.0 baseline and default to the 1.00 multiplier", async (context) => {
   const app = await buildApp({ ...loadConfig(), erpDevServerUrl: undefined, erpStaticDir: "missing" });
   context.after(() => app.close());
 
@@ -75,8 +75,8 @@ test("new headquarters quotes retain the 1.0 baseline and default to the 1.50 mu
 
   assert.equal(item.snapshot.quoteTerms?.pricingAuthority, "server");
   assert.equal(item.snapshot.quoteTerms?.suggestedRetailTotalMinor, item.basePriceTotalMinor);
-  assert.equal(item.salesMultiplierBasisPoints, 15_000);
-  assert.equal(item.multiplierQuoteTotalMinor, Math.round((item.basePriceTotalMinor ?? 0) * 1.5));
+  assert.equal(item.salesMultiplierBasisPoints, 10_000);
+  assert.equal(item.multiplierQuoteTotalMinor, item.basePriceTotalMinor);
   assert.equal(item.totalMinor, item.multiplierQuoteTotalMinor);
 });
 
