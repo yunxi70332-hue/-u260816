@@ -1516,6 +1516,7 @@ canvas {
 .enterprise-price-summary {
   border-color: #c9d8ec;
   background: #f2f7fd;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .enterprise-price-summary > span {
@@ -1528,13 +1529,15 @@ canvas {
 
 .multiplier-inline {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 4px 6px;
   min-width: 0;
 }
 
 .multiplier-inline input[type="number"] {
   width: 64px;
+  min-width: 0;
   padding: 3px 6px;
   font: inherit;
   font-size: 13px;
@@ -1542,6 +1545,16 @@ canvas {
   border: 1px solid #9fb4a8;
   border-radius: 4px;
   background: #fff;
+}
+
+.multiplier-inline button {
+  padding: 3px 8px;
+  font-size: 11px;
+  border: 1px solid #9fb4a8;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .multiplier-inline button {
