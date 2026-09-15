@@ -299,3 +299,17 @@ git revert --no-edit <问题提交> && git push origin main   # 先在本地仓�
 - 构建：一次成功（仅重建 designer）
 - 验收：健康检查 ok / 新资源 hash index-DdZkCZ2v.js（含 "存为默认" 指纹）/ ERP 200 / 无迁移 / 线上 https://usm.seven-cloud.cn 200
 - 遗留：无
+
+### 2026-09-15 12:53 modun
+- 提交：829bdd8（修复 BOM 汇总区内联倍率控件与"倍率参考价"重叠：enterprise 汇总 3 列→2 列、倍率控件允许换行；无迁移）
+- 备份：/www/docker/usm-modun/backups/modun/modun-20260915T045203Z
+- 构建：一次成功（仅重建 designer）
+- 验收：健康检查 ok / 新资源 index-BtI7KvD7.js + index-CIHMVhZZ.css（含 repeat(2,minmax) 修复指纹）/ 线上 https://modun.usmxx.xyz 200
+- 遗留：无
+
+### 2026-09-15 12:55 usm-configurator-erp（七云）
+- 提交：829bdd8（同上，与 modun 保持同步）
+- 备份：/www/docker/usm/backups/usm-01/usm-configurator-erp-20260915T045249Z
+- 构建：一次成功（仅重建 designer）
+- 验收：健康检查 ok / CSS index-CIHMVhZZ.css 与 modun 一致（含修复指纹）/ 线上 https://usm.seven-cloud.cn 200
+- 遗留：无
