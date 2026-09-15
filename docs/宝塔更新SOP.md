@@ -285,3 +285,17 @@ git revert --no-edit <问题提交> && git push origin main   # 先在本地仓�
 - 构建：一次成功（缓存热，约 1.5 分钟）
 - 验收：健康检查 ok / 新资源 hash index-Ci52D0GU.js（含 "0.50 至 9.99" 指纹）/ ERP 产物 index-B6uGJuYb.js 与 modun 一致 / 迁移 0018 已应用 / 线上 https://usm.seven-cloud.cn 200
 - 遗留：env 的 PUBLIC_DOMAIN 仍为旧 IP 85.137.246.59（不影响本次发布，建议后续修正）；MCP Bash 无 HOME，git 全局配置需 `export HOME=/root`（已在调用规则记录）
+
+### 2026-09-15 12:36 modun
+- 提交：ebb1299（BOM 标签页价格汇总区"销售倍率"改为内联可编辑输入框 0.50–9.99 + 存为默认按钮，企业视角重计价全联动；无迁移）
+- 备份：/www/docker/usm-modun/backups/modun/modun-20260915T043449Z
+- 构建：一次成功（约 1.5 分钟，Docker 缓存正确识别纯前端变更，仅重建 designer）
+- 验收：健康检查 ok / 新资源 hash index-iNAIyN0z.js（含 "存为默认" 指纹）/ ERP 200 / 无迁移 / 线上 https://modun.usmxx.xyz 200
+- 遗留：无
+
+### 2026-09-15 12:38 usm-configurator-erp（七云）
+- 提交：ebb1299（同上，与 modun 保持同步）
+- 备份：/www/docker/usm/backups/usm-01/usm-configurator-erp-20260915T043522Z
+- 构建：一次成功（仅重建 designer）
+- 验收：健康检查 ok / 新资源 hash index-DdZkCZ2v.js（含 "存为默认" 指纹）/ ERP 200 / 无迁移 / 线上 https://usm.seven-cloud.cn 200
+- 遗留：无
