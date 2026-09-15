@@ -58,6 +58,8 @@ for c in result.get('content', []):
 1. **含引号/反斜杠/管道的 shell 命令一律写进 `args.json` 用 `-f` 传参**，不要内联 JSON（转义极易出错）。`args.json` 格式：`{"command": "...", "timeout": 20}`。
 2. **MCP Bash 前台最多 20 秒**。长命令（备份、构建）必须传 `"run_in_background": true`，返回 `task_id` 后用 `BashStatus`（`"wait": true, "timeout": ...`）轮询直到 `status: done`，看 `exit_code` 和 `stdout` 判定成败。
 3. 常用只读工具：`SystemInfo`、`LS`、`Read`、`BashStatus`。写操作类：`Bash`（sh -c）、`ServiceRestart` 等。
+4. **MCP Bash 环境没有 `$HOME`**：涉及 `git config --global`（如 safe.directory）需先 `export HOME=/root`，否则报 `$HOME not set`。
+5. **服务器 git 只有拉取凭据（https 只读）**：若发现实例工作区有未推送的本地提交，不要 `reset --hard` 丢弃——先 `git branch save-xxx <hash>` 本地留存 + `git format-patch -1 <hash> --stdout` 导出补丁回流本地 main，测试通过推送后再 `pull --ff-only` 同步。
 
 ## 二、实例档案（已核实，2026-09-05）
 
@@ -269,3 +271,17 @@ git revert --no-edit <问题提交> && git push origin main   # 先在本地仓�
 - 构建：重试 1 次（首次失败于工作区 index.html 被删，git 还原后成功）
 - 验收：健康检查 ok / 新资源 hash index-DCyWP0ld.js（含 `y-merged` 指纹）/ ERP 产物含 `glassClip` / 无迁移 / 线上 https://usm.seven-cloud.cn 200（本机实测 200；服务器本机 curl 域名 DNS 瞬时失败同 9-07，非发布问题）
 - 遗留：无
+
+### 2026-09-15 11:35 modun
+- 提交：dc727b8（销售倍率默认 1.5→1.0、折扣倍率下限放开至 0.50、迁移 0018 放宽 quotes/preferences CHECK + 偏好默认 10000；并回流服务器热修 a45b9ae 面板镜像修复、BOM 规格表文档）
+- 备份：/www/docker/usm-modun/backups/modun/modun-20260915T033124Z
+- 构建：一次成功（约 4 分钟）
+- 验收：健康检查 ok / 新资源 hash index-C3g7hm1s.js（含 "0.50 至 9.99" 指纹）/ ERP 产物含 "低于 1.00 表示对客户折扣"（index-B6uGJuYb.js）/ 迁移 0018 已应用（列默认 10000、CHECK>=5000 双表确认）/ 线上 https://modun.usmxx.xyz 200
+- 遗留：服务器本地提交 a45b9ae 无法推送（https 只读凭据），已 format-patch 回流 main（dc727b8），服务器分支 save-a45b9ae-backup 保留保险；.bak-20260909 文件仍未删
+
+### 2026-09-15 11:38 usm-configurator-erp（七云）
+- 提交：dc727b8（同上，与 modun 保持同步）
+- 备份：/www/docker/usm/backups/usm-01/usm-configurator-erp-20260915T033334Z
+- 构建：一次成功（缓存热，约 1.5 分钟）
+- 验收：健康检查 ok / 新资源 hash index-Ci52D0GU.js（含 "0.50 至 9.99" 指纹）/ ERP 产物 index-B6uGJuYb.js 与 modun 一致 / 迁移 0018 已应用 / 线上 https://usm.seven-cloud.cn 200
+- 遗留：env 的 PUBLIC_DOMAIN 仍为旧 IP 85.137.246.59（不影响本次发布，建议后续修正）；MCP Bash 无 HOME，git 全局配置需 `export HOME=/root`（已在调用规则记录）
