@@ -27,7 +27,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ACCESSORY_CATEGORIES, ACCESSORY_REQUIREMENTS } from "./accessoryCatalog";
 import { DesignerErpPanel } from "./erp/DesignerErpPanel";
-import { ErpApiError, erpRequest, getErpAppUrl, getErpLoginUrl, unwrapItem } from "./erp/api";
+import { ErpApiError, erpRequest, getErpAppUrl, getErpLoginUrl, saveSalesPricingPreference, unwrapItem } from "./erp/api";
 import {
   ERP_FEATURES,
   businessGateway,
@@ -237,6 +237,15 @@ export default function App() {
     setSalesMultiplierBasisPoints(value);
     setSalesMultiplierSource(source);
   }, []);
+  const handleSaveSalesMultiplierDefault = useCallback(async (value: number) => {
+    try {
+      const preference = await saveSalesPricingPreference(value);
+      handleSalesMultiplierChange(preference.salesMultiplierBasisPoints, "user_default");
+      setToast(`已保存默认倍率 ${(preference.salesMultiplierBasisPoints / 10000).toFixed(2)}`);
+    } catch (error) {
+      setToast(error instanceof ErpApiError || error instanceof Error ? error.message : "保存默认倍率失败");
+    }
+  }, [handleSalesMultiplierChange]);
   const [businessContext, setBusinessContext] = useState<BusinessContext>(() => businessGateway.getContext());
   const [inventoryState, setInventoryState] = useState<BusinessResult<InventoryAvailability[]>>({ status: "idle", source: businessGateway.getSource() });
   const [productionOrderState, setProductionOrderState] = useState<BusinessResult<ProductionOrderResult>>({ status: "idle", source: businessGateway.getSource() });
@@ -995,6 +1004,10 @@ export default function App() {
                 bom={bom}
                 pricingState={pricingState}
                 onExport={exportBom}
+                salesMultiplierSource={salesMultiplierSource}
+                salesMultiplierEditable={!portalMode}
+                onSalesMultiplierChange={handleSalesMultiplierChange}
+                onSaveSalesMultiplierDefault={handleSaveSalesMultiplierDefault}
                 businessExtension={businessExtensionsEnabled ? (
                   <ErpBomExtension
                     context={businessContext}
@@ -1922,17 +1935,48 @@ function BomTab({
   bom,
   pricingState,
   onExport,
-  businessExtension
+  businessExtension,
+  salesMultiplierSource,
+  salesMultiplierEditable,
+  onSalesMultiplierChange,
+  onSaveSalesMultiplierDefault
 }: {
   bom: BomItem[];
   pricingState: PricingState;
   onExport: () => void;
   businessExtension?: React.ReactNode;
+  salesMultiplierSource: "user_default" | "system_default";
+  salesMultiplierEditable: boolean;
+  onSalesMultiplierChange: (value: number, source?: "user_default" | "system_default") => void;
+  onSaveSalesMultiplierDefault: (value: number) => Promise<void>;
 }) {
   const lines = pricingState.status === "priced" ? pricingState.data.lines : [];
   const enterpriseMultiplierBasisPoints = pricingState.status === "priced"
     ? pricingState.data.salesMultiplierBasisPoints ?? DEFAULT_SALES_MULTIPLIER_BASIS_POINTS
     : DEFAULT_SALES_MULTIPLIER_BASIS_POINTS;
+  const [multiplierInput, setMultiplierInput] = useState((enterpriseMultiplierBasisPoints / 10000).toFixed(2));
+
+  useEffect(() => {
+    setMultiplierInput((enterpriseMultiplierBasisPoints / 10000).toFixed(2));
+  }, [enterpriseMultiplierBasisPoints]);
+
+  function parseMultiplier(value: string) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return null;
+    const basisPoints = Math.round(parsed * 10000);
+    return basisPoints >= 5000 && basisPoints <= 99900 ? basisPoints : null;
+  }
+
+  function applyMultiplierInput(value: string) {
+    setMultiplierInput(value);
+    const basisPoints = parseMultiplier(value);
+    if (basisPoints !== null) onSalesMultiplierChange(basisPoints, salesMultiplierSource);
+  }
+
+  function saveMultiplierDefault() {
+    const basisPoints = parseMultiplier(multiplierInput);
+    if (basisPoints !== null) void onSaveSalesMultiplierDefault(basisPoints);
+  }
   const isEnterprise = pricingState.status === "priced" && !pricingState.data.dealer;
   const pricedByKey = new Map(lines.map((line) => [pricingLineKey(line.materialKey, line.specKey), line]));
   const grouped = groupBomByCategory(bom);
@@ -1963,7 +2007,22 @@ function BomTab({
       ) : null}
       {pricingState.status === "priced" && !pricingState.data.dealer ? (
         <div className="enterprise-price-summary">
-          <span><small>销售倍率</small><strong>{(enterpriseMultiplierBasisPoints / 10000).toFixed(2)}</strong></span>
+          <span><small>销售倍率</small>{salesMultiplierEditable ? (
+            <span className="multiplier-inline">
+              <input
+                type="number"
+                min="0.5"
+                max="9.99"
+                step="0.01"
+                value={multiplierInput}
+                aria-label="销售倍率"
+                onChange={(event) => applyMultiplierInput(event.target.value)}
+              />
+              <button type="button" onClick={saveMultiplierDefault}>存为默认</button>
+            </span>
+          ) : (
+            <strong>{(enterpriseMultiplierBasisPoints / 10000).toFixed(2)}</strong>
+          )}</span>
           <span><small>倍率参考价</small><strong>{formatMinorRmb(pricingState.data.multiplierQuoteTotalMinor ?? Math.round(pricingState.data.retailTotalMinor * enterpriseMultiplierBasisPoints / 10000))}</strong></span>
         </div>
       ) : null}
